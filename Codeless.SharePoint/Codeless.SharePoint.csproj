@@ -1,0 +1,214 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{98FED525-A528-4868-AC09-01C90E95DBD3}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Codeless</RootNamespace>
+    <AssemblyName>Codeless.SharePoint</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\bin\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+    <DocumentationFile>..\bin\Codeless.SharePoint.xml</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>key.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="IQToolkit, Version=1.0.0.0, Culture=neutral, PublicKeyToken=6e028f30b8da22f9, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\bin\IQToolkit.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.BusinessData, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.Deployment.Compression, Version=3.0.0.0, Culture=neutral, PublicKeyToken=ce35f76fcda82bad, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.Deployment.Compression.Cab, Version=3.0.0.0, Culture=neutral, PublicKeyToken=ce35f76fcda82bad, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.Office.DocumentManagement, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.Office.SecureStoreService, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Windows\Microsoft.NET\assembly\GAC_MSIL\Microsoft.Office.SecureStoreService\v4.0_15.0.0.0__71e9bce111e9429c\Microsoft.Office.SecureStoreService.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Office.Server, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.Office.Server.Search, Version=14.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Program Files\Common Files\Microsoft Shared\Web Server Extensions\14\ISAPI\Microsoft.Office.Server.Search.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.EnterpriseLibrary.Common, Version=5.0.414.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\bin\Microsoft.Practices.EnterpriseLibrary.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.EnterpriseLibrary.Logging, Version=5.0.414.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\bin\Microsoft.Practices.EnterpriseLibrary.Logging.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.EnterpriseLibrary.Validation, Version=5.0.414.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\bin\Microsoft.Practices.EnterpriseLibrary.Validation.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.ServiceLocation, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\bin\Microsoft.Practices.ServiceLocation.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.Unity, Version=2.0.414.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\bin\Microsoft.Practices.Unity.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.Unity.Interception, Version=2.0.414.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\bin\Microsoft.Practices.Unity.Interception.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.SharePoint, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.SharePoint.Publishing, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.SharePoint.Taxonomy, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.Web.Administration, Version=7.9.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Windows\System32\inetsrv\Microsoft.Web.Administration.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.configuration" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.DirectoryServices" />
+    <Reference Include="System.DirectoryServices.AccountManagement" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.ApplicationServices" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Web.Services" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SharePoint\CamlExpression.cs" />
+    <Compile Include="SharePoint\CamlParameterBinding.cs" />
+    <Compile Include="SharePoint\Internal\KnownFields.cs" />
+    <Compile Include="SharePoint\Internal\SPChangeQueryExecutor.cs" />
+    <Compile Include="SharePoint\SPAggregatedChange.cs" />
+    <Compile Include="SharePoint\SPChangeMonitor.cs" />
+    <Compile Include="SharePoint\Internal\TraceCategory.cs" />
+    <Compile Include="SharePoint\Logger.cs" />
+    <Compile Include="SharePoint\ObjectModel\ISPModelMetaData.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPModelMonitor.cs" />
+    <Compile Include="SharePoint\ObjectModel\_Attributes\SPModelIgnoreAttribute.cs" />
+    <Compile Include="SharePoint\Publishing\ICatalogPage.cs" />
+    <Compile Include="SharePoint\Publishing\ICatalogPageFilter.cs" />
+    <Compile Include="SharePoint\Publishing\IRequestContext.cs" />
+    <Compile Include="SharePoint\Publishing\ISeoMetaProvider.cs" />
+    <Compile Include="SharePoint\Publishing\SeoMetaListItem.cs" />
+    <Compile Include="SharePoint\Publishing\SeoMetaNavigationTerm.cs" />
+    <Compile Include="SharePoint\Publishing\SeoMetaWithFallback.cs" />
+    <Compile Include="SharePoint\Publishing\TaxonomyNavigationRequestContext.cs" />
+    <Compile Include="SharePoint\SearchRefiner.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPListItemAdapterInterceptionBehavior.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPModelProvisionEventReceiver.cs" />
+    <Compile Include="SharePoint\SiteConfigProvider.cs" />
+    <Compile Include="SharePoint\SiteConfigTypeConverter.cs" />
+    <Compile Include="SharePoint\SPItemVersion.cs" />
+    <Compile Include="SharePoint\SPListItemVersionAdapter.cs" />
+    <Compile Include="SharePoint\SPObjectCache.cs" />
+    <Compile Include="SharePoint\SPRecurrenceDateRange.cs" />
+    <Compile Include="SharePoint\Internal\SPFileCheckOutScope.cs" />
+    <Compile Include="SharePoint\ObjectModel\Linq\SPModelFieldAssociation.cs" />
+    <Compile Include="SharePoint\ObjectModel\Linq\SPModelFieldAssociationCollection.cs" />
+    <Compile Include="SharePoint\ObjectModel\Linq\SPModelQueryExpressionScope.cs" />
+    <Compile Include="SharePoint\ObjectModel\Linq\SPModelQueryFieldInfo.cs" />
+    <Compile Include="SharePoint\Internal\SPSiteAllowUnsafeUpdatesScope.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPModelExtension.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPModelProvisionHelper.cs" />
+    <Compile Include="SharePoint\BuiltInManagedPropertyName.cs" />
+    <Compile Include="SharePoint\Caml.cs" />
+    <Compile Include="SharePoint\ClaimsContext.cs" />
+    <Compile Include="SharePoint\ObjectModel\_Attributes\SPModelQueryPropertyAttribute.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPModelUsage.cs" />
+    <Compile Include="SharePoint\Publishing\TaxonomyNavigationHelper.cs" />
+    <Compile Include="SharePoint\SPRecurrenceEnumerator.cs" />
+    <Compile Include="SharePoint\DataRowAdapter.cs" />
+    <Compile Include="SharePoint\CamlVisitor.cs" />
+    <Compile Include="SharePoint\ObjectModel\Linq\SPModelQueryExpressionVisitor.cs" />
+    <Compile Include="SharePoint\ObjectModel\Linq\SPModelQueryProvider.cs" />
+    <Compile Include="SharePoint\Internal\SiteConfigEntry.cs" />
+    <Compile Include="SharePoint\ISiteConfigEntry.cs" />
+    <Compile Include="SharePoint\ISiteConfigProvider.cs" />
+    <Compile Include="SharePoint\ObjectModel\ISPModelManager.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPModelAsyncEventReceiver.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPModelManager.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPModelEventArgs.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPModelEventReceiver.cs" />
+    <Compile Include="SharePoint\ObjectModel\Linq\SPModelQuery.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPModelManagerExtension.cs" />
+    <Compile Include="SharePoint\ObjectModel\_Attributes\SPModelManagerDefaultTypeAttribute.cs" />
+    <Compile Include="SharePoint\ObjectModel\ISPModelManagerInternal.cs" />
+    <Compile Include="SharePoint\Internal\KeywordQueryCamlVisitor.cs" />
+    <Compile Include="SharePoint\Internal\PrincipalContextScope.cs" />
+    <Compile Include="SharePoint\Internal\PrincipalResolver.cs" />
+    <Compile Include="SharePoint\Internal\SPExtensionHelper.cs" />
+    <Compile Include="SharePoint\Internal\SPWebAllowUnsafeUpdatesScope.cs" />
+    <Compile Include="SharePoint\ISPListItemAdapter.cs" />
+    <Compile Include="SharePoint\KeywordQueryResultAdapter.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPModel.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPModelCollection.cs" />
+    <Compile Include="SharePoint\ObjectModel\_Attributes\SPModelDefaultsAttribute.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPModelManagerBase.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPModelDescriptor.cs" />
+    <Compile Include="SharePoint\Publishing\PublishingWebHelper.cs" />
+    <Compile Include="SharePoint\Publishing\VariationContext.cs" />
+    <Compile Include="SharePoint\SearchServiceHelper.cs" />
+    <Compile Include="SharePoint\SiteConfig.cs" />
+    <Compile Include="SharePoint\SiteConfigProviderAttribute.cs" />
+    <Compile Include="SharePoint\SPBuiltInContentTypeIdString.cs" />
+    <Compile Include="SharePoint\SPBuiltInFieldName.cs" />
+    <Compile Include="SharePoint\ObjectModel\_Attributes\SPContentTypeAttribute.cs" />
+    <Compile Include="SharePoint\SPExtension.cs" />
+    <Compile Include="SharePoint\ObjectModel\_Attributes\SPFieldAttribute.cs" />
+    <Compile Include="SharePoint\SPItemEventDataCollectionAdapter.cs" />
+    <Compile Include="SharePoint\SPItemEventHelper.cs" />
+    <Compile Include="SharePoint\ObjectModel\_Attributes\SPListAttribute.cs" />
+    <Compile Include="SharePoint\SPListCacheDependency.cs" />
+    <Compile Include="SharePoint\SPListItemAdapter.cs" />
+    <Compile Include="SharePoint\SPListItemAdapterBase.cs" />
+    <Compile Include="SharePoint\PrincipalInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="key.snk" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Codeless\Codeless.csproj">
+      <Project>{83ead660-ea9e-4dd6-a95f-8f9e04b968cf}</Project>
+      <Name>Codeless</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

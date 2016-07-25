@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<configuration xmlns:c="http://sharepoint.codeless.org/webconfigmod" c:owner="Codeless.SharePoint">
+  <system.web>
+    <compilation>
+      <assemblies>
+        <add assembly="System.Core, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
+        <add assembly="System.Data.Linq, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
+        <add assembly="Codeless, Version=15.0.0.0, Culture=neutral, PublicKeyToken=6e028f30b8da22f9" />
+        <add assembly="Codeless.SharePoint, Version=15.0.0.0, Culture=neutral, PublicKeyToken=6e028f30b8da22f9" />
+      </assemblies>
+    </compilation>
+    <pages>
+      <namespaces>
+        <add namespace="System.Collections.Generic" />
+        <add namespace="System.Linq" />
+        <add namespace="Microsoft.SharePoint" />
+        <add namespace="Microsoft.SharePoint.Utilities" />
+        <add namespace="Microsoft.SharePoint.Publishing" />
+        <add namespace="Codeless" />
+        <add namespace="Codeless.SharePoint" />
+        <add namespace="Codeless.SharePoint.ObjectModel" />
+        <add namespace="Codeless.SharePoint.Publishing" />
+      </namespaces>
+    </pages>
+  </system.web>
+</configuration>

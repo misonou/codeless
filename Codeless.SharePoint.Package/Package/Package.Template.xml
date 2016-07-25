@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Solution xmlns="http://schemas.microsoft.com/sharepoint/">
+  <Assemblies>
+    <Assembly Location="Codeless.SharePoint.dll">
+      <SafeControls>
+        <SafeControl Namespace="Codeless.SharePoint.WebControls" TypeName="*" />
+      </SafeControls>
+      <BindingRedirects>
+        <BindingRedirect OldVersion="14.0.0.0-15.0.65535.65535" />
+      </BindingRedirects>
+    </Assembly>
+  </Assemblies>
+</Solution>

@@ -1,0 +1,12 @@
+/.vs
+/bin
+/Codeless.SharePoint.Deployment*
+/Codeless.UnitTest
+/TestResults
+/packages
+*.suo
+*.csproj.user
+/**/obj
+/**/bin
+/**/pkg
+/**/pkgobj
