@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+    <metadata>
+        <id>Codeless.SharePoint</id>
+        <version>15.0.369.0</version>
+        <authors>misonou</authors>
+        <projectUrl>https://github.com/misonou/codeless</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>Makes SharePoint customization and extension easy and smooth.</description>
+        <summary>Makes SharePoint customization and extension easy and smooth</summary>
+        <copyright>MIT</copyright>
+        <language>en-US</language>
+        <dependencies>
+            <group targetFramework=".NETFramework4.5">
+                <dependency id="MSFTCompressionCab" version="1.0.0" />
+                <dependency id="IQToolkit" version="1.0.0.0" />
+                <dependency id="CommonServiceLocator" version="1.0" />
+                <dependency id="EnterpriseLibrary.Common" version="5.0.505.0" />
+                <dependency id="EnterpriseLibrary.Logging" version="5.0.505.0" />
+                <dependency id="EnterpriseLibrary.Validation" version="5.0.505.0" />
+                <dependency id="Unity" version="2.1.505.0" />
+                <dependency id="Unity.Interception" version="2.1.505.0" />
+            </group>
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="build\Codeless.SharePoint.Package.wsp" target="build\Codeless.SharePoint.Package.wsp" />
+        <file src="lib\net45\Codeless.dll" target="lib\net45\Codeless.dll" />
+        <file src="lib\net45\Codeless.SharePoint.dll" target="lib\net45\Codeless.SharePoint.dll" />
+        <file src="lib\net45\Codeless.SharePoint.PowerShell.dll" target="lib\net45\Codeless.SharePoint.PowerShell.dll" />
+        <file src="lib\net45\Codeless.SharePoint.xml" target="lib\net45\Codeless.SharePoint.xml" />
+        <file src="lib\net45\Codeless.XML" target="lib\net45\Codeless.XML" />
+    </files>
+</package>
