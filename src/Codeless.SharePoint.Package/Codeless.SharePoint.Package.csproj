@@ -94,10 +94,6 @@
       <Project>{98fed525-a528-4868-ac09-01c90e95dbd3}</Project>
       <Name>Codeless.SharePoint</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Codeless\Codeless.csproj">
-      <Project>{83ead660-ea9e-4dd6-a95f-8f9e04b968cf}</Project>
-      <Name>Codeless</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.5">

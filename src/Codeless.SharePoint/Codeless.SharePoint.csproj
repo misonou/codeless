@@ -40,6 +40,10 @@
     <AssemblyOriginatorKeyFile>key.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Codeless, Version=1.0.0.0, Culture=neutral, PublicKeyToken=6e028f30b8da22f9, processorArchitecture=MSIL">
+      <HintPath>..\packages\Codeless.Core.1.0.369.0\lib\net45\Codeless.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="IQToolkit, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\IQToolkit.1.0.0.0\lib\net40\IQToolkit.dll</HintPath>
       <Private>True</Private>
@@ -207,13 +211,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="key.snk" />
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Codeless\Codeless.csproj">
-      <Project>{83ead660-ea9e-4dd6-a95f-8f9e04b968cf}</Project>
-      <Name>Codeless</Name>
-    </ProjectReference>
+    <None Include="packages.config">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

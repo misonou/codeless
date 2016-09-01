@@ -39,6 +39,10 @@
     <AssemblyOriginatorKeyFile>key.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Codeless, Version=1.0.0.0, Culture=neutral, PublicKeyToken=6e028f30b8da22f9, processorArchitecture=MSIL">
+      <HintPath>..\packages\Codeless.Core.1.0.369.0\lib\net45\Codeless.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="IQToolkit, Version=1.0.0.0, Culture=neutral, PublicKeyToken=6e028f30b8da22f9, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\bin\IQToolkit.dll</HintPath>
@@ -80,13 +84,10 @@
       <Project>{98fed525-a528-4868-ac09-01c90e95dbd3}</Project>
       <Name>Codeless.SharePoint</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Codeless\Codeless.csproj">
-      <Project>{83ead660-ea9e-4dd6-a95f-8f9e04b968cf}</Project>
-      <Name>Codeless</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="key.snk" />
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
