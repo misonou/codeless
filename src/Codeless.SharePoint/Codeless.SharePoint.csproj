@@ -44,9 +44,9 @@
       <HintPath>..\packages\Codeless.Core.1.0.369.0\lib\net45\Codeless.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="IQToolkit, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\IQToolkit.1.0.0.0\lib\net40\IQToolkit.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="IQToolkit, Version=1.0.0.0, Culture=neutral, PublicKeyToken=6e028f30b8da22f9, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\lib\net45\IQToolkit.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.BusinessData, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL" />
     <Reference Include="Microsoft.Deployment.Compression, Version=3.0.0.0, Culture=neutral, PublicKeyToken=ce35f76fcda82bad, processorArchitecture=MSIL">
