@@ -14,6 +14,7 @@
     <customAssembly location="Codeless.dll" deploymentTarget="GlobalAssemblyCache" sourcePath="..\packages\Codeless.Core.1.0.369.0\lib\net35\Codeless.dll" />
     <customAssembly location="IQToolkit.dll" deploymentTarget="GlobalAssemblyCache" sourcePath="..\..\lib\net35\IQToolkit.dll" />
     <customAssembly location="NetLegacySupport.Tuple.dll" deploymentTarget="GlobalAssemblyCache" sourcePath="..\packages\NetLegacySupport.Tuple.1.1.1\lib\net35\NetLegacySupport.Tuple.dll" />
+    <customAssembly location="System.Threading.dll" deploymentTarget="GlobalAssemblyCache" sourcePath="..\packages\System.Threading.dll.1.0.2856.0\lib\net35\System.Threading.dll" />
   </assemblies>
   <features>
     <featureReference itemId="87e1053b-10d0-4058-9853-e1ad0e1531d6" />
