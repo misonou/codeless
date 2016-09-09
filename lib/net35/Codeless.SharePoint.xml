@@ -2841,492 +2841,6 @@
             Gets or sets what items can be created or edited by uses.
             </summary>
         </member>
-        <member name="T:Codeless.SharePoint.Publishing.ICatalogPage">
-            <summary>
-            Represents a catalog page when implemented by a descandant class of the <see cref="T:Codeless.SharePoint.ObjectModel.SPModel"/> class.
-            This interface is consumed by the <see cref="T:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper"/> class that computes information about
-            the current HTTP request exposed by the <see cref="T:Codeless.SharePoint.Publishing.IRequestContext"/> interface.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.ICatalogPage.Filter">
-            <summary>
-            Gets an object implementing the <see cref="T:Codeless.SharePoint.Publishing.ICatalogPageFilter"/> interface that resolves catalog item by the given catalog URL segments.
-            </summary>
-        </member>
-        <member name="T:Codeless.SharePoint.Publishing.ICatalogPageFilter">
-            <summary>
-            Provides mechanism to resolve catalog item by the specified catalog URL segments.
-            </summary>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.ICatalogPageFilter.Validate(System.Collections.Generic.IList{System.String})">
-            <summary>
-            Validates if the specified catalog URL segments matches the intended format.
-            </summary>
-            <param name="segments"></param>
-            <returns></returns>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.ICatalogPageFilter.Execute(System.Collections.Generic.IList{System.String})">
-            <summary>
-            Resolves the catalog item represented by the specified catalog URL segments.
-            If there is no catalog item matched, *null* should be returned.
-            </summary>
-            <param name="segments">Catalog URL segments.</param>
-            <returns>The resolved catalog item.</returns>
-        </member>
-        <member name="T:Codeless.SharePoint.Publishing.CatalogPageMode">
-            <summary>
-            Determines what should be displayed in the requesting catalog page based on the request URL.
-            </summary>
-        </member>
-        <member name="F:Codeless.SharePoint.Publishing.CatalogPageMode.Invalid">
-            <summary>
-            Indicates that current page is not a catalog page.
-            </summary>
-        </member>
-        <member name="F:Codeless.SharePoint.Publishing.CatalogPageMode.Listing">
-            <summary>
-            Indicates that current page should display a content listing.
-            </summary>
-        </member>
-        <member name="F:Codeless.SharePoint.Publishing.CatalogPageMode.Item">
-            <summary>
-            Indicates that current page should display the resolved item returned by <see cref="P:Codeless.SharePoint.Publishing.IRequestContext.ContentItem"/>
-            </summary>
-        </member>
-        <member name="F:Codeless.SharePoint.Publishing.CatalogPageMode.ItemNotFound">
-            <summary>
-            Indicates that current page should display an error message showing no items were found the request.
-            </summary>
-        </member>
-        <member name="T:Codeless.SharePoint.Publishing.IRequestContext">
-            <summary>
-            Gets information on the current HTTP request using managed navigation.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.IRequestContext.ServerRelativeUrl">
-            <summary>
-            Gets a server-relative friendly URL for the current HTTP request.
-            In contrast to <see cref="P:Microsoft.SharePoint.Utilities.SPUtility.OriginalServerRelativeRequestPath"/> where it returns the resolved URL to the physical page referred by the friendly URL.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.IRequestContext.ServerRelativeUrlWithQuery">
-            <summary>
-            Gets a server-relative friendly URL for the current HTTP request with query string appended.
-            In contrast to <see cref="P:Microsoft.SharePoint.Utilities.SPUtility.OriginalServerRelativeRequestPath"/> where it returns the resolved URL to the physical page referred by the friendly URL.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.IRequestContext.VariationRelativeUrl">
-            <summary>
-            Gets a variation-relative friendly URL for the current HTTP request.
-            See <see cref="P:Codeless.SharePoint.Publishing.IRequestContext.ServerRelativeUrl"/> for details.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.IRequestContext.VariationRelativeUrlWithQuery">
-            <summary>
-            Gets a variation-relative friendly URL for the current HTTP request with query string appended.
-            See <see cref="P:Codeless.SharePoint.Publishing.IRequestContext.ServerRelativeUrl"/> for details.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.IRequestContext.CatalogUrlSegments">
-            <summary>
-            See <see cref="P:Microsoft.SharePoint.Publishing.Navigation.TaxonomyNavigationContext.CatalogUrlSegments"/>.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.IRequestContext.Query">
-            <summary>
-            Gets a name-value collection for the query string.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.IRequestContext.NavigationTermSetItem">
-            <summary>
-            Gets the navigation term or term set associated with the requested page.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.IRequestContext.NavigationTerm">
-            <summary>
-            Gets the navigation term associated with the requested page.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.IRequestContext.ContentItem">
-            <summary>
-            Gets the object representing the page or resolved catalog item if appropriate.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.IRequestContext.CatalogPageItem">
-            <summary>
-            Gets the object representing the catalog page if appropriate.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.IRequestContext.CatalogItems">
-            <summary>
-            Gets a collection of objects to be listed on the catalog page.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.IRequestContext.CatalogPageMode">
-            <summary>
-            Gets the resolved display mode of the catalog page.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.IRequestContext.SeoMeta">
-            <summary>
-            Gets the SEO meta data associated with the resolved content.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.IRequestContext.Variation">
-            <summary>
-            Gets the variation information associated with the current HTTP request.
-            </summary>
-        </member>
-        <member name="T:Codeless.SharePoint.Publishing.ISeoMetaProvider">
-            <summary>
-            Provides SEO meta data.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.ISeoMetaProvider.Title">
-            <summary>
-            Gets SEO-friendly title. For example to be used to specify in og:title tag.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.ISeoMetaProvider.Description">
-            <summary>
-            Gets SEO-friendly description. For example to be used to specify in og:description or "description" meta tag.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.ISeoMetaProvider.Keywords">
-            <summary>
-            Gets SEO-friendly keyword list. For example to be used to specify in "keywords" meta tag.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.ISeoMetaProvider.Image">
-            <summary>
-            Gets SEO-friendly image URL. For example to be used to specify in og:image tag.
-            </summary>
-        </member>
-        <member name="T:Codeless.SharePoint.Publishing.SeoMetaListItem">
-            <summary>
-            Provides SEO meta data from the specified list item.
-            </summary>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.SeoMetaListItem.#ctor(Microsoft.SharePoint.SPListItem)">
-            <summary>
-            Creates an instance of the <see cref="T:Codeless.SharePoint.Publishing.SeoMetaListItem"/> with the specified list item.
-            </summary>
-            <param name="listItem"></param>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.SeoMetaListItem.Title">
-            <summary>
-            Gets SEO-friendly title. For example to be used to specify in og:title tag.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.SeoMetaListItem.Description">
-            <summary>
-            Gets SEO-friendly description. For example to be used to specify in og:description or "description" meta tag.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.SeoMetaListItem.Keywords">
-            <summary>
-            Gets SEO-friendly keyword list. For example to be used to specify in "keywords" meta tag.
-            </summary>
-        </member>
-        <member name="T:Codeless.SharePoint.Publishing.SeoMetaNavigationTerm">
-            <summary>
-            Provides SEO meta data from the specified managed navigation node.
-            </summary>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.SeoMetaNavigationTerm.#ctor(Microsoft.SharePoint.SPWeb,Microsoft.SharePoint.Publishing.Navigation.NavigationTerm)">
-            <summary>
-            Creates an instance of the <see cref="T:Codeless.SharePoint.Publishing.SeoMetaListItem"/> with the specified managed navigation node.
-            </summary>
-            <param name="contextWeb"></param>
-            <param name="term"></param>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.SeoMetaNavigationTerm.Title">
-            <summary>
-            Gets SEO-friendly title. For example to be used to specify in og:title tag.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.SeoMetaNavigationTerm.Description">
-            <summary>
-            Gets SEO-friendly description. For example to be used to specify in og:description or "description" meta tag.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.SeoMetaNavigationTerm.Keywords">
-            <summary>
-            Gets SEO-friendly keyword list. For example to be used to specify in "keywords" meta tag.
-            </summary>
-        </member>
-        <member name="T:Codeless.SharePoint.Publishing.SeoMetaWithFallback">
-            <summary>
-            Provides SEO meta data from multiple sources with fallback mechanism.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.SeoMetaWithFallback.Title">
-            <summary>
-            Gets SEO-friendly title. For example to be used to specify in og:title tag.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.SeoMetaWithFallback.Description">
-            <summary>
-            Gets SEO-friendly description. For example to be used to specify in og:description or "description" meta tag.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.SeoMetaWithFallback.Keywords">
-            <summary>
-            Gets SEO-friendly keyword list. For example to be used to specify in "keywords" meta tag.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.SeoMetaWithFallback.Image">
-            <summary>
-            Gets SEO-friendly image URL. For example to be used to specify in og:image tag.
-            </summary>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.SeoMetaWithFallback.InsertItem(System.Int32,Codeless.SharePoint.Publishing.ISeoMetaProvider)">
-            <summary>
-            Overriden.
-            </summary>
-            <param name="index"></param>
-            <param name="item"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.SeoMetaWithFallback.SetItem(System.Int32,Codeless.SharePoint.Publishing.ISeoMetaProvider)">
-            <summary>
-            Overriden.
-            </summary>
-            <param name="index"></param>
-            <param name="item"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.SeoMetaWithFallback.RemoveItem(System.Int32)">
-            <summary>
-            Overriden.
-            </summary>
-            <param name="index"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.SeoMetaWithFallback.ClearItems">
-            <summary>
-            Overriden.
-            </summary>
-        </member>
-        <member name="T:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper">
-            <summary>
-            Provides helper methods for managed navigation.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper.RequestContext">
-            <summary>
-            Gets information of the current HTTP request using managed navigation.
-            </summary>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper.SetCatalogPageFilter(Codeless.SharePoint.Publishing.ICatalogPageFilter)">
-            <summary>
-            Sets the catalog page filter explicitly to create context for catalog page.
-            </summary>
-            <param name="filter"></param>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper.ServerRelativeFriendlyRequestUrl">
-            <summary>
-            Gets a server-relative friendly URL for the current HTTP request.
-            In contrast to <see cref="P:Microsoft.SharePoint.Utilities.SPUtility.OriginalServerRelativeRequestPath"/> where it returns the resolved URL to the physical page referred by the friendly URL.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper.VariationRelativeFriendlyRequestUrl">
-            <summary>
-            Gets a variation-relative friendly URL for the current HTTP request.
-            See <see cref="P:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper.ServerRelativeFriendlyRequestUrl"/> for details.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper.ServerRelativeFriendlyRequestUrlWithQuery">
-            <summary>
-            Gets a server-relative friendly URL for the current HTTP request with query string appended.
-            In contrast to <see cref="P:Microsoft.SharePoint.Utilities.SPUtility.OriginalServerRelativeRequestPath"/> where it returns the resolved URL to the physical page referred by the friendly URL.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper.VariationRelativeFriendlyRequestUrlWithQuery">
-            <summary>
-            Gets a variation-relative friendly URL for the current HTTP request with query string appended.
-            See <see cref="P:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper.ServerRelativeFriendlyRequestUrl"/> for details.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper.CurrentNavigationTermSetItem">
-            <summary>
-            Gets the navigation term or term set associated with the current HTTP request.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper.CurrentNavigationTerm">
-            <summary>
-            Gets the navigation term associated with the current HTTP request.
-            </summary>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper.GetNavigationTerm(System.Guid)">
-            <summary>
-            Gets a <see cref="T:Microsoft.SharePoint.Publishing.Navigation.NavigationTerm"/> object by the specified unique ID.
-            </summary>
-            <param name="termId">Term unique identifier.</param>
-            <returns>A <see cref="T:Microsoft.SharePoint.Publishing.Navigation.NavigationTerm"/> object.</returns>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper.ResolveFriendlyUrl(Microsoft.SharePoint.SPWeb,System.String)">
-            <summary>
-            Gets a friendly URL associated to the physical page referred by the specified server-relative URL.
-            </summary>
-            <param name="web">Site object where the physical page relies in.</param>
-            <param name="serverRelativeUrl">Server-relative URL of the physical page.</param>
-            <returns>A friendly URL if any; or the supplied URL if there is no friendly URL is associated with the page or the supplied URL does not exist.</returns>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper.IsRequestingNavigationTermSet(Microsoft.SharePoint.Publishing.Navigation.NavigationTermSet@)">
-            <summary>
-            Determines whether the current HTTP request can be resolved to a <see cref="T:Microsoft.SharePoint.Publishing.Navigation.NavigationTermSet"/> object.
-            When client is visiting the welcome page of the site where it is set to have a unique managed navigation, 
-            <see cref="P:Microsoft.SharePoint.Publishing.Navigation.TaxonomyNavigationContext.HasNavigationContext"/> returns *false* even though this page can be referred by the friendly URL resolved by the <see cref="T:Microsoft.SharePoint.Publishing.Navigation.NavigationTermSet"/> object.
-            </summary>
-            <param name="navigationTermSet">The resolved <see cref="T:Microsoft.SharePoint.Publishing.Navigation.NavigationTermSet"/> object; otherwise *null*.</param>
-            <returns>*true* if the current HTTP request can be resolved to a <see cref="T:Microsoft.SharePoint.Publishing.Navigation.NavigationTermSet"/> object.</returns>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper.TryGetNavigationTerm(System.String,Microsoft.SharePoint.Publishing.Navigation.NavigationTerm@,System.String@)">
-            <summary>
-            Resolved a <see cref="T:Microsoft.SharePoint.Publishing.Navigation.NavigationTerm"/> object with the specified URL against the current site.
-            If the specified URL resolves to a navigation term with catalog enabled, and there are remaining segments, 
-            <paramref name="matchedUrl"/> will be set to a friendly URL resolved from the navigation term without the excess segments.
-            </summary>
-            <param name="inputUrl">Input URL.</param>
-            <param name="navigationTerm">Resolved <see cref="T:Microsoft.SharePoint.Publishing.Navigation.NavigationTerm"/> object if any; otherwise *null*.</param>
-            <param name="matchedUrl">Resolved URL for the <see cref="T:Microsoft.SharePoint.Publishing.Navigation.NavigationTerm"/> object if any; otherwise *null*.</param>
-            <returns>*true* if the specified URL resolves to a <see cref="T:Microsoft.SharePoint.Publishing.Navigation.NavigationTerm"/> object.</returns>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.TaxonomyNavigationHelper.TransferToFriendlyUrl(System.Web.HttpContext)">
-            <summary>
-            Ensures that the client is requesting the current page by the associated friendly URLs (if any).
-            If the client is not requesting the associated friendly URLs, the client will be transfered to the default friendly URL by a redirect response.
-            </summary>
-            <param name="context">The instance of the <see cref="T:System.Web.HttpContext"/> class representing the client.</param>
-        </member>
-        <member name="T:Codeless.SharePoint.Publishing.PublishingWebHelper">
-            <summary>
-            Provides helper methods for publishing web feature.
-            </summary>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.GetVariationLabels(Microsoft.SharePoint.Publishing.PublishingSite,System.Boolean)">
-            <summary>
-            Gets all variation labels in a site collection. This method is safe when called in console.
-            </summary>
-            <param name="publishingSite">Site collection.</param>
-            <param name="includePending">Whether to return pending variation labels.</param>
-            <returns>A read-only collection of all variation labels.</returns>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.TrimVariationFromPath(System.String)">
-            <summary>
-            Gets the path relative to the top URL of the current variation.
-            </summary>
-            <param name="requestPath"></param>
-            <returns></returns>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.CreatePublishingPage(Microsoft.SharePoint.Publishing.PublishingWeb,Microsoft.SharePoint.SPContentTypeId,System.String)">
-            <summary>
-            Creates a publishing page under the specified site with the content type ID and specified title.
-            Filename of the created page is automatically chosen to avoid collision to existing pages.
-            </summary>
-            <param name="currentWeb">Publishing web.</param>
-            <param name="contentTypeId">Content type ID of the new page.</param>
-            <param name="title">Title of the new page.</param>
-            <exception cref="T:System.InvalidOperationException">Throws if there is no page layouts associated with the specified content type ID.</exception>
-            <returns>A publishing page object.</returns>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.FixRichTextWebPartWhiteSpaces(Codeless.SharePoint.ISPListItemAdapter)">
-            <summary>
-            Removes extra white spaces in rich-text web parts.
-            </summary>
-            <param name="adapter">Data access adapter of the list item.</param>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.FixRichTextFieldWhiteSpaces(Codeless.SharePoint.ISPListItemAdapter)">
-            <summary>
-            Removes extra white spaces in rich-text fields.
-            </summary>
-            <param name="adapter">Data access adapter of the list item.</param>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.PublishRelatedAssets(Codeless.SharePoint.ISPListItemAdapter,System.String[])">
-            <summary>
-            Approves and publishes all assets referred in any link fields (such as URL or Summary Links), rich-text content and rich-text web parts.
-            </summary>
-            <param name="adapter">Data access adapter of the list item.</param>
-            <param name="additionalFields">Internal name of fields where its HTML content need to be parsed.</param>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.PublishRelatedAsset(System.String,Codeless.SharePoint.ISPListItemAdapter)">
-            <summary>
-            Approves and publishes asset referred by the specified URL.
-            </summary>
-            <param name="assetUrl">URL to the asset.</param>
-            <param name="adapter">Data access adapter of the list item.</param>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.ResolvePrefixedUrl(System.String)">
-            <summary>
-            Extension to <see cref="M:Microsoft.SharePoint.Utilities.SPUtility.GetServerRelativeUrlFromPrefixedUrl(System.String)"/>. 
-            See <see cref="M:Codeless.SharePoint.Publishing.PublishingWebHelper.ResolvePrefixedUrl(System.String,System.UriKind)"/> for details.
-            </summary>
-            <param name="value">URL with prefixes to be resolved.</param>
-            <returns>Resolved URL.</returns>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.ResolvePrefixedUrl(System.String,System.UriKind)">
-            <summary>
-            Extension to <see cref="M:Microsoft.SharePoint.Utilities.SPUtility.GetServerRelativeUrlFromPrefixedUrl(System.String)"/>.
-            This method supports two more tokens. "~variation/" will be resolved to the top web of the current variation;
-            where "~pages/" will be resolved to the name of publishing page library under the locale of the current variation.
-            It also allows to specify the returned URL to be server-relative or absolute.
-            </summary>
-            <param name="value">Input URL.</param>
-            <param name="uriKind">Format of the resolved URL.</param>
-            <returns>Resolved URL.</returns>
-        </member>
-        <member name="T:Codeless.SharePoint.Publishing.VariationContext">
-            <summary>
-            Provides information on the variation of current HTTP request.
-            </summary>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.VariationContext.#ctor(Microsoft.SharePoint.SPContext)">
-            <summary>
-            Creates an instance of the <see cref="T:Codeless.SharePoint.Publishing.VariationContext"/> class with the specified SharePoint request context.
-            </summary>
-            <param name="context">SharePoint request context.</param>
-        </member>
-        <member name="M:Codeless.SharePoint.Publishing.VariationContext.#ctor(Microsoft.SharePoint.SPWeb)">
-            <summary>
-            Creates an instance of the <see cref="T:Codeless.SharePoint.Publishing.VariationContext"/> class with the specified site.
-            </summary>
-            <param name="web">Site object.</param>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.VariationContext.Current">
-            <summary>
-            Gets a cached instance of the <see cref="T:Codeless.SharePoint.Publishing.VariationContext"/> class for the current HTTP request.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.VariationContext.IsVariationWeb">
-            <summary>
-            Indicates if the requested web belongs to a variation.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.VariationContext.IsSource">
-            <summary>
-            Indicates if the variation of the requested web is the source variation.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.VariationContext.TopWebServerRelativeUrl">
-            <summary>
-            Gets the server-relative URL of the top web of the current variation.
-            If the requested web does not belong to a variation, the server-relative URL of the root site is returned.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.VariationContext.VariationLabel">
-            <summary>
-            Gets the current variation label, that is the URL segment that identify the variation.
-            If the requested web does not belong to a variation, an empty string is returned.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.VariationContext.PagesListName">
-            <summary>
-            Gets the name of publishing page library under the current variation.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.Publishing.VariationContext.Culture">
-            <summary>
-            Gets the culture associated with the current variation.
-            </summary>
-        </member>
         <member name="T:Codeless.SharePoint.SearchRefiner">
             <summary>
             Represents a keyword search refiner.
@@ -5182,6 +4696,136 @@
             <param name="fieldName">Field name.</param>
             <param name="termStore">Term store object.</param>
             <returns>A collection of terms.</returns>
+        </member>
+        <member name="T:Codeless.SharePoint.Publishing.PublishingWebHelper">
+            <summary>
+            Provides helper methods for publishing web feature.
+            </summary>
+        </member>
+        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.GetVariationLabels(Microsoft.SharePoint.Publishing.PublishingSite,System.Boolean)">
+            <summary>
+            Gets all variation labels in a site collection. This method is safe when called in console.
+            </summary>
+            <param name="publishingSite">Site collection.</param>
+            <param name="includePending">Whether to return pending variation labels.</param>
+            <returns>A read-only collection of all variation labels.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.TrimVariationFromPath(System.String)">
+            <summary>
+            Gets the path relative to the top URL of the current variation.
+            </summary>
+            <param name="requestPath"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.CreatePublishingPage(Microsoft.SharePoint.Publishing.PublishingWeb,Microsoft.SharePoint.SPContentTypeId,System.String)">
+            <summary>
+            Creates a publishing page under the specified site with the content type ID and specified title.
+            Filename of the created page is automatically chosen to avoid collision to existing pages.
+            </summary>
+            <param name="currentWeb">Publishing web.</param>
+            <param name="contentTypeId">Content type ID of the new page.</param>
+            <param name="title">Title of the new page.</param>
+            <exception cref="T:System.InvalidOperationException">Throws if there is no page layouts associated with the specified content type ID.</exception>
+            <returns>A publishing page object.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.FixRichTextWebPartWhiteSpaces(Codeless.SharePoint.ISPListItemAdapter)">
+            <summary>
+            Removes extra white spaces in rich-text web parts.
+            </summary>
+            <param name="adapter">Data access adapter of the list item.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.FixRichTextFieldWhiteSpaces(Codeless.SharePoint.ISPListItemAdapter)">
+            <summary>
+            Removes extra white spaces in rich-text fields.
+            </summary>
+            <param name="adapter">Data access adapter of the list item.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.PublishRelatedAssets(Codeless.SharePoint.ISPListItemAdapter,System.String[])">
+            <summary>
+            Approves and publishes all assets referred in any link fields (such as URL or Summary Links), rich-text content and rich-text web parts.
+            </summary>
+            <param name="adapter">Data access adapter of the list item.</param>
+            <param name="additionalFields">Internal name of fields where its HTML content need to be parsed.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.PublishRelatedAsset(System.String,Codeless.SharePoint.ISPListItemAdapter)">
+            <summary>
+            Approves and publishes asset referred by the specified URL.
+            </summary>
+            <param name="assetUrl">URL to the asset.</param>
+            <param name="adapter">Data access adapter of the list item.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.ResolvePrefixedUrl(System.String)">
+            <summary>
+            Extension to <see cref="M:Microsoft.SharePoint.Utilities.SPUtility.GetServerRelativeUrlFromPrefixedUrl(System.String)"/>. 
+            See <see cref="M:Codeless.SharePoint.Publishing.PublishingWebHelper.ResolvePrefixedUrl(System.String,System.UriKind)"/> for details.
+            </summary>
+            <param name="value">URL with prefixes to be resolved.</param>
+            <returns>Resolved URL.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.Publishing.PublishingWebHelper.ResolvePrefixedUrl(System.String,System.UriKind)">
+            <summary>
+            Extension to <see cref="M:Microsoft.SharePoint.Utilities.SPUtility.GetServerRelativeUrlFromPrefixedUrl(System.String)"/>.
+            This method supports two more tokens. "~variation/" will be resolved to the top web of the current variation;
+            where "~pages/" will be resolved to the name of publishing page library under the locale of the current variation.
+            It also allows to specify the returned URL to be server-relative or absolute.
+            </summary>
+            <param name="value">Input URL.</param>
+            <param name="uriKind">Format of the resolved URL.</param>
+            <returns>Resolved URL.</returns>
+        </member>
+        <member name="T:Codeless.SharePoint.Publishing.VariationContext">
+            <summary>
+            Provides information on the variation of current HTTP request.
+            </summary>
+        </member>
+        <member name="M:Codeless.SharePoint.Publishing.VariationContext.#ctor(Microsoft.SharePoint.SPContext)">
+            <summary>
+            Creates an instance of the <see cref="T:Codeless.SharePoint.Publishing.VariationContext"/> class with the specified SharePoint request context.
+            </summary>
+            <param name="context">SharePoint request context.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.Publishing.VariationContext.#ctor(Microsoft.SharePoint.SPWeb)">
+            <summary>
+            Creates an instance of the <see cref="T:Codeless.SharePoint.Publishing.VariationContext"/> class with the specified site.
+            </summary>
+            <param name="web">Site object.</param>
+        </member>
+        <member name="P:Codeless.SharePoint.Publishing.VariationContext.Current">
+            <summary>
+            Gets a cached instance of the <see cref="T:Codeless.SharePoint.Publishing.VariationContext"/> class for the current HTTP request.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.Publishing.VariationContext.IsVariationWeb">
+            <summary>
+            Indicates if the requested web belongs to a variation.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.Publishing.VariationContext.IsSource">
+            <summary>
+            Indicates if the variation of the requested web is the source variation.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.Publishing.VariationContext.TopWebServerRelativeUrl">
+            <summary>
+            Gets the server-relative URL of the top web of the current variation.
+            If the requested web does not belong to a variation, the server-relative URL of the root site is returned.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.Publishing.VariationContext.VariationLabel">
+            <summary>
+            Gets the current variation label, that is the URL segment that identify the variation.
+            If the requested web does not belong to a variation, an empty string is returned.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.Publishing.VariationContext.PagesListName">
+            <summary>
+            Gets the name of publishing page library under the current variation.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.Publishing.VariationContext.Culture">
+            <summary>
+            Gets the culture associated with the current variation.
+            </summary>
         </member>
         <member name="T:Codeless.SharePoint.SearchServiceHelper">
             <summary>

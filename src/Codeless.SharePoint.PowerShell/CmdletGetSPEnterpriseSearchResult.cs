@@ -24,18 +24,10 @@ namespace Codeless.SharePoint.PowerShell {
         query.QueryText = this.Query;
         query.SelectProperties.AddRange(this.Select);
 
-        SearchExecutor executor = new SearchExecutor();
-        ResultTableCollection result = executor.ExecuteQuery(query);
-        ResultTable resultTable = result.Filter("TableType", KnownTableTypes.RelevantResults).FirstOrDefault();
-        if (resultTable == null) {
-          throw new Exception("Search executor did not return result table of type RelevantResults");
-        }
-        DataTable dataTable = new DataTable();
-        dataTable.Load(resultTable);
-
-        foreach (DataRow row in dataTable.Rows) {
+        ResultTable resultTable = SearchServiceHelper.ExecuteQuery(query, null);
+        foreach (DataRow row in resultTable.Table.Rows) {
           PSObject obj = new PSObject();
-          foreach (DataColumn column in dataTable.Columns) {
+          foreach (DataColumn column in resultTable.Table.Columns) {
             obj.Members.Add(new PSNoteProperty(column.Caption, row[column]));
           }
           WriteObject(obj);

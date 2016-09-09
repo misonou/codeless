@@ -82,6 +82,32 @@ namespace Codeless.SharePoint.ObjectModel {
       }
     }
 
+    private class ReverseComparer<T> : IComparer<T> {
+      private static ReverseComparer<T> defaultInstance;
+      private readonly Comparison<T> comparer;
+      
+      public ReverseComparer()
+        : this(Comparer<T>.Default) { }
+      
+      public ReverseComparer(IComparer<T> comparer) {
+        CommonHelper.ConfirmNotNull(comparer, "comparer");
+        this.comparer = comparer.Compare;
+      }
+      
+      public ReverseComparer(Comparison<T> comparer) {
+        CommonHelper.ConfirmNotNull(comparer, "comparer");
+        this.comparer = comparer;
+      }
+      
+      public static ReverseComparer<T> Default {
+        get { return LazyInitializer.EnsureInitialized(ref defaultInstance); }
+      }
+      
+      public int Compare(T x, T y) {
+        return comparer(y, x);
+      }
+    }
+
     private class ProvisionResult {
       public ProvisionResult() {
         this.StackTrace = new StackTrace(1);
@@ -96,7 +122,7 @@ namespace Codeless.SharePoint.ObjectModel {
     private static readonly object syncLock = new object();
     private static readonly ConcurrentDictionary<Assembly, object> RegisteredAssembly = new ConcurrentDictionary<Assembly, object>();
     private static readonly ConcurrentDictionary<Type, SPModelDescriptor> TargetTypeDictionary = new ConcurrentDictionary<Type, SPModelDescriptor>();
-    private static readonly SortedDictionary<SPContentTypeId, SPModelDescriptor> ContentTypeDictionary = new SortedDictionary<SPContentTypeId, SPModelDescriptor>(Comparer<SPContentTypeId>.Create((x, y) => y.CompareTo(x)));
+    private static readonly SortedDictionary<SPContentTypeId, SPModelDescriptor> ContentTypeDictionary = new SortedDictionary<SPContentTypeId, SPModelDescriptor>(ReverseComparer<SPContentTypeId>.Default);
     [ThreadStatic]
     private static bool enteredLock;
 

@@ -32,8 +32,8 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("15.0.0.0")]
-[assembly: AssemblyFileVersion("15.0.371.0")]
+[assembly: AssemblyVersion("14.0.0.0")]
+[assembly: AssemblyFileVersion("14.0.371.0")]
 
 [assembly: InternalsVisibleTo("Codeless.SharePoint.PowerShell, PublicKey=" +
                               "00240000048000009400000006020000002400005253413100040000010001009b03f4934d4301" +

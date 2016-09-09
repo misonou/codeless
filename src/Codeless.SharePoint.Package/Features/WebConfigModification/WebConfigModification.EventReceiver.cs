@@ -46,13 +46,13 @@ namespace Codeless.SharePoint.Package.Features {
 
     private static SPWebConfigModification[] GetWebConfigModifications(XmlReader reader) {
       XDocument doc = XDocument.Load(reader);
-      XAttribute ownerAttr = doc.Root.Attribute($"{{{NS}}}:owner");
+      XAttribute ownerAttr = doc.Root.Attribute("{" + NS + "}owner");
       return GetWebConfigModifications(ownerAttr.Value, doc.Root, "/").ToArray();
     }
 
     private static IEnumerable<SPWebConfigModification> GetWebConfigModifications(string owner, XElement node, string path) {
       List<string> keys = new List<string>();
-      XAttribute keyAttr = node.Attribute($"{{{NS}}}:key");
+      XAttribute keyAttr = node.Attribute("{" + NS + "}key");
       if (keyAttr != null) {
         keys.AddRange(keyAttr.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries));
       } else {

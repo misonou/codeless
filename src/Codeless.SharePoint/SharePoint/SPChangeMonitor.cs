@@ -57,13 +57,13 @@ namespace Codeless.SharePoint {
   }
 
   public class SPChangeMonitorEventArgs : EventArgs {
-    internal SPChangeMonitorEventArgs(Guid siteId, IReadOnlyCollection<SPAggregatedChange> collection) {
+    internal SPChangeMonitorEventArgs(Guid siteId, ReadOnlyCollection<SPAggregatedChange> collection) {
       this.SiteId = siteId;
       this.Changes = collection;
     }
 
     public Guid SiteId { get; private set; }
-    public IReadOnlyCollection<SPAggregatedChange> Changes { get; private set; }
+    public ReadOnlyCollection<SPAggregatedChange> Changes { get; private set; }
   }
 
   public class SPChangeMonitorFilter {
@@ -188,7 +188,7 @@ namespace Codeless.SharePoint {
         }
       }
       if (filteredCollection.Count > 0) {
-        SPChangeMonitorEventArgs eventArg = new SPChangeMonitorEventArgs(this.SiteId, filteredCollection);
+        SPChangeMonitorEventArgs eventArg = new SPChangeMonitorEventArgs(this.SiteId, filteredCollection.AsReadOnly());
         try {
           objectChanged(this, eventArg);
         } catch (Exception ex) {
