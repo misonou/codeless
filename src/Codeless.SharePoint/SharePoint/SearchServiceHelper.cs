@@ -24,8 +24,8 @@ namespace Codeless.SharePoint {
       public readonly ManagedDataType DataType;
 
       public ManagedPropertyDefinition(SPField field) {
-        this.CrawledPropertyName = GetCrawledPropertyNamePattern(field).Replace("%", field.InternalName);
-        this.MappedPropertyName = GetManagedPropertyNamePattern(field).Replace("%", field.InternalName.Replace("_", ""));
+        this.CrawledPropertyName = String.Concat("ows_", field.InternalName);
+        this.MappedPropertyName = field.InternalName.Replace("_", "");
         this.DataType = GetManagedDataType(field);
       }
 
@@ -43,68 +43,6 @@ namespace Codeless.SharePoint {
           default:
             return ManagedDataType.Text;
         }
-      }
-
-      private static string GetCrawledPropertyNamePattern(SPField field) {
-        switch (field.Type) {
-          case SPFieldType.Boolean:
-            return "ows_q_BOOL_%";
-          case SPFieldType.Note:
-            return "ows_q_MTXT_%";
-          case SPFieldType.Integer:
-            return "ows_q_INTG_%";
-          case SPFieldType.Guid:
-            return "ows_q_GUID_%";
-          case SPFieldType.URL:
-            return "ows_q_URLH_%";
-          case SPFieldType.DateTime:
-            return "ows_q_DATE_%";
-          case SPFieldType.Choice:
-            return "ows_q_CHCS_%";
-          case SPFieldType.User:
-            return "ows_q_USER_%";
-        }
-        switch (field.TypeAsString) {
-          case "HTML":
-            return "ows_r_HTML_%";
-          case "Image":
-            return "ows_r_IMGE_%";
-          case "TaxonomyFieldType":
-          case "TaxonomyFieldTypeMulti":
-            return "ows_taxId_%";
-        }
-        return "ows_q_TEXT_%";
-      }
-
-      private static string GetManagedPropertyNamePattern(SPField field) {
-        switch (field.Type) {
-          case SPFieldType.Boolean:
-            return "%OWSBOOL";
-          case SPFieldType.Note:
-            return "%OWSMTXT";
-          case SPFieldType.Integer:
-            return "%OWSINTG";
-          case SPFieldType.Guid:
-            return "%OWSGUID";
-          case SPFieldType.URL:
-            return "%OWSURLH";
-          case SPFieldType.DateTime:
-            return "%OWSDATE";
-          case SPFieldType.Choice:
-            return "%OWSCHCS";
-          case SPFieldType.User:
-            return "%OWSUSER";
-        }
-        switch (field.TypeAsString) {
-          case "HTML":
-            return "%OWSHTML";
-          case "Image":
-            return "%OWSIMGE";
-          case "TaxonomyFieldType":
-          case "TaxonomyFieldTypeMulti":
-            return "owstaxId%";
-        }
-        return "%OWSTEXT";
       }
     }
 
@@ -199,6 +137,7 @@ namespace Codeless.SharePoint {
         keywordQuery.SelectProperties.AddRange(selectProperties);
       }
       keywordQuery.KeywordInclusion = inclusion;
+      keywordQuery.ResultTypes = ResultType.RelevantResults | ResultType.RefinementResults;
       keywordQuery.ResultsProvider = SearchProvider.Default;
       keywordQuery.TrimDuplicates = true;
       keywordQuery.TrimDuplicatesOnProperty = BuiltInManagedPropertyName.UniqueID;
@@ -239,14 +178,13 @@ namespace Codeless.SharePoint {
         keywordQuery.Refiners = String.Join(",", refiners.Select(v => v.PropertyName).ToArray());
         keywordQuery.RefinementFilters.AddRange(refiners.Where(v => v.RefinementToken != null).Select(v => v.RefinementToken).ToArray());
       }
-      SearchExecutor executor = new SearchExecutor();
-      ResultTableCollection queryResults = executor.ExecuteQuery(keywordQuery);
-      ResultTable relevantResults = queryResults.Filter("TableType", KnownTableTypes.RelevantResults).FirstOrDefault();
+      ResultTableCollection queryResults = keywordQuery.Execute();
+      ResultTable relevantResults = queryResults[ResultType.RelevantResults];
       if (relevantResults == null) {
         throw new Exception("Search executor did not return result table of type RelevantResults");
       }
       if (refiners != null) {
-        ResultTable refinementResults = queryResults.Filter("TableType", KnownTableTypes.RefinementResults).FirstOrDefault();
+        ResultTable refinementResults = queryResults[ResultType.RefinementResults];
         if (refinementResults == null) {
           throw new Exception("Search executor did not return result table of type RefinementResults");
         }
@@ -330,7 +268,7 @@ namespace Codeless.SharePoint {
 
         foreach (ManagedPropertyDefinition definition in definitions) {
           int variantType = VariantTypeDictionary[definition.DataType];
-          CrawledProperty rawProperty = allCrawledProperties.FirstOrDefault(v => v.Name == definition.CrawledPropertyName);
+          CrawledProperty rawProperty = allCrawledProperties.FirstOrDefault(v => v.Name == definition.CrawledPropertyName && (v.VariantType == variantType || v.VariantType == (variantType | 4096)));
           if (rawProperty == null || rawProperty.GetMappedManagedProperties().GetEnumerator().MoveNext()) {
             continue;
           }
@@ -342,10 +280,7 @@ namespace Codeless.SharePoint {
             property = schema.AllManagedProperties.Create(definition.MappedPropertyName, definition.DataType);
           }
           MappingCollection mappings = property.GetMappings();
-          Mapping mapping = new Mapping();
-          mapping.CrawledPropset = rawProperty.Propset;
-          mapping.CrawledPropertyName = rawProperty.Name;
-          mapping.ManagedPid = property.PID;
+          Mapping mapping = new Mapping(rawProperty.Propset, rawProperty.Name, rawProperty.VariantType, property.PID);
           mappings.Add(mapping);
           property.SetMappings(mappings);
           property.Update();
