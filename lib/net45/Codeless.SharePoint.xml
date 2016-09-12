@@ -6484,6 +6484,11 @@
             Gets a unique identifier of the resolved identity used by the identity provider.
             </summary>
         </member>
+        <member name="P:Codeless.SharePoint.PrincipalInfo.EncodedClaim">
+            <summary>
+            Gets the encoded claim-based logon name on SharePoint for the resolved principal.
+            </summary>
+        </member>
         <member name="P:Codeless.SharePoint.PrincipalInfo.DisplayName">
             <summary>
             Gets the display name of the resolved identity.
