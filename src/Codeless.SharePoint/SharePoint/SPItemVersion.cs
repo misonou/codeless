@@ -14,7 +14,7 @@ namespace Codeless.SharePoint {
     public SPItemVersion(int version) {
       this.version = version;
     }
-
+    
     /// <summary>
     /// Creates a representation of version number with the given major and minor version number.
     /// </summary>
@@ -62,6 +62,20 @@ namespace Codeless.SharePoint {
     /// </summary>
     public int MinorVersion {
       get { return version & 0x1FF; }
+    }
+
+    /// <summary>
+    /// Returns *true* if the version number represents a major version.
+    /// </summary>
+    public bool IsMajorVersion {
+      get { return this.MinorVersion == 0; }
+    }
+
+    /// <summary>
+    /// Returns *true* if the version number represents a minor version.
+    /// </summary>
+    public bool IsMinorVersion {
+      get { return this.MinorVersion != 0; }
     }
 
     /// <summary>
