@@ -30,5 +30,7 @@
         <file src="lib\net35\Codeless.SharePoint.PowerShell.dll" target="lib\net35\Codeless.SharePoint.PowerShell.dll" />
         <file src="lib\net35\Codeless.SharePoint.xml" target="lib\net35\Codeless.SharePoint.xml" />
         <file src="lib\net35\IQToolkit.dll" target="lib\net35\IQToolkit.dll" />
+        <file src="tools\Codeless.SharePoint.psd1" target="tools\Codeless.SharePoint.psd1" />
+        <file src="tools\install.ps1" target="tools\install.ps1" />
     </files>
 </package>
