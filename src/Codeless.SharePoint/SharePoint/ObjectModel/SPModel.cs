@@ -419,8 +419,8 @@ namespace Codeless.SharePoint.ObjectModel {
       MethodInfo ispModelManagerGetTermStoreMethod = typeof(ISPModelManager).GetMethod("get_TermStore");
 
       foreach (PropertyInfo sourceProperty in baseType.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)) {
-        MethodInfo sourceGetter = sourceProperty.GetGetMethod();
-        MethodInfo sourceSetter = sourceProperty.GetSetMethod();
+        MethodInfo sourceGetter = sourceProperty.GetGetMethod(true);
+        MethodInfo sourceSetter = sourceProperty.GetSetMethod(true);
         if ((sourceGetter != null && sourceGetter.IsAbstract) || (sourceSetter != null && sourceSetter.IsAbstract)) {
           SPModelFieldAssociationCollection association = SPModelFieldAssociationCollection.GetByMember(sourceProperty);
           if (!association.Queryable) {

@@ -13,8 +13,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Codeless.SharePoint.Package
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Codeless.SharePoint.PowerShell", "Codeless.SharePoint.PowerShell\Codeless.SharePoint.PowerShell.csproj", "{E0C0057C-A91F-41B1-9F55-081E288C3B05}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "bin", "bin", "{2DD314A5-B302-4D0C-BDB8-B765A92D9BF7}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
