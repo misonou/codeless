@@ -442,8 +442,18 @@ namespace Codeless.SharePoint.ObjectModel {
       SPField listField = objectCache.GetField(parentList.ParentWeb.ID, parentList.ID, siteField.Id);
       if (listField == null) {
         using (parentList.ParentWeb.GetAllowUnsafeUpdatesScope()) {
+          bool hasField = parentList.ContentTypes[0].Fields.Contains(siteField.Id);
+
           parentList.Fields.Add(siteField);
           listField = parentList.Fields[siteField.Id];
+
+          if (!hasField) {
+            // delete the list field that is automatically added to the default content type
+            // if it belongs to the default content type it will be added back later
+            SPContentType defaultContentType = parentList.ContentTypes[0];
+            defaultContentType.FieldLinks.Delete(siteField.Id);
+            defaultContentType.Update();
+          }
           objectCache.AddField(listField);
         }
       }
@@ -476,6 +486,8 @@ namespace Codeless.SharePoint.ObjectModel {
       SPField listLookupField = objectCache.GetField(parentList.ParentWeb.ID, parentList.ID, siteLookupField.Id);
       if (listLookupField == null) {
         using (parentList.ParentWeb.GetAllowUnsafeUpdatesScope()) {
+          bool hasField = parentList.ContentTypes[0].Fields.Contains(siteLookupField.Id);
+
           XmlDocument fieldSchemaXml = new XmlDocument();
           fieldSchemaXml.LoadXml(siteLookupField.SchemaXmlWithResourceTokens);
           fieldSchemaXml.DocumentElement.SetAttribute("WebId", lookupWebId.ToString("B"));
@@ -487,6 +499,13 @@ namespace Codeless.SharePoint.ObjectModel {
           listLookupField.Title = siteLookupField.Title;
           listLookupField.Update();
 
+          if (!hasField) {
+            // delete the list field that is automatically added to the default content type
+            // if it belongs to the default content type it will be added back later
+            SPContentType defaultContentType = parentList.ContentTypes[0];
+            defaultContentType.FieldLinks.Delete(listLookupField.Id);
+            defaultContentType.Update();
+          }
           objectCache.AddField(listLookupField);
           return listLookupField;
         }
