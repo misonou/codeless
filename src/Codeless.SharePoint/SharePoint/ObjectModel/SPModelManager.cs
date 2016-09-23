@@ -1,6 +1,7 @@
 ﻿using Microsoft.Office.Server.Search.Query;
 using Microsoft.SharePoint;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 
 namespace Codeless.SharePoint.ObjectModel {
@@ -242,6 +243,26 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <returns>An item of the specified content type.</returns>
     public new TItem Create<TItem>(string name) where TItem : T {
       return base.Create<TItem>(name);
+    }
+
+    /// <summary>
+    /// Creates an item of the associated content type.
+    /// If the content type derives from File or Folder, a random name is used. See <see cref="Create(string)"/>.
+    /// </summary>
+    /// <param name="modelType">Item type.</param>
+    /// <returns>An item of the specified content type.</returns>
+    public T Create(System.Type modelType) {
+      return Create(modelType, Path.GetRandomFileName());
+    }
+
+    /// <summary>
+    /// Creates an item of the associated content type with the given file or folder name.
+    /// </summary>
+    /// <param name="modelType">Item type.</param>
+    /// <param name="name">File or folder name.</param>
+    /// <returns>An item of the specified content type.</returns>
+    public new T Create(System.Type modelType, string name) {
+      return base.Create(modelType, name);
     }
 
     /// <summary>
