@@ -266,6 +266,14 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     /// <summary>
+    /// Moves the specified item to recycle bin.
+    /// </summary>
+    /// <param name="item">An item to be recycled.</param>
+    public new void Recycle(T item) {
+      base.Recycle(item);
+    }
+
+    /// <summary>
     /// Deletes the specified item from a list. 
     /// </summary>
     /// <param name="item">An item to be deleted.</param>
