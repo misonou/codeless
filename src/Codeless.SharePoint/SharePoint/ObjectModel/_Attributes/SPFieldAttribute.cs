@@ -324,7 +324,10 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     /// <param name="internalName">The internal name of a column.</param>
     public SPIntegerFieldAttribute(string internalName)
-      : base(internalName, SPFieldType.Integer) { }
+      : base(internalName, SPFieldType.Integer) {
+      this.MinimumValue = Int32.MinValue;
+      this.MaximumValue = Int32.MaxValue;
+    }
 
     /// <summary>
     /// Gets or sets the display format.
@@ -607,7 +610,10 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     /// <param name="internalName">The internal name of a column.</param>
     public SPNumberFieldAttribute(string internalName)
-      : base(internalName, SPFieldType.Number) { }
+      : base(internalName, SPFieldType.Number) {
+      this.MinimumValue = -9.00719925E15;
+      this.MaximumValue = 9.00719925E15;
+    }
 
     /// <summary>
     /// Gets or sets the display format.
