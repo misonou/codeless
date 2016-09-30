@@ -85,24 +85,24 @@ namespace Codeless.SharePoint.ObjectModel {
     private class ReverseComparer<T> : IComparer<T> {
       private static ReverseComparer<T> defaultInstance;
       private readonly Comparison<T> comparer;
-      
+
       public ReverseComparer()
         : this(Comparer<T>.Default) { }
-      
+
       public ReverseComparer(IComparer<T> comparer) {
         CommonHelper.ConfirmNotNull(comparer, "comparer");
         this.comparer = comparer.Compare;
       }
-      
+
       public ReverseComparer(Comparison<T> comparer) {
         CommonHelper.ConfirmNotNull(comparer, "comparer");
         this.comparer = comparer;
       }
-      
+
       public static ReverseComparer<T> Default {
         get { return LazyInitializer.EnsureInitialized(ref defaultInstance); }
       }
-      
+
       public int Compare(T x, T y) {
         return comparer(y, x);
       }
@@ -136,9 +136,10 @@ namespace Codeless.SharePoint.ObjectModel {
     private readonly ConcurrentDictionary<Guid, bool> provisionedSites = new ConcurrentDictionary<Guid, bool>();
     private readonly bool hasExplicitListAttribute;
 
-    protected readonly SPModelDescriptor Parent;
-    protected readonly List<SPModelDescriptor> Children = new List<SPModelDescriptor>();
-    protected readonly List<SPModelDescriptor> Interfaces = new List<SPModelDescriptor>();
+    public readonly SPModelDescriptor Parent;
+    public readonly List<SPModelDescriptor> Children = new List<SPModelDescriptor>();
+    public readonly List<SPModelDescriptor> Interfaces = new List<SPModelDescriptor>();
+
     protected SPBaseType? baseType;
     protected Lazy<Type> instanceType;
 
@@ -641,7 +642,14 @@ namespace Codeless.SharePoint.ObjectModel {
 
   internal class SPModelInterfaceTypeDescriptor : SPModelDescriptor {
     private SPModelInterfaceTypeDescriptor(Type interfaceType)
-      : base(interfaceType) { }
+      : base(interfaceType) {
+      SPModelInterfaceAttribute attribute = interfaceType.GetCustomAttribute<SPModelInterfaceAttribute>(false);
+      if (attribute != null) {
+        this.EventHandlerType = attribute.EventHandlerType;
+      }
+    }
+
+    public Type EventHandlerType { get; private set; }
 
     public override IEnumerable<SPContentTypeId> ContentTypeIds {
       get { return base.Children.SelectMany(v => v.ContentTypeIds); }

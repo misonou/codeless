@@ -156,6 +156,13 @@ namespace Codeless.SharePoint.ObjectModel {
     protected virtual void OnPublished(SPModelEventArgs e) { }
 
     internal void HandleEvent(SPModelEventArgs e) {
+      SPModelDescriptor descriptor = SPModelDescriptor.Resolve(this.GetType());
+      foreach (SPModelInterfaceTypeDescriptor d in descriptor.Interfaces) {
+        if (d.EventHandlerType != null) {
+          ISPModelEventHandler handler = (ISPModelEventHandler)d.EventHandlerType.CreateInstance();
+          handler.HandleEvent(this, e);
+        }
+      }
       switch (e.EventType) {
         case SPModelEventType.Adding:
           OnAdding(e);
