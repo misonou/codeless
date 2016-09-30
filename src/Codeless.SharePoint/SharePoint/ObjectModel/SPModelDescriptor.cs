@@ -386,9 +386,13 @@ namespace Codeless.SharePoint.ObjectModel {
 
     public static SPModelDescriptor Resolve(Type type) {
       CommonHelper.ConfirmNotNull(type, "type");
-      RegisterAssembly(type.Assembly);
-      if (type.IsGenericType) {
-        type = type.GetGenericTypeDefinition();
+      if (SPModel.IsDynamicConstructedType(type)) {
+        type = type.BaseType;
+      } else {
+        RegisterAssembly(type.Assembly);
+        if (type.IsGenericType) {
+          type = type.GetGenericTypeDefinition();
+        }
       }
       SPModelDescriptor result;
       if (TargetTypeDictionary.TryGetValue(type, out result)) {
