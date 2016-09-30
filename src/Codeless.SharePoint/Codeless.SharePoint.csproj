@@ -124,6 +124,8 @@
     <Compile Include="SharePoint\CamlParameterBinding.cs" />
     <Compile Include="SharePoint\Internal\KnownFields.cs" />
     <Compile Include="SharePoint\Internal\SPChangeQueryExecutor.cs" />
+    <Compile Include="SharePoint\ObjectModel\SPModelEventHandler.cs" />
+    <Compile Include="SharePoint\ObjectModel\_Attributes\SPModelInterfaceAttribute.cs" />
     <Compile Include="SharePoint\SPAggregatedChange.cs" />
     <Compile Include="SharePoint\SPChangeMonitor.cs" />
     <Compile Include="SharePoint\Internal\TraceCategory.cs" />
