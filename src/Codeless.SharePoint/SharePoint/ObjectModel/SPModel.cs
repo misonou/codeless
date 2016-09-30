@@ -414,6 +414,10 @@ namespace Codeless.SharePoint.ObjectModel {
       }
     }
 
+    internal static bool IsDynamicConstructedType(Type t) {
+      return ModuleBuilder.Assembly.ManifestModule == t.Assembly.ManifestModule;
+    }
+
     internal static Type BuildTypeFromAbstractBaseType(Type baseType) {
       Random random = new Random();
       string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
