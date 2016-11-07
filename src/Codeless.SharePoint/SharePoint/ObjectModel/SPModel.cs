@@ -462,21 +462,11 @@ namespace Codeless.SharePoint.ObjectModel {
             getterMethod = typeof(ISPListItemAdapter).GetMethod("GetGuid");
             setterMethod = typeof(ISPListItemAdapter).GetMethod("SetGuid");
           } else if (sourceProperty.PropertyType == typeof(DateTime?)) {
-            if (field is SPDateTimeFieldAttribute && ((SPDateTimeFieldAttribute)field).DisplayFormat == SPDateTimeFieldFormatType.DateOnly) {
-              getterMethod = typeof(SPExtension).GetMethod("GetDateOnly");
-              setterMethod = typeof(SPExtension).GetMethod("SetDateOnly");
-            } else {
-              getterMethod = typeof(ISPListItemAdapter).GetMethod("GetDateTime");
-              setterMethod = typeof(ISPListItemAdapter).GetMethod("SetDateTime");
-            }
+            getterMethod = typeof(ISPListItemAdapter).GetMethod("GetDateTime");
+            setterMethod = typeof(ISPListItemAdapter).GetMethod("SetDateTime");
           } else if (sourceProperty.PropertyType == typeof(DateTime)) {
-            if (field is SPDateTimeFieldAttribute && ((SPDateTimeFieldAttribute)field).DisplayFormat == SPDateTimeFieldFormatType.DateOnly) {
-              getterMethod = typeof(SPExtension).GetMethod("GetDateOnlyOrMin");
-              setterMethod = typeof(SPExtension).GetMethod("SetDateOnly");
-            } else {
-              getterMethod = typeof(SPExtension).GetMethod("GetDateTimeOrMin");
-              setterMethod = typeof(ISPListItemAdapter).GetMethod("SetDateTime");
-            }
+            getterMethod = typeof(SPExtension).GetMethod("GetDateTimeOrMin");
+            setterMethod = typeof(ISPListItemAdapter).GetMethod("SetDateTime");
             preSetterMethod = typeof(DateTime?).GetMethod("op_Implicit");
           } else if (sourceProperty.PropertyType == typeof(Term)) {
             getterMethod = typeof(ISPListItemAdapter).GetMethod("GetTaxonomy");
