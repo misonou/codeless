@@ -21,30 +21,12 @@ namespace Codeless.SharePoint.Publishing {
     /// <param name="web">Site object.</param>
     public VariationContext(SPWeb web) {
       CommonHelper.ConfirmNotNull(web, "web");
-      using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
-        if (PublishingWeb.IsPublishingWeb(web)) {
-          PublishingWeb currentWeb = PublishingWeb.GetPublishingWeb(web);
-          VariationLabel currentLabel = GetVariationLabel(currentWeb);
-          if (currentLabel != null) {
-            this.IsVariationWeb = true;
-            this.IsSource = currentLabel.IsSource;
-            this.TopWebServerRelativeUrl = new Uri(currentLabel.TopWebUrl).AbsolutePath;
-            this.VariationLabel = currentLabel.Title;
-            this.PagesListName = currentWeb.PagesListName;
-            int lcid;
-            if (Int32.TryParse(currentLabel.Locale, out lcid)) {
-              this.Culture = CultureInfo.GetCultureInfo(lcid);
-            } else {
-              this.Culture = CultureInfo.GetCultureInfo(currentLabel.Language);
-            }
-          }
+      try {
+        using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
+          InitializeObject(web);
         }
-        if (!this.IsVariationWeb) {
-          this.TopWebServerRelativeUrl = web.Site.ServerRelativeUrl;
-          this.VariationLabel = String.Empty;
-          this.PagesListName = "Pages";
-          this.Culture = web.UICulture;
-        }
+      } catch (UnauthorizedAccessException) {
+        web.WithElevatedPrivileges(InitializeObject);
       }
     }
 
@@ -54,7 +36,7 @@ namespace Codeless.SharePoint.Publishing {
     public static VariationContext Current {
       get {
         if (SPContext.Current != null) {
-          return CommonHelper.HttpContextSingleton(GetVariationContextWithElevatedPrivileges);
+          return CommonHelper.HttpContextSingleton(() => new VariationContext(SPContext.Current.Web));
         }
         return null;
       }
@@ -92,13 +74,30 @@ namespace Codeless.SharePoint.Publishing {
     /// </summary>
     public CultureInfo Culture { get; private set; }
 
-    private static VariationContext GetVariationContextWithElevatedPrivileges() {
-      SPWeb currentWeb = SPContext.Current.Web;
-      VariationContext context = null;
-      currentWeb.WithElevatedPrivileges(elevatedWeb => {
-        context = new VariationContext(elevatedWeb);
-      });
-      return context;
+    private void InitializeObject(SPWeb web) {
+      if (PublishingWeb.IsPublishingWeb(web)) {
+        PublishingWeb currentWeb = PublishingWeb.GetPublishingWeb(web);
+        VariationLabel currentLabel = GetVariationLabel(currentWeb);
+        if (currentLabel != null) {
+          this.IsVariationWeb = true;
+          this.IsSource = currentLabel.IsSource;
+          this.TopWebServerRelativeUrl = new Uri(currentLabel.TopWebUrl).AbsolutePath;
+          this.VariationLabel = currentLabel.Title;
+          this.PagesListName = currentWeb.PagesListName;
+          int lcid;
+          if (Int32.TryParse(currentLabel.Locale, out lcid)) {
+            this.Culture = CultureInfo.GetCultureInfo(lcid);
+          } else {
+            this.Culture = CultureInfo.GetCultureInfo(currentLabel.Language);
+          }
+        }
+      }
+      if (!this.IsVariationWeb) {
+        this.TopWebServerRelativeUrl = web.Site.ServerRelativeUrl;
+        this.VariationLabel = String.Empty;
+        this.PagesListName = "Pages";
+        this.Culture = web.UICulture;
+      }
     }
 
     private static VariationLabel GetVariationLabel(PublishingWeb web) {
