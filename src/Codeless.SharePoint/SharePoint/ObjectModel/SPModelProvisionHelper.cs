@@ -574,14 +574,16 @@ namespace Codeless.SharePoint.ObjectModel {
         }
       }
       foreach (KeyValuePair<string, string> mapping in LinkWithMenuFieldMapping) {
-        int index = includedFields.IndexOf(mapping.Key);
-        if (index >= 0) {
-          includedFields[index] = mapping.Value;
-          excludedFields.Add(mapping.Key);
-        }
-        int index2 = excludedFields.IndexOf(mapping.Key);
-        if (index2 >= 0 && index < 0) {
-          excludedFields.Add(mapping.Value);
+        if (view.ParentList.Fields.ContainsField(mapping.Value)) {
+          int index = includedFields.IndexOf(mapping.Key);
+          if (index >= 0) {
+            includedFields[index] = mapping.Value;
+            excludedFields.Add(mapping.Key);
+          }
+          int index2 = excludedFields.IndexOf(mapping.Key);
+          if (index2 >= 0 && index < 0) {
+            excludedFields.Add(mapping.Value);
+          }
         }
       }
       foreach (string v in new[] { SPBuiltInFieldName.LinkFilename, SPBuiltInFieldName.LinkTitle }) {
