@@ -85,24 +85,24 @@ namespace Codeless.SharePoint.ObjectModel {
     private class ReverseComparer<T> : IComparer<T> {
       private static ReverseComparer<T> defaultInstance;
       private readonly Comparison<T> comparer;
-      
+
       public ReverseComparer()
         : this(Comparer<T>.Default) { }
-      
+
       public ReverseComparer(IComparer<T> comparer) {
         CommonHelper.ConfirmNotNull(comparer, "comparer");
         this.comparer = comparer.Compare;
       }
-      
+
       public ReverseComparer(Comparison<T> comparer) {
         CommonHelper.ConfirmNotNull(comparer, "comparer");
         this.comparer = comparer;
       }
-      
+
       public static ReverseComparer<T> Default {
         get { return LazyInitializer.EnsureInitialized(ref defaultInstance); }
       }
-      
+
       public int Compare(T x, T y) {
         return comparer(y, x);
       }
@@ -353,10 +353,16 @@ namespace Codeless.SharePoint.ObjectModel {
 
     public void AddInterfaceDepenedentField(SPFieldAttribute field) {
       CommonHelper.ConfirmNotNull(field, "field");
-      if (IsTwoColumnField(field) && !fieldAttributes.Contains(field)) {
-        hiddenFields.Add(field);
-        if (this.Parent != null) {
-          this.Parent.AddInterfaceDepenedentField(field);
+      if (IsTwoColumnField(field)) {
+        foreach (SPModelDescriptor d in EnumerableHelper.AncestorsAndSelf(this, v => v.Parent)) {
+          if (!d.fieldAttributes.Contains(field)) {
+            d.hiddenFields.Add(field);
+          }
+        }
+        foreach (SPModelDescriptor d in EnumerableHelper.Descendants(this, v => v.Children)) {
+          if (!d.fieldAttributes.Contains(field)) {
+            d.hiddenFields.Add(field);
+          }
         }
       }
     }
@@ -366,7 +372,10 @@ namespace Codeless.SharePoint.ObjectModel {
       foreach (SPFieldAttribute attribute in fieldAttributes.Concat(hiddenFields)) {
         if (IsTwoColumnField(attribute)) {
           try {
-            list.Fields.GetFieldByInternalName(attribute.ListFieldInternalName);
+            SPField field = list.Fields.GetFieldByInternalName(attribute.ListFieldInternalName);
+            if (!IsTwoColumnField(field)) {
+              throw new Exception(String.Format("Field '{0}' has incorrect type in list {1}", attribute.InternalName, SPUrlUtility.CombineUrl(list.ParentWebUrl, list.RootFolder.Url)));
+            }
           } catch (ArgumentException) {
             throw new Exception(String.Format("Missing field '{0}' in list {1}", attribute.InternalName, SPUrlUtility.CombineUrl(list.ParentWebUrl, list.RootFolder.Url)));
           }
@@ -557,6 +566,10 @@ namespace Codeless.SharePoint.ObjectModel {
       return (field.Type == SPFieldType.Lookup || field.Type == SPFieldType.User || field.Type == SPFieldType.URL);
     }
 
+    private static bool IsTwoColumnField(SPField field) {
+      return (field.Type == SPFieldType.Lookup || field.Type == SPFieldType.User || field.Type == SPFieldType.URL);
+    }
+
     private static void SaveAssemblyName(SPSite site, SPContentTypeId contentTypeId, Assembly assembly) {
       using (site.RootWeb.GetAllowUnsafeUpdatesScope()) {
         site.RootWeb.AllProperties["SPModel." + contentTypeId.ToString().ToLower() + ".Assembly"] = assembly.FullName;
@@ -570,7 +583,11 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     private static void RegisterAssembly(Assembly assembly) {
-      if (NeedProcess(assembly) && (assembly == typeof(SPModel).Assembly || assembly.GetReferencedAssemblies().Any(v => v.FullName == typeof(SPModel).Assembly.FullName))) {
+      AssemblyName[] refAsm = new AssemblyName[0];
+      try {
+        refAsm = assembly.GetReferencedAssemblies();
+      } catch { }
+      if (NeedProcess(assembly) && (assembly == typeof(SPModel).Assembly || refAsm.Any(v => v.FullName == typeof(SPModel).Assembly.FullName))) {
         bool requireLock = !enteredLock;
         if (requireLock) {
           Monitor.Enter(syncLock);

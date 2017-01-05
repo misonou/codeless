@@ -91,6 +91,7 @@ namespace Codeless.SharePoint.ObjectModel {
       this.ListFieldInternalName = internalName;
       this.TypeAsString = fieldType;
       this.IncludeInQuery = true;
+      this.FormVisibility = SPFieldFormVisibility.Visible;
     }
 
     /// <summary>
@@ -164,7 +165,22 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     public SPFieldFormVisibility FormVisibility {
       get {
-        return default(SPFieldFormVisibility);
+        if (this.Hidden == SPOption.True) {
+          return SPFieldFormVisibility.Hidden;
+        }
+        if (this.ReadOnlyField == SPOption.True) {
+          return SPFieldFormVisibility.DisplayOnly;
+        }
+        if (this.ShowInEditForm == SPOption.True && this.ShowInNewForm == SPOption.True) {
+          return SPFieldFormVisibility.Visible;
+        }
+        if (this.ShowInEditForm == SPOption.True) {
+          return SPFieldFormVisibility.ExceptNewForm;
+        }
+        if (this.ShowInNewForm == SPOption.True) {
+          return SPFieldFormVisibility.ExceptEditForm;
+        }
+        return SPFieldFormVisibility.Unspecified;
       }
       set {
         if (value == SPFieldFormVisibility.Unspecified) {
@@ -282,7 +298,9 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     /// <param name="internalName">The internal name of a column.</param>
     public SPBuiltInFieldAttribute(string internalName)
-      : base(internalName, GetFieldType(internalName)) { }
+      : base(internalName, GetFieldType(internalName)) {
+      this.FormVisibility = SPFieldFormVisibility.Unspecified;
+    }
 
     /// <summary>
     /// Gets or sets the internal name used when the column is added to a list.

@@ -183,7 +183,7 @@ namespace Codeless.SharePoint.Publishing {
               } catch {
               }
             }
-            if (item.File != null) {
+            if (item.File != null && item.File.Name.EndsWith(".aspx")) {
               using (SPLimitedWebPartManager wpm = item.File.GetLimitedWebPartManager(PersonalizationScope.Shared)) {
                 foreach (object wp in wpm.WebParts) {
                   if (wp is ContentEditorWebPart) {
