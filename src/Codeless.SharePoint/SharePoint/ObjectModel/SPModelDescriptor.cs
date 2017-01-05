@@ -51,6 +51,12 @@ namespace Codeless.SharePoint.ObjectModel {
       this.TargetListUrl = targetListUrl;
     }
 
+    public SPModelListProvisionOptions(string targetListUrl, string title) {
+      CommonHelper.ConfirmNotNull(targetListUrl, "targetListUrl");
+      this.TargetListUrl = targetListUrl;
+      this.TargetListTitle = title;
+    }
+
     public SPModelListProvisionOptions(SPList targetList) {
       CommonHelper.ConfirmNotNull(targetList, "targetList");
       this.TargetWebId = targetList.ParentWeb.ID;
@@ -64,6 +70,7 @@ namespace Codeless.SharePoint.ObjectModel {
 
     public SPListAttribute ListAttributeOverrides { get; private set; }
     public string TargetListUrl { get; private set; }
+    public string TargetListTitle { get; private set; }
     public Guid TargetWebId { get; private set; }
     public Guid TargetListId { get; private set; }
   }
@@ -532,6 +539,11 @@ namespace Codeless.SharePoint.ObjectModel {
         } else {
           if (listOptions.TargetListUrl != null) {
             implListAttribute = implListAttribute.Clone(listOptions.TargetListUrl);
+          } else {
+            implListAttribute = implListAttribute.Clone();
+          }
+          if (listOptions.TargetListTitle != null) {
+            implListAttribute.Title = listOptions.TargetListTitle;
           }
           using (SPWeb targetWeb = helper.TargetSite.OpenWeb(webId)) {
             List<SPContentTypeId> contentTypes;
