@@ -40,7 +40,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Codeless, Version=1.0.0.0, Culture=neutral, PublicKeyToken=6e028f30b8da22f9, processorArchitecture=MSIL">
-      <HintPath>..\packages\Codeless.Core.1.0.369.0\lib\net45\Codeless.dll</HintPath>
+      <HintPath>..\packages\Codeless.Core.1.1.371.0\lib\net45\Codeless.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="IQToolkit, Version=1.0.0.0, Culture=neutral, PublicKeyToken=6e028f30b8da22f9, processorArchitecture=MSIL">
