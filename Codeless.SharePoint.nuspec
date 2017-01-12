@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
     <metadata>
         <id>Codeless.SharePoint</id>
-        <version>15.0.374.0</version>
+        <version>15.0.374.1</version>
         <authors>misonou</authors>
         <projectUrl>https://github.com/misonou/codeless</projectUrl>
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -29,5 +29,7 @@
         <file src="lib\net45\Codeless.SharePoint.PowerShell.dll" target="lib\net45\Codeless.SharePoint.PowerShell.dll" />
         <file src="lib\net45\Codeless.SharePoint.xml" target="lib\net45\Codeless.SharePoint.xml" />
         <file src="lib\net45\IQToolkit.dll" target="lib\net45\IQToolkit.dll" />
+        <file src="tools\Codeless.SharePoint.psd1" target="tools\Codeless.SharePoint.psd1" />
+        <file src="tools\install.ps1" target="tools\install.ps1" />
     </files>
 </package>
