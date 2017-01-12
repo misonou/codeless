@@ -51,6 +51,12 @@ namespace Codeless.SharePoint.ObjectModel {
       this.TargetListUrl = targetListUrl;
     }
 
+    public SPModelListProvisionOptions(string targetListUrl, string title) {
+      CommonHelper.ConfirmNotNull(targetListUrl, "targetListUrl");
+      this.TargetListUrl = targetListUrl;
+      this.TargetListTitle = title;
+    }
+
     public SPModelListProvisionOptions(SPList targetList) {
       CommonHelper.ConfirmNotNull(targetList, "targetList");
       this.TargetWebId = targetList.ParentWeb.ID;
@@ -64,6 +70,7 @@ namespace Codeless.SharePoint.ObjectModel {
 
     public SPListAttribute ListAttributeOverrides { get; private set; }
     public string TargetListUrl { get; private set; }
+    public string TargetListTitle { get; private set; }
     public Guid TargetWebId { get; private set; }
     public Guid TargetListId { get; private set; }
   }
@@ -136,9 +143,10 @@ namespace Codeless.SharePoint.ObjectModel {
     private readonly ConcurrentDictionary<Guid, bool> provisionedSites = new ConcurrentDictionary<Guid, bool>();
     private readonly bool hasExplicitListAttribute;
 
-    protected readonly SPModelDescriptor Parent;
-    protected readonly List<SPModelDescriptor> Children = new List<SPModelDescriptor>();
-    protected readonly List<SPModelDescriptor> Interfaces = new List<SPModelDescriptor>();
+    public readonly SPModelDescriptor Parent;
+    public readonly List<SPModelDescriptor> Children = new List<SPModelDescriptor>();
+    public readonly List<SPModelDescriptor> Interfaces = new List<SPModelDescriptor>();
+
     protected SPBaseType? baseType;
     protected Lazy<Type> instanceType;
 
@@ -540,6 +548,11 @@ namespace Codeless.SharePoint.ObjectModel {
         } else {
           if (listOptions.TargetListUrl != null) {
             implListAttribute = implListAttribute.Clone(listOptions.TargetListUrl);
+          } else {
+            implListAttribute = implListAttribute.Clone();
+          }
+          if (listOptions.TargetListTitle != null) {
+            implListAttribute.Title = listOptions.TargetListTitle;
           }
           using (SPWeb targetWeb = helper.TargetSite.OpenWeb(webId)) {
             List<SPContentTypeId> contentTypes;
@@ -662,7 +675,14 @@ namespace Codeless.SharePoint.ObjectModel {
 
   internal class SPModelInterfaceTypeDescriptor : SPModelDescriptor {
     private SPModelInterfaceTypeDescriptor(Type interfaceType)
-      : base(interfaceType) { }
+      : base(interfaceType) {
+      SPModelInterfaceAttribute attribute = interfaceType.GetCustomAttribute<SPModelInterfaceAttribute>(false);
+      if (attribute != null) {
+        this.EventHandlerType = attribute.EventHandlerType;
+      }
+    }
+
+    public Type EventHandlerType { get; private set; }
 
     public override IEnumerable<SPContentTypeId> ContentTypeIds {
       get { return base.Children.SelectMany(v => v.ContentTypeIds); }

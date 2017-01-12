@@ -40,7 +40,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Codeless, Version=1.0.0.0, Culture=neutral, PublicKeyToken=6e028f30b8da22f9, processorArchitecture=MSIL">
-      <HintPath>..\packages\Codeless.Core.1.0.369.0\lib\net35\Codeless.dll</HintPath>
+      <HintPath>..\packages\Codeless.Core.1.1.371.0\lib\net35\Codeless.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="IQToolkit, Version=1.0.0.0, Culture=neutral, PublicKeyToken=6e028f30b8da22f9, processorArchitecture=MSIL">
@@ -60,6 +60,10 @@
     <Reference Include="System.Management.Automation, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\bin\System.Management.Automation.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Threading, Version=1.0.2856.102, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Threading.dll.1.0.2856.0\lib\net35\System.Threading.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -87,7 +91,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="key.snk" />
-    <None Include="packages.config" />
+    <None Include="packages.config">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

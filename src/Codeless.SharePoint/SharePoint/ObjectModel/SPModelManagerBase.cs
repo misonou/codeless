@@ -453,6 +453,24 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     /// <summary>
+    /// Moves the specified item to recycle bin.
+    /// </summary>
+    /// <param name="item">An item to be recycled.</param>
+    protected void Recycle(T item) {
+      CommonHelper.ConfirmNotNull(item, "item");
+      SPModel model = (SPModel)(object)item;
+      if (model.ParentCollection.Manager != this) {
+        throw new ArgumentException("Supplied item does not belongs to this manager", "item");
+      }
+      SPListItem targetItem = model.Adapter.ListItem;
+      if (targetItem.ID > 0) {
+        using (targetItem.Web.GetAllowUnsafeUpdatesScope()) {
+          targetItem.Recycle();
+        }
+      }
+    }
+
+    /// <summary>
     /// Deletes the specified item from a list. 
     /// </summary>
     /// <param name="item">An item to be deleted.</param>

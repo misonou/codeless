@@ -3051,6 +3051,16 @@
             Returns the minor version number represented by this instance.
             </summary>
         </member>
+        <member name="P:Codeless.SharePoint.SPItemVersion.IsMajorVersion">
+            <summary>
+            Returns *true* if the version number represents a major version.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.SPItemVersion.IsMinorVersion">
+            <summary>
+            Returns *true* if the version number represents a minor version.
+            </summary>
+        </member>
         <member name="M:Codeless.SharePoint.SPItemVersion.CompareTo(Codeless.SharePoint.SPItemVersion)">
             <summary>
             Compares with another version number.
@@ -6126,6 +6136,17 @@
         <member name="P:Codeless.SharePoint.PrincipalInfo.ProviderUserId">
             <summary>
             Gets a unique identifier of the resolved identity used by the identity provider.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.PrincipalInfo.ProviderType">
+            <summary>
+            Gets the type of provider that resolve this user. 
+            See members of <see cref="T:Microsoft.SharePoint.Administration.Claims.SPIdentityProviderTypes"/> for possible values.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.PrincipalInfo.EncodedClaim">
+            <summary>
+            Gets the encoded claim-based logon name on SharePoint for the resolved principal.
             </summary>
         </member>
         <member name="P:Codeless.SharePoint.PrincipalInfo.DisplayName">

@@ -1,8 +1,10 @@
 ﻿using Codeless.SharePoint.Internal;
 using Microsoft.SharePoint;
+using Microsoft.SharePoint.Administration.Claims;
 using System;
 using System.Collections.Generic;
 using System.DirectoryServices.AccountManagement;
+using System.Security.Principal;
 using System.Web.Hosting;
 using System.Web.Security;
 
@@ -11,22 +13,20 @@ namespace Codeless.SharePoint {
   /// Provides information of identities resolved from SharePoint users and groups.
   /// </summary>
   public sealed class PrincipalInfo : IEquatable<PrincipalInfo> {
-    internal PrincipalInfo(SPUser principal)
-      : this(principal, CommonHelper.ConfirmNotNull(principal, "principal").ID, principal) {
-      this.DisplayName = principal.Name;
-      this.EmailAddress = principal.Email;
-    }
-
     internal PrincipalInfo(UserPrincipal principal, SPPrincipal parentPrincipal)
-      : this(principal, String.Concat(PrincipalContextScope.Current.LocalContext.ConnectedServer, "\\", CommonHelper.ConfirmNotNull(principal, "principal").DistinguishedName ?? principal.SamAccountName), parentPrincipal) {
+      : this(principal, CommonHelper.ConfirmNotNull(principal, "principal").DistinguishedName ?? principal.SamAccountName, parentPrincipal) {
       this.DisplayName = principal.DisplayName ?? principal.DistinguishedName ?? principal.SamAccountName;
       this.EmailAddress = principal.EmailAddress;
+      this.ProviderType = SPIdentityProviderTypes.Windows;
+      this.EncodedClaim = SPClaimProviderManager.Local.ConvertIdentifierToClaim(((NTAccount)principal.Sid.Translate(typeof(NTAccount))).Value, SPIdentifierTypes.WindowsSamAccountName).ToEncodedString();
     }
 
     internal PrincipalInfo(MembershipUser principal, SPPrincipal parentPrincipal)
       : this(principal, CommonHelper.ConfirmNotNull(principal, "principal").ProviderUserKey, parentPrincipal) {
       this.DisplayName = principal.UserName;
       this.EmailAddress = principal.Email;
+      this.ProviderType = SPIdentityProviderTypes.Forms;
+      this.EncodedClaim = SPClaimProviderManager.Local.ConvertIdentifierToClaim(principal.UserName, SPIdentifierTypes.FormsUser).ToEncodedString();
     }
 
     internal PrincipalInfo(string rawName, Exception exception, SPPrincipal parentPrincipal) {
@@ -49,12 +49,25 @@ namespace Codeless.SharePoint {
     /// <summary>
     /// Gets the type of the underlying object representing the resolved identity.
     /// </summary>
+    [Obsolete("Use PrincipalInfo.ProviderType to differentiate user types.")]
     public Type ObjectType { get; private set; }
 
     /// <summary>
     /// Gets a unique identifier of the resolved identity used by the identity provider.
     /// </summary>
+    [Obsolete("Use PrincipalInfo.EncodedClaim for more consistent way to identify the resolved user.")]
     public object ProviderUserId { get; private set; }
+
+    /// <summary>
+    /// Gets the type of provider that resolve this user. 
+    /// See members of <see cref="SPIdentityProviderTypes"/> for possible values.
+    /// </summary>
+    public string ProviderType { get; private set; }
+
+    /// <summary>
+    /// Gets the encoded claim-based logon name on SharePoint for the resolved principal.
+    /// </summary>
+    public string EncodedClaim { get; private set; }
 
     /// <summary>
     /// Gets the display name of the resolved identity.
@@ -88,7 +101,7 @@ namespace Codeless.SharePoint {
     /// <returns></returns>
     public bool Equals(PrincipalInfo other) {
       if (other != null && other.IsResolved && this.IsResolved) {
-        return this.ObjectType == other.ObjectType && this.ProviderUserId.Equals(other.ProviderUserId);
+        return this.EncodedClaim == other.EncodedClaim;
       }
       return false;
     }
@@ -112,7 +125,7 @@ namespace Codeless.SharePoint {
     /// <returns></returns>
     public override int GetHashCode() {
       if (IsResolved) {
-        return ObjectType.GetHashCode() ^ ProviderUserId.GetHashCode();
+        return EncodedClaim.GetHashCode();
       }
       return 0;
     }
