@@ -247,219 +247,106 @@
             </summary>
             <typeparam name="T"></typeparam>
         </member>
-        <member name="T:Codeless.SharePoint.SPAggregatedChange">
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelEventHandler`1.OnAdding(`0,Codeless.SharePoint.ObjectModel.SPModelEventArgs)">
             <summary>
-            Represents a set of changes on the same persisted object in SharePoint.
+            Invoked when the underlying list item is being added to a list.
+            </summary>
+            <param name="item">Instance of the model class representing a list item.</param>
+            <param name="e">Event data.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelEventHandler`1.OnAdded(`0,Codeless.SharePoint.ObjectModel.SPModelEventArgs)">
+            <summary>
+            Invoked when the underlying list item is added to a list.
+            </summary>
+            <param name="item">Instance of the model class representing a list item.</param>
+            <param name="e">Event data.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelEventHandler`1.OnAddedAsync(`0,Codeless.SharePoint.ObjectModel.SPModelEventArgs)">
+            <summary>
+            Invoked asynchronously when the underlying list item is added to a list.
+            </summary>
+            <param name="item">Instance of the model class representing a list item.</param>
+            <param name="e">Event data.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelEventHandler`1.OnUpdating(`0,Codeless.SharePoint.ObjectModel.SPModelEventArgs)">
+            <summary>
+            Invoked when the underlying list item is being updated.
+            </summary>
+            <param name="item">Instance of the model class representing a list item.</param>
+            <param name="e">Event data.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelEventHandler`1.OnUpdated(`0,Codeless.SharePoint.ObjectModel.SPModelEventArgs)">
+            <summary>
+            Invoked when the underlying list item is updated.
+            </summary>
+            <param name="item">Instance of the model class representing a list item.</param>
+            <param name="e">Event data.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelEventHandler`1.OnUpdatedAsync(`0,Codeless.SharePoint.ObjectModel.SPModelEventArgs)">
+            <summary>
+            Invoked asynchronously when the underlying list item is updated.
+            </summary>
+            <param name="item">Instance of the model class representing a list item.</param>
+            <param name="e">Event data.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelEventHandler`1.OnAddingOrUpdating(`0,Codeless.SharePoint.ObjectModel.SPModelEventArgs)">
+            <summary>
+            Invoked when the underlying list item is being added to a list or being updated.
+            </summary>
+            <param name="item">Instance of the model class representing a list item.</param>
+            <param name="e">Event data.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelEventHandler`1.OnAddedOrUpdated(`0,Codeless.SharePoint.ObjectModel.SPModelEventArgs)">
+            <summary>
+            Invoked when the underlying list item is added to a list or updated.
+            </summary>
+            <param name="item">Instance of the model class representing a list item.</param>
+            <param name="e">Event data.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelEventHandler`1.OnAddedOrUpdatedAsync(`0,Codeless.SharePoint.ObjectModel.SPModelEventArgs)">
+            <summary>
+            Invoked asynchronously when the underlying list item is added to a list or updated.
+            </summary>
+            <param name="item">Instance of the model class representing a list item.</param>
+            <param name="e">Event data.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelEventHandler`1.OnDeleting(`0,Codeless.SharePoint.ObjectModel.SPModelEventArgs)">
+            <summary>
+            Invoked when the underlying list item is being deleted.
+            </summary>
+            <param name="item">Instance of the model class representing a list item.</param>
+            <param name="e">Event data.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelEventHandler`1.OnDeleted(`0,Codeless.SharePoint.ObjectModel.SPModelEventArgs)">
+            <summary>
+            Invoked when the underlying list item is deleted.
+            </summary>
+            <param name="item">Instance of the model class representing a list item.</param>
+            <param name="e">Event data.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelEventHandler`1.OnPublishing(`0,Codeless.SharePoint.ObjectModel.SPModelEventArgs)">
+            <summary>
+            Invoked when the underlying list item is being published.
+            </summary>
+            <param name="item">Instance of the model class representing a list item.</param>
+            <param name="e">Event data.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelEventHandler`1.OnPublished(`0,Codeless.SharePoint.ObjectModel.SPModelEventArgs)">
+            <summary>
+            Invoked when the underlying list item is published.
+            </summary>
+            <param name="item">Instance of the model class representing a list item.</param>
+            <param name="e">Event data.</param>
+        </member>
+        <member name="T:Codeless.SharePoint.ObjectModel.SPModelInterfaceAttribute">
+            <summary>
+            Specifies behaviors on interfaces that are used with <see cref="T:Codeless.SharePoint.ObjectModel.SPModel"/> classes.
             </summary>
         </member>
-        <member name="M:Codeless.SharePoint.SPAggregatedChange.#ctor">
+        <member name="P:Codeless.SharePoint.ObjectModel.SPModelInterfaceAttribute.EventHandlerType">
             <summary>
-            Instantiate an instance of the <see cref="T:Codeless.SharePoint.SPAggregatedChange"/> class.
+            Gets or sets the type of event handler to be instantiated to receiver events of items implementing the interface.
             </summary>
-        </member>
-        <member name="M:Codeless.SharePoint.SPAggregatedChange.#ctor(System.Collections.Generic.IList{Microsoft.SharePoint.SPChange})">
-            <summary>
-            Instantiate an instance of the <see cref="T:Codeless.SharePoint.SPAggregatedChange"/> class with the fixed set of changes.
-            The collection is marked read-only and no further changes to the collection is allowed.
-            </summary>
-            <param name="items"></param>
-        </member>
-        <member name="P:Codeless.SharePoint.SPAggregatedChange.Key">
-            <summary>
-            Gets the object that uniquely identifies a persisted object in SharePoint.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.SPAggregatedChange.UniqueId">
-            <summary>
-            Gets the <see cref="T:System.Guid"/> object that uniquely identifies a persisted object in SharePoint if available.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.SPAggregatedChange.ObjectType">
-            <summary>
-            Gets the object type of the persisted object.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.SPAggregatedChange.ChangeFlags">
-            <summary>
-            Gets the combination of changes that are made on the persisted object.
-            </summary>
-        </member>
-        <member name="M:Codeless.SharePoint.SPAggregatedChange.InsertItem(System.Int32,Microsoft.SharePoint.SPChange)">
-            <summary>
-            Overriden.
-            </summary>
-            <param name="index"></param>
-            <param name="item"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.SPAggregatedChange.SetItem(System.Int32,Microsoft.SharePoint.SPChange)">
-            <summary>
-            Overriden.
-            </summary>
-            <param name="index"></param>
-            <param name="item"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.SPAggregatedChange.RemoveItem(System.Int32)">
-            <summary>
-            Overriden.
-            </summary>
-            <param name="index"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.SPAggregatedChange.ClearItems">
-            <summary>
-            Overriden.
-            </summary>
-        </member>
-        <member name="M:Codeless.SharePoint.SPChangeMonitor.MonitorDispose">
-            <summary>
-            When overriden, releases the resources acquired when this monitor is initializing.
-            </summary>
-        </member>
-        <member name="T:Codeless.SharePoint.LoggerTarget">
-            <summary>
-            Specifies which logging channel a log entry should write to.
-            </summary>
-        </member>
-        <member name="F:Codeless.SharePoint.LoggerTarget.UlsLog">
-            <summary>
-            Specifies a log entry should write to ULS trace log.
-            </summary>
-        </member>
-        <member name="F:Codeless.SharePoint.LoggerTarget.Console">
-            <summary>
-            Specifies a log entry should write to console output.
-            </summary>
-        </member>
-        <member name="F:Codeless.SharePoint.LoggerTarget.EntLib">
-            <summary>
-            Specifies a log entry should write to Microsoft Enterprise Library Logging Block.
-            </summary>
-        </member>
-        <member name="F:Codeless.SharePoint.LoggerTarget.EventLog">
-            <summary>
-            Specifies a log entry should write to Windows event log.
-            </summary>
-        </member>
-        <member name="T:Codeless.SharePoint.LoggerOptionsAttribute">
-            <summary>
-            Specifies logging behaviors for subsequent calls to <see cref="T:Codeless.SharePoint.Logger"/> in the attributed method.
-            </summary>
-        </member>
-        <member name="M:Codeless.SharePoint.LoggerOptionsAttribute.#ctor">
-            <summary>
-            Creates an instance of the <see cref="T:Codeless.SharePoint.LoggerOptionsAttribute"/> class with default options.
-            </summary>
-        </member>
-        <member name="M:Codeless.SharePoint.LoggerOptionsAttribute.#ctor(Codeless.SharePoint.LoggerTarget)">
-            <summary>
-            Creates an instance of the <see cref="T:Codeless.SharePoint.LoggerOptionsAttribute"/> class with the specified logging targets.
-            </summary>
-            <param name="options"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.LoggerOptionsAttribute.#ctor(System.String)">
-            <summary>
-            Creates an instance of the <see cref="T:Codeless.SharePoint.LoggerOptionsAttribute"/> class with the specified category.
-            </summary>
-            <param name="category"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.LoggerOptionsAttribute.#ctor(System.String,Codeless.SharePoint.LoggerTarget)">
-            <summary>
-            Creates an instance of the <see cref="T:Codeless.SharePoint.LoggerOptionsAttribute"/> class with the specified category and logging targets.
-            </summary>
-            <param name="category"></param>
-            <param name="options"></param>
-        </member>
-        <member name="P:Codeless.SharePoint.LoggerOptionsAttribute.Category">
-            <summary>
-            Gets or sets the logging category.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.LoggerOptionsAttribute.All">
-            <summary>
-            Gets or sets the default logging targets for all types of log entries.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.LoggerOptionsAttribute.Information">
-            <summary>
-            Gets or sets the default logging targets for information log.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.LoggerOptionsAttribute.Debug">
-            <summary>
-            Gets or sets the default logging targets for debug log.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.LoggerOptionsAttribute.Warn">
-            <summary>
-            Gets or sets the default logging targets for warning log.
-            </summary>
-        </member>
-        <member name="P:Codeless.SharePoint.LoggerOptionsAttribute.Error">
-            <summary>
-            Gets or sets the default logging targets for error log.
-            </summary>
-        </member>
-        <member name="T:Codeless.SharePoint.Logger">
-            <summary>
-            Provides unified interface for writing logs to different logging systems.
-            </summary>
-        </member>
-        <member name="M:Codeless.SharePoint.Logger.Info(System.String)">
-            <summary>
-            Writes an information log.
-            </summary>
-            <param name="message"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.Logger.Info(System.String,System.Object[])">
-            <summary>
-            Writes an information log.
-            </summary>
-            <param name="format"></param>
-            <param name="args"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.Logger.Debug(System.String)">
-            <summary>
-            Writes a debug log.
-            </summary>
-            <param name="message"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.Logger.Debug(System.String,System.Object[])">
-            <summary>
-            Writes a debug log.
-            </summary>
-            <param name="format"></param>
-            <param name="args"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.Logger.Warn(System.String)">
-            <summary>
-            Writes a warning log.
-            </summary>
-            <param name="message"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.Logger.Warn(System.String,System.Object[])">
-            <summary>
-            Writes a warning log.
-            </summary>
-            <param name="format"></param>
-            <param name="args"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.Logger.Error(System.String)">
-            <summary>
-            Writes an error log.
-            </summary>
-            <param name="message"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.Logger.Error(System.String,System.Object[])">
-            <summary>
-            Writes an error log.
-            </summary>
-            <param name="format"></param>
-            <param name="args"></param>
-        </member>
-        <member name="M:Codeless.SharePoint.Logger.Error(System.Exception)">
-            <summary>
-            Writes an error log.
-            </summary>
-            <param name="ex"></param>
         </member>
         <member name="T:Codeless.SharePoint.ObjectModel.ISPModelMetaData">
             <summary>
@@ -1069,6 +956,28 @@
             <param name="name">File or folder name.</param>
             <returns>An item of the specified content type.</returns>
         </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelManager`1.Create(System.Type)">
+            <summary>
+            Creates an item of the associated content type.
+            If the content type derives from File or Folder, a random name is used. See <see cref="M:Codeless.SharePoint.ObjectModel.SPModelManager`1.Create``1(System.String)"/>.
+            </summary>
+            <param name="modelType">Item type.</param>
+            <returns>An item of the specified content type.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelManager`1.Create(System.Type,System.String)">
+            <summary>
+            Creates an item of the associated content type with the given file or folder name.
+            </summary>
+            <param name="modelType">Item type.</param>
+            <param name="name">File or folder name.</param>
+            <returns>An item of the specified content type.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelManager`1.Recycle(`0)">
+            <summary>
+            Moves the specified item to recycle bin.
+            </summary>
+            <param name="item">An item to be recycled.</param>
+        </member>
         <member name="M:Codeless.SharePoint.ObjectModel.SPModelManager`1.Delete(`0)">
             <summary>
             Deletes the specified item from a list. 
@@ -1442,6 +1351,16 @@
             <param name="type">A type that derives from <see cref="T:Codeless.SharePoint.ObjectModel.SPModel"/>.</param>
             <param name="targetWeb">Site object.</param>
             <param name="webRelativeUrl">List URL.</param>
+            <returns>A collection of lists affected.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModel.Provision(System.Type,Microsoft.SharePoint.SPWeb,System.String,System.String)">
+            <summary>
+            Creates content type(s) associated with the specified type to the given site, and create list with the specified URL and title if any.
+            </summary>
+            <param name="type">A type that derives from <see cref="T:Codeless.SharePoint.ObjectModel.SPModel"/>.</param>
+            <param name="targetWeb">Site object.</param>
+            <param name="webRelativeUrl">List URL.</param>
+            <param name="title">List title.</param>
             <returns>A collection of lists affected.</returns>
         </member>
         <member name="M:Codeless.SharePoint.ObjectModel.SPModel.Provision(System.Type,Microsoft.SharePoint.SPList)">
@@ -1863,6 +1782,12 @@
             <param name="modelType">Item type.</param>
             <param name="name">File or folder name.</param>
             <returns>An item of the specified content type.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1.Recycle(`0)">
+            <summary>
+            Moves the specified item to recycle bin.
+            </summary>
+            <param name="item">An item to be recycled.</param>
         </member>
         <member name="M:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1.Delete(`0)">
             <summary>
@@ -2841,6 +2766,220 @@
             Gets or sets what items can be created or edited by uses.
             </summary>
         </member>
+        <member name="T:Codeless.SharePoint.SPAggregatedChange">
+            <summary>
+            Represents a set of changes on the same persisted object in SharePoint.
+            </summary>
+        </member>
+        <member name="M:Codeless.SharePoint.SPAggregatedChange.#ctor">
+            <summary>
+            Instantiate an instance of the <see cref="T:Codeless.SharePoint.SPAggregatedChange"/> class.
+            </summary>
+        </member>
+        <member name="M:Codeless.SharePoint.SPAggregatedChange.#ctor(System.Collections.Generic.IList{Microsoft.SharePoint.SPChange})">
+            <summary>
+            Instantiate an instance of the <see cref="T:Codeless.SharePoint.SPAggregatedChange"/> class with the fixed set of changes.
+            The collection is marked read-only and no further changes to the collection is allowed.
+            </summary>
+            <param name="items"></param>
+        </member>
+        <member name="P:Codeless.SharePoint.SPAggregatedChange.Key">
+            <summary>
+            Gets the object that uniquely identifies a persisted object in SharePoint.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.SPAggregatedChange.UniqueId">
+            <summary>
+            Gets the <see cref="T:System.Guid"/> object that uniquely identifies a persisted object in SharePoint if available.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.SPAggregatedChange.ObjectType">
+            <summary>
+            Gets the object type of the persisted object.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.SPAggregatedChange.ChangeFlags">
+            <summary>
+            Gets the combination of changes that are made on the persisted object.
+            </summary>
+        </member>
+        <member name="M:Codeless.SharePoint.SPAggregatedChange.InsertItem(System.Int32,Microsoft.SharePoint.SPChange)">
+            <summary>
+            Overriden.
+            </summary>
+            <param name="index"></param>
+            <param name="item"></param>
+        </member>
+        <member name="M:Codeless.SharePoint.SPAggregatedChange.SetItem(System.Int32,Microsoft.SharePoint.SPChange)">
+            <summary>
+            Overriden.
+            </summary>
+            <param name="index"></param>
+            <param name="item"></param>
+        </member>
+        <member name="M:Codeless.SharePoint.SPAggregatedChange.RemoveItem(System.Int32)">
+            <summary>
+            Overriden.
+            </summary>
+            <param name="index"></param>
+        </member>
+        <member name="M:Codeless.SharePoint.SPAggregatedChange.ClearItems">
+            <summary>
+            Overriden.
+            </summary>
+        </member>
+        <member name="M:Codeless.SharePoint.SPChangeMonitor.MonitorDispose">
+            <summary>
+            When overriden, releases the resources acquired when this monitor is initializing.
+            </summary>
+        </member>
+        <member name="T:Codeless.SharePoint.LoggerTarget">
+            <summary>
+            Specifies which logging channel a log entry should write to.
+            </summary>
+        </member>
+        <member name="F:Codeless.SharePoint.LoggerTarget.UlsLog">
+            <summary>
+            Specifies a log entry should write to ULS trace log.
+            </summary>
+        </member>
+        <member name="F:Codeless.SharePoint.LoggerTarget.Console">
+            <summary>
+            Specifies a log entry should write to console output.
+            </summary>
+        </member>
+        <member name="F:Codeless.SharePoint.LoggerTarget.EntLib">
+            <summary>
+            Specifies a log entry should write to Microsoft Enterprise Library Logging Block.
+            </summary>
+        </member>
+        <member name="F:Codeless.SharePoint.LoggerTarget.EventLog">
+            <summary>
+            Specifies a log entry should write to Windows event log.
+            </summary>
+        </member>
+        <member name="T:Codeless.SharePoint.LoggerOptionsAttribute">
+            <summary>
+            Specifies logging behaviors for subsequent calls to <see cref="T:Codeless.SharePoint.Logger"/> in the attributed method.
+            </summary>
+        </member>
+        <member name="M:Codeless.SharePoint.LoggerOptionsAttribute.#ctor">
+            <summary>
+            Creates an instance of the <see cref="T:Codeless.SharePoint.LoggerOptionsAttribute"/> class with default options.
+            </summary>
+        </member>
+        <member name="M:Codeless.SharePoint.LoggerOptionsAttribute.#ctor(Codeless.SharePoint.LoggerTarget)">
+            <summary>
+            Creates an instance of the <see cref="T:Codeless.SharePoint.LoggerOptionsAttribute"/> class with the specified logging targets.
+            </summary>
+            <param name="options"></param>
+        </member>
+        <member name="M:Codeless.SharePoint.LoggerOptionsAttribute.#ctor(System.String)">
+            <summary>
+            Creates an instance of the <see cref="T:Codeless.SharePoint.LoggerOptionsAttribute"/> class with the specified category.
+            </summary>
+            <param name="category"></param>
+        </member>
+        <member name="M:Codeless.SharePoint.LoggerOptionsAttribute.#ctor(System.String,Codeless.SharePoint.LoggerTarget)">
+            <summary>
+            Creates an instance of the <see cref="T:Codeless.SharePoint.LoggerOptionsAttribute"/> class with the specified category and logging targets.
+            </summary>
+            <param name="category"></param>
+            <param name="options"></param>
+        </member>
+        <member name="P:Codeless.SharePoint.LoggerOptionsAttribute.Category">
+            <summary>
+            Gets or sets the logging category.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.LoggerOptionsAttribute.All">
+            <summary>
+            Gets or sets the default logging targets for all types of log entries.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.LoggerOptionsAttribute.Information">
+            <summary>
+            Gets or sets the default logging targets for information log.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.LoggerOptionsAttribute.Debug">
+            <summary>
+            Gets or sets the default logging targets for debug log.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.LoggerOptionsAttribute.Warn">
+            <summary>
+            Gets or sets the default logging targets for warning log.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.LoggerOptionsAttribute.Error">
+            <summary>
+            Gets or sets the default logging targets for error log.
+            </summary>
+        </member>
+        <member name="T:Codeless.SharePoint.Logger">
+            <summary>
+            Provides unified interface for writing logs to different logging systems.
+            </summary>
+        </member>
+        <member name="M:Codeless.SharePoint.Logger.Info(System.String)">
+            <summary>
+            Writes an information log.
+            </summary>
+            <param name="message"></param>
+        </member>
+        <member name="M:Codeless.SharePoint.Logger.Info(System.String,System.Object[])">
+            <summary>
+            Writes an information log.
+            </summary>
+            <param name="format"></param>
+            <param name="args"></param>
+        </member>
+        <member name="M:Codeless.SharePoint.Logger.Debug(System.String)">
+            <summary>
+            Writes a debug log.
+            </summary>
+            <param name="message"></param>
+        </member>
+        <member name="M:Codeless.SharePoint.Logger.Debug(System.String,System.Object[])">
+            <summary>
+            Writes a debug log.
+            </summary>
+            <param name="format"></param>
+            <param name="args"></param>
+        </member>
+        <member name="M:Codeless.SharePoint.Logger.Warn(System.String)">
+            <summary>
+            Writes a warning log.
+            </summary>
+            <param name="message"></param>
+        </member>
+        <member name="M:Codeless.SharePoint.Logger.Warn(System.String,System.Object[])">
+            <summary>
+            Writes a warning log.
+            </summary>
+            <param name="format"></param>
+            <param name="args"></param>
+        </member>
+        <member name="M:Codeless.SharePoint.Logger.Error(System.String)">
+            <summary>
+            Writes an error log.
+            </summary>
+            <param name="message"></param>
+        </member>
+        <member name="M:Codeless.SharePoint.Logger.Error(System.String,System.Object[])">
+            <summary>
+            Writes an error log.
+            </summary>
+            <param name="format"></param>
+            <param name="args"></param>
+        </member>
+        <member name="M:Codeless.SharePoint.Logger.Error(System.Exception)">
+            <summary>
+            Writes an error log.
+            </summary>
+            <param name="ex"></param>
+        </member>
         <member name="T:Codeless.SharePoint.SearchRefiner">
             <summary>
             Represents a keyword search refiner.
@@ -3049,6 +3188,16 @@
         <member name="P:Codeless.SharePoint.SPItemVersion.MinorVersion">
             <summary>
             Returns the minor version number represented by this instance.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.SPItemVersion.IsMajorVersion">
+            <summary>
+            Returns *true* if the version number represents a major version.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.SPItemVersion.IsMinorVersion">
+            <summary>
+            Returns *true* if the version number represents a minor version.
             </summary>
         </member>
         <member name="M:Codeless.SharePoint.SPItemVersion.CompareTo(Codeless.SharePoint.SPItemVersion)">
@@ -6126,6 +6275,17 @@
         <member name="P:Codeless.SharePoint.PrincipalInfo.ProviderUserId">
             <summary>
             Gets a unique identifier of the resolved identity used by the identity provider.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.PrincipalInfo.ProviderType">
+            <summary>
+            Gets the type of provider that resolve this user. 
+            See members of <see cref="T:Microsoft.SharePoint.Administration.Claims.SPIdentityProviderTypes"/> for possible values.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.PrincipalInfo.EncodedClaim">
+            <summary>
+            Gets the encoded claim-based logon name on SharePoint for the resolved principal.
             </summary>
         </member>
         <member name="P:Codeless.SharePoint.PrincipalInfo.DisplayName">

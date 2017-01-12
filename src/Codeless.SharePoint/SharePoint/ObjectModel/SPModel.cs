@@ -156,6 +156,13 @@ namespace Codeless.SharePoint.ObjectModel {
     protected virtual void OnPublished(SPModelEventArgs e) { }
 
     internal void HandleEvent(SPModelEventArgs e) {
+      SPModelDescriptor descriptor = SPModelDescriptor.Resolve(this.GetType());
+      foreach (SPModelInterfaceTypeDescriptor d in descriptor.Interfaces) {
+        if (d.EventHandlerType != null) {
+          ISPModelEventHandler handler = (ISPModelEventHandler)d.EventHandlerType.CreateInstance();
+          handler.HandleEvent(this, e);
+        }
+      }
       switch (e.EventType) {
         case SPModelEventType.Adding:
           OnAdding(e);
@@ -269,6 +276,20 @@ namespace Codeless.SharePoint.ObjectModel {
     public static ICollection<SPList> Provision(Type type, SPWeb targetWeb, string webRelativeUrl) {
       SPModelDescriptor descriptor = SPModelDescriptor.Resolve(type);
       SPModelUsageCollection collection = descriptor.Provision(targetWeb, new SPModelListProvisionOptions(webRelativeUrl));
+      return collection.GetListCollection();
+    }
+
+    /// <summary>
+    /// Creates content type(s) associated with the specified type to the given site, and create list with the specified URL and title if any.
+    /// </summary>
+    /// <param name="type">A type that derives from <see cref="SPModel"/>.</param>
+    /// <param name="targetWeb">Site object.</param>
+    /// <param name="webRelativeUrl">List URL.</param>
+    /// <param name="title">List title.</param>
+    /// <returns>A collection of lists affected.</returns>
+    public static ICollection<SPList> Provision(Type type, SPWeb targetWeb, string webRelativeUrl, string title) {
+      SPModelDescriptor descriptor = SPModelDescriptor.Resolve(type);
+      SPModelUsageCollection collection = descriptor.Provision(targetWeb, new SPModelListProvisionOptions(webRelativeUrl, title));
       return collection.GetListCollection();
     }
 
