@@ -127,6 +127,7 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     private static readonly object syncLock = new object();
+    private static readonly object provisionLock = new object();
     private static readonly ConcurrentDictionary<Assembly, object> RegisteredAssembly = new ConcurrentDictionary<Assembly, object>();
     private static readonly ConcurrentDictionary<Type, SPModelDescriptor> TargetTypeDictionary = new ConcurrentDictionary<Type, SPModelDescriptor>();
     private static readonly SortedDictionary<SPContentTypeId, SPModelDescriptor> ContentTypeDictionary = new SortedDictionary<SPContentTypeId, SPModelDescriptor>(ReverseComparer<SPContentTypeId>.Default);
@@ -460,7 +461,10 @@ namespace Codeless.SharePoint.ObjectModel {
     private void Provision(string siteUrl, Guid siteId, Guid webId, bool provisionContentType, bool provisionList, SPModelListProvisionOptions listOptions, ProvisionResult result, bool requireLock) {
       try {
         if (requireLock) {
-          Monitor.Enter(syncLock);
+          if (!Monitor.TryEnter(provisionLock, 10000)) {
+            requireLock = false;
+            throw new SPModelProvisionException("Unable to acquire lock to perform provision.");
+          }
         }
         enteredLock = true;
         if (provisionContentType) {
@@ -476,7 +480,7 @@ namespace Codeless.SharePoint.ObjectModel {
       } finally {
         enteredLock = false;
         if (requireLock) {
-          Monitor.Exit(syncLock);
+          Monitor.Exit(provisionLock);
         }
       }
     }

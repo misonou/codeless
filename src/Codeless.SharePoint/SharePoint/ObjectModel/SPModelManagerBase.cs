@@ -579,7 +579,7 @@ namespace Codeless.SharePoint.ObjectModel {
       listQuery.ViewFields = selectProperties ? (Caml.ViewFields(typeInfo.RequiredViewFields) + Caml.ViewFields(SPModel.RequiredViewFields)).ToString() : String.Empty;
       listQuery.Query = query.ToString();
       listQuery.RowLimit = limit;
-      listQuery.ViewAttributes = "Scope=\"Recursive\"";
+      listQuery.ViewAttributes = "Scope=\"RecursiveAll\"";
       OnExecutingListQuery(new SPModelListQueryEventArgs { Query = listQuery });
 
       try {

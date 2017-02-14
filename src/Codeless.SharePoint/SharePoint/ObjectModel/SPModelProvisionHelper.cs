@@ -565,8 +565,8 @@ namespace Codeless.SharePoint.ObjectModel {
     private static bool UpdateListViewFieldCollection(SPView view, IList<string> includedFields, IList<string> excludedFields) {
       SPViewFieldCollection viewFields = view.ViewFields;
       StringCollection existingViewFields = viewFields.ToStringCollection();
-      includedFields = new List<string>(includedFields ?? new string[0]);
-      excludedFields = new List<string>(excludedFields ?? new string[0]);
+      includedFields = new List<string>((includedFields ?? new string[0]).Distinct());
+      excludedFields = new List<string>((excludedFields ?? new string[0]).Distinct());
 
       foreach (string v in excludedFields) {
         if (includedFields.Contains(v)) {
@@ -581,8 +581,11 @@ namespace Codeless.SharePoint.ObjectModel {
             excludedFields.Add(mapping.Key);
           }
           int index2 = excludedFields.IndexOf(mapping.Key);
-          if (index2 >= 0 && index < 0) {
+          if (index2 >= 0 && index < 0 && !includedFields.Contains(mapping.Value)) {
             excludedFields.Add(mapping.Value);
+          }
+          if (includedFields.Contains(mapping.Value) && !excludedFields.Contains(mapping.Key)) {
+            excludedFields.Add(mapping.Key);
           }
         }
       }
@@ -597,10 +600,14 @@ namespace Codeless.SharePoint.ObjectModel {
           includedFields.Insert(0, v);
         }
       }
-      if (view.ParentList.BaseType == SPBaseType.DocumentLibrary && !includedFields.Contains(SPBuiltInFieldName.DocIcon)) {
-        includedFields.Insert(0, SPBuiltInFieldName.DocIcon);
-      } else if (!excludedFields.Contains(SPBuiltInFieldName.DocIcon)) {
-        excludedFields.Add(SPBuiltInFieldName.DocIcon);
+      if (!excludedFields.Contains(SPBuiltInFieldName.DocIcon)) {
+        if (view.ParentList.BaseType == SPBaseType.DocumentLibrary) {
+          if (!includedFields.Contains(SPBuiltInFieldName.DocIcon)) {
+            includedFields.Insert(0, SPBuiltInFieldName.DocIcon);
+          }
+        } else {
+          excludedFields.Add(SPBuiltInFieldName.DocIcon);
+        }
       }
 
       int currentIndex = 0;
@@ -617,7 +624,7 @@ namespace Codeless.SharePoint.ObjectModel {
         if (index < 0 || index < currentIndex) {
           viewFields.MoveFieldTo(internalName, currentIndex);
         }
-        currentIndex = Math.Max(index, currentIndex) + 1;
+        currentIndex = Math.Min(viewFields.Count, Math.Max(index, currentIndex) + 1);
       }
       foreach (string internalName in excludedFields) {
         if (existingViewFields.Contains(internalName)) {
