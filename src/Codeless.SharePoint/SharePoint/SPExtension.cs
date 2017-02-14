@@ -800,7 +800,9 @@ namespace Codeless.SharePoint {
       if (assignment.RoleDefinitionBindings.Contains(role)) {
         assignment.RoleDefinitionBindings.Remove(role);
         assignment.Update();
-        obj.RoleAssignments.RemoveLimitedAccessBindings();
+        if (assignment.RoleDefinitionBindings.Count == 0) {
+          obj.RoleAssignments.Remove(principal);
+        }
       }
     }
 
@@ -814,11 +816,13 @@ namespace Codeless.SharePoint {
       if (!other.HasUniqueRoleAssignments) {
         other.BreakRoleInheritance(true);
       }
-      List<SPPrincipal> membersToRemove = new List<SPPrincipal>();
       foreach (SPRoleAssignment assignment in other.RoleAssignments) {
-        membersToRemove.Add(assignment.Member);
+        foreach (SPRoleDefinition role in assignment.RoleDefinitionBindings.OfType<SPRoleDefinition>().ToArray()) {
+          if (role.Name != "Limited Access") {
+            assignment.RoleDefinitionBindings.Remove(role);
+          }
+        }
       }
-      membersToRemove.ForEach(other.RoleAssignments.Remove);
       foreach (SPRoleAssignment assignment in obj.RoleAssignments) {
         foreach (SPRoleDefinition role in assignment.RoleDefinitionBindings) {
           if (role.Name != "Limited Access") {
