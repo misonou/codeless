@@ -803,7 +803,23 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     /// <param name="internalName">The internal name of a column.</param>
     public PublishingImageFieldAttribute(string internalName)
-      : base(internalName, "Image") { }
+      : base(internalName, "Image") {
+      this.RichText = SPOption.True;
+      this.RichTextMode = SPRichTextMode.FullHtml;
+    }
+
+    /// <summary>
+    /// Gets or sets whether rich-text formatting is allowed.
+    /// </summary>
+    public SPOption RichText { set; get; }
+    /// <summary>
+    /// Gets or sets whether rich-text formatting is restricted.
+    /// </summary>
+    public SPOption RestrictedMode { set; get; }
+    /// <summary>
+    /// Gets or sets the rich-text formatting.
+    /// </summary>
+    public SPRichTextMode RichTextMode { set; get; }
   }
   #endregion
 }
