@@ -7,8 +7,23 @@ using System.Reflection;
 
 namespace Codeless.SharePoint.ObjectModel.Linq {
   internal class SPModelFieldAssociationCollection : ICollection<SPModelFieldAssociation>, IEnumerable<SPModelFieldAssociation>, IEnumerable {
+    private class MemberInfoEqualityComparer : EqualityComparer<MemberInfo> {
+      public override bool Equals(MemberInfo x, MemberInfo y) {
+        // RuntimeMethodInfo.Equals fails with NullReferenceException in .NET 3.5
+        // see http://stackoverflow.com/questions/14303877
+        if (x.GetType().Name == "RuntimeMethodInfo" && y.GetType().Name != "RuntimeMethodInfo") {
+          return false;
+        }
+        return x.Equals(y);
+      }
+
+      public override int GetHashCode(MemberInfo obj) {
+        return obj.GetHashCode();
+      }
+    }
+
     private static readonly object syncLock = new object();
-    private static readonly ConcurrentDictionary<MemberInfo, SPModelFieldAssociationCollection> QueryableFields = new ConcurrentDictionary<MemberInfo, SPModelFieldAssociationCollection>();
+    private static readonly ConcurrentDictionary<MemberInfo, SPModelFieldAssociationCollection> QueryableFields = new ConcurrentDictionary<MemberInfo, SPModelFieldAssociationCollection>(new MemberInfoEqualityComparer());
 
     private readonly HashSet<SPModelFieldAssociation> dictionary = new HashSet<SPModelFieldAssociation>();
     private readonly HashSet<SPModelDescriptor> typeDictionary = new HashSet<SPModelDescriptor>();

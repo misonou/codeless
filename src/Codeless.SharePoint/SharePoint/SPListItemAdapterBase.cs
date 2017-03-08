@@ -587,6 +587,7 @@ namespace Codeless.SharePoint {
       taxonomyFieldValue.Label = value.Name;
       taxonomyFieldValue.WssId = value.EnsureWssId(this.Site, fieldName.Equals("TaxKeyword"));
       this[fieldName] = taxonomyFieldValue;
+      SetTaxonomyTextValue(fieldName, new[] { value });
     }
 
     public virtual void SetUrlFieldValue(string fieldName, SPFieldUrlValue value) {
@@ -785,6 +786,11 @@ namespace Codeless.SharePoint {
           collection.Add(value);
         }
         this[fieldName] = collection.ToString();
+        SetTaxonomyTextValue(fieldName, (IEnumerable<Term>)sender);
+        TaxonomyField taxonomyField = this.ListItem.Fields.GetFieldByInternalName(fieldName) as TaxonomyField;
+        if (taxonomyField != null) {
+          this[this.ListItem.Fields[taxonomyField.TextField].InternalName] = String.Join("\r\n", ((IEnumerable<Term>)sender).Select(v => v.Id.ToString()).ToArray());
+        }
       } else if (elementType == typeof(string)) {
         SPFieldMultiChoiceValue collection = new SPFieldMultiChoiceValue();
         foreach (string item in (IEnumerable<string>)sender) {
@@ -797,6 +803,13 @@ namespace Codeless.SharePoint {
           collection.Add(new SPFieldLookupValue(item.Adapter.ListItemId, item.Adapter.Title));
         }
         this[fieldName] = collection.ToString();
+      }
+    }
+
+    private void SetTaxonomyTextValue(string fieldName, IEnumerable<Term> terms) {
+      TaxonomyField taxonomyField = this.ListItem.Fields.GetFieldByInternalName(fieldName) as TaxonomyField;
+      if (taxonomyField != null) {
+        this[this.ListItem.Fields[taxonomyField.TextField].InternalName] = String.Join("\r\n", terms.Select(v => v.Id.ToString()).ToArray());
       }
     }
   }

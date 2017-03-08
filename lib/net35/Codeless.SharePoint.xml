@@ -2603,6 +2603,21 @@
             </summary>
             <param name="internalName">The internal name of a column.</param>
         </member>
+        <member name="P:Codeless.SharePoint.ObjectModel.PublishingImageFieldAttribute.RichText">
+            <summary>
+            Gets or sets whether rich-text formatting is allowed.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.ObjectModel.PublishingImageFieldAttribute.RestrictedMode">
+            <summary>
+            Gets or sets whether rich-text formatting is restricted.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.ObjectModel.PublishingImageFieldAttribute.RichTextMode">
+            <summary>
+            Gets or sets the rich-text formatting.
+            </summary>
+        </member>
         <member name="T:Codeless.SharePoint.ObjectModel.SPListReadSecurity">
             <summary>
             Specifies which items users are allowed to read.
