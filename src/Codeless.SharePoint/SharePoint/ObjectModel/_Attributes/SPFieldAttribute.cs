@@ -1,5 +1,6 @@
 ﻿using Codeless.SharePoint.Internal;
 using Microsoft.SharePoint;
+using Microsoft.SharePoint.Taxonomy;
 using System;
 using System.Collections.Specialized;
 using System.Diagnostics;
@@ -63,6 +64,11 @@ namespace Codeless.SharePoint.ObjectModel {
     None
   }
 
+  internal interface IAllowMultipleValue {
+    SPOption AllowMultipleValues { get; }
+    Type FieldObjectType { get; }
+  }
+
   /// <summary>
   /// Represents a SharePoint column that is referenced by an SPModel class.
   /// </summary>
@@ -105,7 +111,7 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <summary>
     /// Gets the custom type of the column.
     /// </summary>
-    public string TypeAsString { get; private set; }
+    public string TypeAsString { get; protected set; }
     /// <summary>
     /// Gets the internal name of the column.
     /// </summary>
@@ -571,7 +577,9 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a lookup column that is referenced by an SPModel class.
   /// </summary>
-  public class SPLookupFieldAttribute : SPFieldAttribute {
+  public class SPLookupFieldAttribute : SPFieldAttribute, IAllowMultipleValue {
+    private SPOption allowMultipleValues;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="SPLookupFieldAttribute"/> class with the specified internal name.
     /// </summary>
@@ -596,7 +604,23 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <summary>
     /// Gets or sets whether multiple values are allowed.
     /// </summary>
-    public SPOption AllowMultipleValues { get; set; }
+    public SPOption AllowMultipleValues {
+      get { 
+        return allowMultipleValues;
+      }
+      set {
+        allowMultipleValues = value;
+        if (allowMultipleValues == SPOption.True) {
+          this.TypeAsString = "LookupMulti";
+        } else {
+          this.TypeAsString = "Lookup";
+        }
+      }
+    }
+
+    Type IAllowMultipleValue.FieldObjectType {
+      get { return typeof(SPFieldLookup); }
+    }
   }
 
   /// <summary>
@@ -692,7 +716,9 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a people column that is referenced by an SPModel class.
   /// </summary>
-  public class SPUserFieldAttribute : SPFieldAttribute {
+  public class SPUserFieldAttribute : SPFieldAttribute, IAllowMultipleValue {
+    private SPOption allowMultipleValues;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="SPUserFieldAttribute"/> class with the specified internal name.
     /// </summary>
@@ -711,7 +737,23 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <summary>
     /// Gets or sets whether entering multiple values is allowed.
     /// </summary>
-    public SPOption AllowMultipleValues { get; set; }
+    public SPOption AllowMultipleValues {
+      get {
+        return allowMultipleValues;
+      }
+      set {
+        allowMultipleValues = value;
+        if (allowMultipleValues == SPOption.True) {
+          this.TypeAsString = "UserMulti";
+        } else {
+          this.TypeAsString = "User";
+        }
+      }
+    }
+
+    Type IAllowMultipleValue.FieldObjectType {
+      get { return typeof(SPFieldUser); }
+    }
   }
 
   /// <summary>
@@ -729,7 +771,9 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a managed metadata column that is referenced by an SPModel class.
   /// </summary>
-  public class TaxonomyFieldAttribute : SPFieldAttribute {
+  public class TaxonomyFieldAttribute : SPFieldAttribute, IAllowMultipleValue {
+    private SPOption allowMultipleValues;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="TaxonomyFieldAttribute"/> class with the specified internal name.
     /// </summary>
@@ -763,7 +807,23 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <summary>
     /// Gets or sets whether entering multiple values is allowed.
     /// </summary>
-    public SPOption AllowMultipleValues { get; set; }
+    public SPOption AllowMultipleValues {
+      get {
+        return allowMultipleValues;
+      }
+      set {
+        allowMultipleValues = value;
+        if (allowMultipleValues == SPOption.True) {
+          this.TypeAsString = "TaxonomyFieldTypeMulti";
+        } else {
+          this.TypeAsString = "TaxonomyFieldType";
+        }
+      }
+    }
+
+    Type IAllowMultipleValue.FieldObjectType {
+      get { return typeof(TaxonomyField); }
+    }
   }
 
   /// <summary>
