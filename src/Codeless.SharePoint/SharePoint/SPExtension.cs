@@ -11,6 +11,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Xml;
 using Group = Microsoft.SharePoint.Taxonomy.Group;
@@ -420,6 +421,28 @@ namespace Codeless.SharePoint {
     }
 
     /// <summary>
+    /// Returns the list that is associated with the specified site-relative URL.
+    /// </summary>
+    /// <param name="web">A site object.</param>
+    /// <param name="strUrl">A string that contains the site-relative URL for a list.</param>
+    /// <remarks>This method caters unexpected <see cref="System.Runtime.InteropServices.COMException"/> with native error code 0x80004005.</remarks>
+    /// <returns>An <see cref="Microsoft.SharePoint.SPList"/> object that represents the list.</returns>
+    public static SPList GetListSafe(this SPWeb web, string strUrl) {
+      try {
+        return web.GetList(strUrl);
+      } catch (Exception ex) {
+        if (ex.InnerException is COMException && ex.InnerException.Message.IndexOf("0x80004005") >= 0) {
+          SPFolder folder = web.GetFolder(strUrl);
+          if (folder.Exists && folder.ParentListId != Guid.Empty) {
+            return web.Lists[folder.ParentListId];
+          }
+          throw new FileNotFoundException();
+        }
+        throw;
+      }
+    }
+
+    /// <summary>
     /// Creates a list under the specified site if no list exists at the given URL.
     /// </summary>
     /// <param name="web">A site object.</param>
@@ -429,7 +452,7 @@ namespace Codeless.SharePoint {
     /// <returns>Existing or newly created list object.</returns>
     public static SPList EnsureListByUrl(this SPWeb web, string title, string webRelativeUrl, SPListTemplateType templateType) {
       try {
-        return web.GetList(SPUrlUtility.CombineUrl(web.ServerRelativeUrl, webRelativeUrl));
+        return web.GetListSafe(SPUrlUtility.CombineUrl(web.ServerRelativeUrl, webRelativeUrl));
       } catch (FileNotFoundException) {
         Guid listId = web.Lists.Add(title, String.Empty, webRelativeUrl, String.Empty, (int)templateType, "100");
         return web.Lists[listId];
@@ -446,7 +469,7 @@ namespace Codeless.SharePoint {
     /// <returns>Existing or newly created list object.</returns>
     public static SPList EnsureListByUrl(this SPWeb web, string title, string webRelativeUrl, SPListTemplate templateType) {
       try {
-        return web.GetList(SPUrlUtility.CombineUrl(web.ServerRelativeUrl, webRelativeUrl));
+        return web.GetListSafe(SPUrlUtility.CombineUrl(web.ServerRelativeUrl, webRelativeUrl));
       } catch (FileNotFoundException) {
         Guid listId = web.Lists.Add(title, String.Empty, webRelativeUrl, templateType.FeatureId.ToString(), (int)templateType.Type, templateType.DocumentTemplate);
         return web.Lists[listId];
