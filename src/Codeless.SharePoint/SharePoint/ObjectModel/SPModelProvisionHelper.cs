@@ -52,6 +52,7 @@ namespace Codeless.SharePoint.ObjectModel {
     private static readonly MethodInfo TrySetToNullableMethod = typeof(SPModelProvisionHelper).GetMethod("TrySetToNullable", true);
     private static readonly MethodInfo GetFieldAttributeValueMethod = typeof(SPField).GetMethod("GetFieldAttributeValue", true, typeof(string));
     private static readonly MethodInfo SetFieldAttributeValueMethod = typeof(SPField).GetMethod("SetFieldAttributeValue", true);
+    private static readonly Guid CTypesFeatureID = new Guid("695b6570-a48b-4a8e-8ea5-26ea7fc1d162");
 
     private readonly SPModelProvisionEventReceiver eventReceiver;
     private readonly SPObjectCache objectCache;
@@ -85,6 +86,8 @@ namespace Codeless.SharePoint.ObjectModel {
         if (contentType == null) {
           contentType = new SPContentType(definition.ContentTypeId, contentTypes, definition.Name);
           contentTypes.Add(contentType);
+        } else if (contentType.FeatureId == CTypesFeatureID) {
+          throw new SPModelProvisionException(String.Format("System content type cannot be provisioned. Consider derive child content type or set ExternalContentType to true. {0}.", definition.ContentTypeIdString));
         }
         objectCache.AddContentType(contentType);
       }
