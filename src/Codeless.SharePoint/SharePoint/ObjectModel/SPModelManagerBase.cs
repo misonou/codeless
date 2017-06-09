@@ -63,6 +63,28 @@ namespace Codeless.SharePoint.ObjectModel {
   }
 
   /// <summary>
+  /// Specifies how a list item is saved when committing changes.
+  /// </summary>
+  public enum SPModelCommitMode {
+    /// <summary>
+    /// The list item is updated by creating a new version of the item.
+    /// </summary>
+    Default,
+    /// <summary>
+    /// The list item is updated without effecting changes in the Modified or Modified By fields.
+    /// </summary>
+    SystemUpdate,
+    /// <summary>
+    /// The list item is updated without effecting changes in the Modified or Modified By fields, and without creating another version of the item.
+    /// </summary>
+    SystemUpdateOverwriteVersion,
+    /// <summary>
+    /// The list item is updated without creating another version of the item.
+    /// </summary>
+    OverwriteVersion
+  }
+
+  /// <summary>
   /// Provides data when an ExecutingListQuery event is triggered from <see cref="SPModelManagerBase{T}"/>.
   /// See <see cref="SPModelManagerBase{T}.OnExecutingListQuery"/>.
   /// </summary>
@@ -489,16 +511,10 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     /// <summary>
-    /// Commits changes made to model class instances fetched fromt this manager.
+    /// Commits changes made to model class instances fetched from this manager.
     /// </summary>
     protected void CommitChanges() {
-      List<ISPListItemAdapter> itemsToSaveCopy = new List<ISPListItemAdapter>(itemsToSave);
-      foreach (ISPListItemAdapter item in itemsToSaveCopy) {
-        using (item.Web.GetAllowUnsafeUpdatesScope()) {
-          item.ListItem.Update();
-          itemsToSave.Remove(item);
-        }
-      }
+      CommitChanges(SPModelCommitMode.Default);
     }
 
     /// <summary>
@@ -506,13 +522,37 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     /// <param name="item">An item with changes to be persisted.</param>
     protected void CommitChanges(T item) {
+      CommitChanges(item, SPModelCommitMode.Default);
+    }
+
+    /// <summary>
+    /// Commits changes made to model class instances fetched from this manager with the specified commit option.
+    /// </summary>
+    /// <param name="mode">An value of <see cref="Codeless.SharePoint.ObjectModel.SPModelCommitMode"/> representing how a list item is updated.</param>
+    protected void CommitChanges(SPModelCommitMode mode) {
+      List<ISPListItemAdapter> itemsToSaveCopy = new List<ISPListItemAdapter>(itemsToSave);
+      foreach (ISPListItemAdapter item in itemsToSaveCopy) {
+        using (item.Web.GetAllowUnsafeUpdatesScope()) {
+          UpdateItem(item.ListItem, mode);
+          itemsToSave.Remove(item);
+        }
+      }
+    }
+
+    /// <summary>
+    /// Commits changes made to the specified model class instances with the specified commit option.
+    /// </summary>
+    /// <param name="item">An item with changes to be persisted.</param>
+    /// <param name="mode">An value of <see cref="Codeless.SharePoint.ObjectModel.SPModelCommitMode"/> representing how a list item is updated.</param>
+    /// <exception cref="System.ArgumentException">Supplied item does not belongs to this manager - item</exception>
+    protected void CommitChanges(T item, SPModelCommitMode mode) {
       CommonHelper.ConfirmNotNull(item, "item");
       SPModel model = (SPModel)(object)item;
       if (model.ParentCollection.Manager != this) {
         throw new ArgumentException("Supplied item does not belongs to this manager", "item");
       }
       using (model.Adapter.Web.GetAllowUnsafeUpdatesScope()) {
-        model.Adapter.ListItem.Update();
+        UpdateItem(model.Adapter.ListItem, mode);
         itemsToSave.Remove(model.Adapter);
       }
     }
@@ -648,6 +688,23 @@ namespace Codeless.SharePoint.ObjectModel {
       }
     }
 
+    private void UpdateItem(SPListItem item, SPModelCommitMode mode) {
+      switch(mode) {
+        case SPModelCommitMode.Default:
+          item.Update();
+          return;
+        case SPModelCommitMode.OverwriteVersion:
+          item.UpdateOverwriteVersion();
+          return;
+        case SPModelCommitMode.SystemUpdate:
+          item.SystemUpdate();
+          return;
+        case SPModelCommitMode.SystemUpdateOverwriteVersion:
+          item.SystemUpdate(false);
+          return;
+      }
+    }
+
     private static SPListItem CreateDocumentSet(SPList targetList, string name, SPContentTypeId contentTypeId) {
       DocumentSet documentSet = DocumentSet.Create(targetList.RootFolder, name, contentTypeId, new Hashtable());
       return targetList.GetItemById(documentSet.Item.ID);
@@ -731,6 +788,18 @@ namespace Codeless.SharePoint.ObjectModel {
         throw new ArgumentException("item");
       }
       CommitChanges((T)item);
+    }
+
+    void ISPModelManager.CommitChanges(SPModelCommitMode mode) {
+      this.CommitChanges(mode);
+    }
+
+    void ISPModelManager.CommitChanges(object item, SPModelCommitMode mode) {
+      CommonHelper.ConfirmNotNull(item, "item");
+      if (!(item is SPModel) || ((SPModel)item).Manager != this) {
+        throw new ArgumentException("item");
+      }
+      CommitChanges((T)item, mode);
     }
     #endregion
   }
