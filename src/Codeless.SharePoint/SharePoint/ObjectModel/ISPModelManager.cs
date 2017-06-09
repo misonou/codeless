@@ -117,5 +117,18 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     /// <param name="item">An item with changes to be persisted.</param>
     void CommitChanges(object item);
+
+    /// <summary>
+    /// Commits changes made to model class instances fetched from this manager with the specified commit option.
+    /// </summary>
+    /// <param name="mode">An value of <see cref="Codeless.SharePoint.ObjectModel.SPModelCommitMode" /> representing how a list item is updated.</param>
+    void CommitChanges(SPModelCommitMode mode);
+
+    /// <summary>
+    /// Commits changes made to the specified model class instances with the specified commit option.
+    /// </summary>
+    /// <param name="item">An item with changes to be persisted.</param>
+    /// <param name="mode">An value of <see cref="Codeless.SharePoint.ObjectModel.SPModelCommitMode" /> representing how a list item is updated.</param>
+    void CommitChanges(object item, SPModelCommitMode mode);
   }
 }
