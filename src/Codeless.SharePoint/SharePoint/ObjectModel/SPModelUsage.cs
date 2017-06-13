@@ -100,7 +100,7 @@ namespace Codeless.SharePoint.ObjectModel {
       using (SPSite newSite = new SPSite(site.MakeFullUrl(usage.Url), SPUserToken.SystemAccount)) {
         using (SPWeb web = newSite.OpenWeb()) {
           try {
-            SPList list = web.GetList(usage.Url);
+            SPList list = web.GetListSafe(usage.Url);
             value = SPModelUsage.Create(list).GetWithoutList();
           } catch (FileNotFoundException) {
             value = new SPModelUsage {
