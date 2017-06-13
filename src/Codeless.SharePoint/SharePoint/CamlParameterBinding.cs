@@ -215,10 +215,21 @@ namespace Codeless.SharePoint {
     }
 
     private static T ResolveValue<T>(object value) {
-      if (typeof(T).IsSubclassOf(typeof(Enum)) && Type.GetTypeCode(value.GetType()) != TypeCode.String) {
-        return (T)value;
+      try {
+        if (typeof(T).IsSubclassOf(typeof(Enum)) && Type.GetTypeCode(value.GetType()) != TypeCode.String) {
+          return (T)value;
+        }
+        return (T)Convert.ChangeType(value, typeof(T));
+
+      } catch {
+        if (value.GetType() == typeof(Guid)) {
+          return (T)(object)((Guid)value).ToString("B");
+        }
+        if (value.GetType() == typeof(Int32)) {
+          return (T)(object)((Int32)value).ToString();
+        }
+        throw;
       }
-      return (T)Convert.ChangeType(value, typeof(T));
     }
 
     private static IEnumerable<T> ResolveValueCollection<T>(object value) {
