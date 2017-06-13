@@ -779,6 +779,19 @@
             </summary>
             <param name="item">An item with changes to be persisted.</param>
         </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.ISPModelManager.CommitChanges(Codeless.SharePoint.ObjectModel.SPModelCommitMode)">
+            <summary>
+            Commits changes made to model class instances fetched from this manager with the specified commit option.
+            </summary>
+            <param name="mode">An value of <see cref="T:Codeless.SharePoint.ObjectModel.SPModelCommitMode" /> representing how a list item is updated.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.ISPModelManager.CommitChanges(System.Object,Codeless.SharePoint.ObjectModel.SPModelCommitMode)">
+            <summary>
+            Commits changes made to the specified model class instances with the specified commit option.
+            </summary>
+            <param name="item">An item with changes to be persisted.</param>
+            <param name="mode">An value of <see cref="T:Codeless.SharePoint.ObjectModel.SPModelCommitMode" /> representing how a list item is updated.</param>
+        </member>
         <member name="T:Codeless.SharePoint.ObjectModel.SPModelManager`1">
             <summary>
             Provides a generic implementation of <see cref="T:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1"/>.
@@ -986,7 +999,7 @@
         </member>
         <member name="M:Codeless.SharePoint.ObjectModel.SPModelManager`1.CommitChanges">
             <summary>
-            Commits changes made to model class instances fetched fromt this manager.
+            Commits changes made to model class instances fetched from this manager.
             </summary>
         </member>
         <member name="M:Codeless.SharePoint.ObjectModel.SPModelManager`1.CommitChanges(`0)">
@@ -994,6 +1007,19 @@
             Commits changes made to the specified model class instances.
             </summary>
             <param name="item">An item with changes to be persisted.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelManager`1.CommitChanges(Codeless.SharePoint.ObjectModel.SPModelCommitMode)">
+            <summary>
+            Commits changes made to model class instances fetched from this manager with the specified commit option.
+            </summary>
+            <param name="mode">An value of <see cref="T:Codeless.SharePoint.ObjectModel.SPModelCommitMode" /> representing how a list item is updated.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelManager`1.CommitChanges(`0,Codeless.SharePoint.ObjectModel.SPModelCommitMode)">
+            <summary>
+            Commits changes made to the specified model class instances with the specified commit option.
+            </summary>
+            <param name="item">An item with changes to be persisted.</param>
+            <param name="mode">An value of <see cref="T:Codeless.SharePoint.ObjectModel.SPModelCommitMode" /> representing how a list item is updated.</param>
         </member>
         <member name="T:Codeless.SharePoint.ObjectModel.SPModelEventType">
             <summary>
@@ -1595,6 +1621,31 @@
             Queries will be performed using FAST search infrastructure.
             </summary>
         </member>
+        <member name="T:Codeless.SharePoint.ObjectModel.SPModelCommitMode">
+            <summary>
+            Specifies how a list item is saved when committing changes.
+            </summary>
+        </member>
+        <member name="F:Codeless.SharePoint.ObjectModel.SPModelCommitMode.Default">
+            <summary>
+            The list item is updated by creating a new version of the item.
+            </summary>
+        </member>
+        <member name="F:Codeless.SharePoint.ObjectModel.SPModelCommitMode.SystemUpdate">
+            <summary>
+            The list item is updated without effecting changes in the Modified or Modified By fields.
+            </summary>
+        </member>
+        <member name="F:Codeless.SharePoint.ObjectModel.SPModelCommitMode.SystemUpdateOverwriteVersion">
+            <summary>
+            The list item is updated without effecting changes in the Modified or Modified By fields, and without creating another version of the item.
+            </summary>
+        </member>
+        <member name="F:Codeless.SharePoint.ObjectModel.SPModelCommitMode.OverwriteVersion">
+            <summary>
+            The list item is updated without creating another version of the item.
+            </summary>
+        </member>
         <member name="T:Codeless.SharePoint.ObjectModel.SPModelListQueryEventArgs">
             <summary>
             Provides data when an ExecutingListQuery event is triggered from <see cref="T:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1"/>.
@@ -1797,7 +1848,7 @@
         </member>
         <member name="M:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1.CommitChanges">
             <summary>
-            Commits changes made to model class instances fetched fromt this manager.
+            Commits changes made to model class instances fetched from this manager.
             </summary>
         </member>
         <member name="M:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1.CommitChanges(`0)">
@@ -1805,6 +1856,20 @@
             Commits changes made to the specified model class instances.
             </summary>
             <param name="item">An item with changes to be persisted.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1.CommitChanges(Codeless.SharePoint.ObjectModel.SPModelCommitMode)">
+            <summary>
+            Commits changes made to model class instances fetched from this manager with the specified commit option.
+            </summary>
+            <param name="mode">An value of <see cref="T:Codeless.SharePoint.ObjectModel.SPModelCommitMode"/> representing how a list item is updated.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1.CommitChanges(`0,Codeless.SharePoint.ObjectModel.SPModelCommitMode)">
+            <summary>
+            Commits changes made to the specified model class instances with the specified commit option.
+            </summary>
+            <param name="item">An item with changes to be persisted.</param>
+            <param name="mode">An value of <see cref="T:Codeless.SharePoint.ObjectModel.SPModelCommitMode"/> representing how a list item is updated.</param>
+            <exception cref="T:System.ArgumentException">Supplied item does not belongs to this manager - item</exception>
         </member>
         <member name="M:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1.TryCreateModel(Codeless.SharePoint.ISPListItemAdapter,System.Boolean)">
             <summary>
@@ -5396,6 +5461,15 @@
             <param name="list">A list object.</param>
             <param name="contentTypeId">Content type ID.</param>
             <returns>*true* if the specified list contains the content type.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.SPExtension.GetListSafe(Microsoft.SharePoint.SPWeb,System.String)">
+            <summary>
+            Returns the list that is associated with the specified site-relative URL.
+            </summary>
+            <param name="web">A site object.</param>
+            <param name="strUrl">A string that contains the site-relative URL for a list.</param>
+            <remarks>This method caters unexpected <see cref="T:System.Runtime.InteropServices.COMException"/> with native error code 0x80004005.</remarks>
+            <returns>An <see cref="T:Microsoft.SharePoint.SPList"/> object that represents the list.</returns>
         </member>
         <member name="M:Codeless.SharePoint.SPExtension.EnsureListByUrl(Microsoft.SharePoint.SPWeb,System.String,System.String,Microsoft.SharePoint.SPListTemplateType)">
             <summary>

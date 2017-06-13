@@ -52,6 +52,7 @@ namespace Codeless.SharePoint.ObjectModel {
     private static readonly MethodInfo TrySetToNullableMethod = typeof(SPModelProvisionHelper).GetMethod("TrySetToNullable", true);
     private static readonly MethodInfo GetFieldAttributeValueMethod = typeof(SPField).GetMethod("GetFieldAttributeValue", true, typeof(string));
     private static readonly MethodInfo SetFieldAttributeValueMethod = typeof(SPField).GetMethod("SetFieldAttributeValue", true);
+    private static readonly Guid CTypesFeatureID = new Guid("695b6570-a48b-4a8e-8ea5-26ea7fc1d162");
 
     private readonly SPModelProvisionEventReceiver eventReceiver;
     private readonly SPObjectCache objectCache;
@@ -85,6 +86,8 @@ namespace Codeless.SharePoint.ObjectModel {
         if (contentType == null) {
           contentType = new SPContentType(definition.ContentTypeId, contentTypes, definition.Name);
           contentTypes.Add(contentType);
+        } else if (contentType.FeatureId == CTypesFeatureID) {
+          throw new SPModelProvisionException(String.Format("System content type cannot be provisioned. Consider derive child content type or set ExternalContentType to true. {0}.", definition.ContentTypeIdString));
         }
         objectCache.AddContentType(contentType);
       }
@@ -168,6 +171,16 @@ namespace Codeless.SharePoint.ObjectModel {
                   throw new SPModelProvisionException("Unable to create term set because of insufficient permission.");
                 }
                 eventArgs.TargetModified |= CopyProperties(new { SspId = termStore.Id, TermSetId = termSetId, AnchorId = Guid.Empty }, field);
+              }
+            }
+          }
+          if (!(eventArgs.Definition is IAllowMultipleValue) || ((IAllowMultipleValue)eventArgs.Definition).FieldObjectType != field.GetType() || ((IAllowMultipleValue)eventArgs.Definition).AllowMultipleValues != SPOption.Unspecified) {
+            if (CopyProperties(new { TypeAsString = eventArgs.Definition.TypeAsString }, field)) {
+              try {
+                field.Update();
+                eventArgs.TargetModified = true;
+              } catch (Exception ex) {
+                WriteTrace(ex.Message);
               }
             }
           }
@@ -435,28 +448,47 @@ namespace Codeless.SharePoint.ObjectModel {
 
     private SPField EnsureListField(SPList parentList, SPFieldAttribute definition, bool attachLookupList) {
       SPField siteField = EnsureField(definition);
+      SPField listField;
+      bool hasField = parentList.ContentTypes[0].Fields.Contains(siteField.Id);
+
       if (siteField.Type == SPFieldType.Lookup) {
-        return EnsureListLookupField(parentList, (SPFieldLookup)siteField, attachLookupList);
-      }
-
-      SPField listField = objectCache.GetField(parentList.ParentWeb.ID, parentList.ID, siteField.Id);
-      if (listField == null) {
-        using (parentList.ParentWeb.GetAllowUnsafeUpdatesScope()) {
-          bool hasField = parentList.ContentTypes[0].Fields.Contains(siteField.Id);
-
-          parentList.Fields.Add(siteField);
-          listField = parentList.Fields[siteField.Id];
-
-          if (!hasField) {
-            // delete the list field that is automatically added to the default content type
-            // if it belongs to the default content type it will be added back later
-            SPContentType defaultContentType = parentList.ContentTypes[0];
-            defaultContentType.FieldLinks.Delete(siteField.Id);
-            defaultContentType.Update();
+        listField = EnsureListLookupField(parentList, (SPFieldLookup)siteField, attachLookupList);
+      } else {
+        listField = objectCache.GetField(parentList.ParentWeb.ID, parentList.ID, siteField.Id);
+        if (listField == null) {
+          using (parentList.ParentWeb.GetAllowUnsafeUpdatesScope()) {
+            parentList.Fields.Add(siteField);
+            listField = parentList.Fields[siteField.Id];
           }
-          objectCache.AddField(listField);
         }
       }
+      if (!hasField) {
+        // delete the list field that is automatically added to the default content type
+        // if it belongs to the default content type it will be added back later
+        SPContentType defaultContentType = parentList.ContentTypes[0];
+        defaultContentType.FieldLinks.Delete(siteField.Id);
+        defaultContentType.Update();
+      }
+      if (!attachLookupList) {
+        if (!parentList.ContentTypes.OfType<SPContentType>().Any(v => v.Fields.Contains(listField.Id))) {
+          bool needUpdate = false;
+          needUpdate |= SetFieldAttribute(listField, "X-DependentField", "TRUE");
+          needUpdate |= CopyProperties(new { Hidden = true, ReadOnlyField = true }, listField);
+          if (needUpdate) {
+            listField.Update();
+          }
+        }
+      } else {
+        if (GetFieldAttribute(listField, "X-DependentField") == "TRUE") {
+          bool needUpdate = false;
+          needUpdate |= SetFieldAttribute(listField, "X-DependentField", "FALSE");
+          needUpdate |= CopyProperties(new { Hidden = false, ReadOnlyField = false }, listField);
+          if (needUpdate) {
+            listField.Update();
+          }
+        }
+      }
+      objectCache.AddField(listField);
       return listField;
     }
 
@@ -476,7 +508,7 @@ namespace Codeless.SharePoint.ObjectModel {
               lookupWeb = lookupWeb.Site.RootWeb;
             }
             string customLookupListUrl = GetFieldAttribute(siteLookupField, "X-LookupListUrl");
-            SPList lookupList = lookupWeb.GetList(SPUrlUtility.CombineUrl(lookupWeb.ServerRelativeUrl, customLookupListUrl));
+            SPList lookupList = lookupWeb.GetListSafe(SPUrlUtility.CombineUrl(lookupWeb.ServerRelativeUrl, customLookupListUrl));
             lookupListId = lookupList.ID;
             lookupWebId = lookupWeb.ID;
           } catch (FileNotFoundException) { }
@@ -486,8 +518,6 @@ namespace Codeless.SharePoint.ObjectModel {
       SPField listLookupField = objectCache.GetField(parentList.ParentWeb.ID, parentList.ID, siteLookupField.Id);
       if (listLookupField == null) {
         using (parentList.ParentWeb.GetAllowUnsafeUpdatesScope()) {
-          bool hasField = parentList.ContentTypes[0].Fields.Contains(siteLookupField.Id);
-
           XmlDocument fieldSchemaXml = new XmlDocument();
           fieldSchemaXml.LoadXml(siteLookupField.SchemaXmlWithResourceTokens);
           fieldSchemaXml.DocumentElement.SetAttribute("WebId", lookupWebId.ToString("B"));
@@ -499,13 +529,6 @@ namespace Codeless.SharePoint.ObjectModel {
           listLookupField.Title = siteLookupField.Title;
           listLookupField.Update();
 
-          if (!hasField) {
-            // delete the list field that is automatically added to the default content type
-            // if it belongs to the default content type it will be added back later
-            SPContentType defaultContentType = parentList.ContentTypes[0];
-            defaultContentType.FieldLinks.Delete(listLookupField.Id);
-            defaultContentType.Update();
-          }
           objectCache.AddField(listLookupField);
           return listLookupField;
         }

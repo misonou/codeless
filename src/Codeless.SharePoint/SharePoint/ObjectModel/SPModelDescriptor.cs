@@ -504,7 +504,7 @@ namespace Codeless.SharePoint.ObjectModel {
                   using (SPWeb listParentWeb = listParentSite.OpenWeb()) {
                     SPList list;
                     try {
-                      list = listParentWeb.GetList(usage.Url);
+                      list = listParentWeb.GetListSafe(usage.Url);
                     } catch (FileNotFoundException) {
                       continue;
                     }
