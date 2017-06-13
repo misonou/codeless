@@ -10,3 +10,4 @@
 /src/**/bin
 /src/**/pkg
 /src/**/pkgobj
+/src/.vs/config/applicationhost.config
