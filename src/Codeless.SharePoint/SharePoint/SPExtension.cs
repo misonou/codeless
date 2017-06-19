@@ -22,7 +22,7 @@ namespace Codeless.SharePoint {
   /// </summary>
   public static class SPExtension {
     private static readonly Regex GuidRegex = new Regex(@"^(?<b>\{)?[A-F0-9]{8}(?:-?[A-F0-9]{4}){3}-?[A-F0-9]{12}(?(b)\}|)$", RegexOptions.IgnoreCase);
-    private static readonly Regex UserDataFieldColNameRegex = new Regex(@"^(bit|datatime|float|int|ntext|nvarchar|sql_variant|uniqueidentifier)\d+$", RegexOptions.IgnoreCase);
+    private static readonly Regex UserDataFieldColNameRegex = new Regex(@"^(bit|datetime|float|int|ntext|nvarchar|sql_variant|uniqueidentifier)\d+$", RegexOptions.IgnoreCase);
     private static readonly DateTime SPDateTimeMin = new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime SPDateTimeMax = new DateTime(8900, 12, 31, 0, 0, 0, DateTimeKind.Utc);
 
