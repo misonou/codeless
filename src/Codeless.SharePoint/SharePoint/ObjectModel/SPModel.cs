@@ -653,7 +653,10 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     int ISPModelMetaData.CheckOutUserID {
-      get { return (this.Adapter.GetUserFieldValue(SPBuiltInFieldName.CheckoutUser)?.ID).GetValueOrDefault(); }
+      get { 
+        SPPrincipal p = this.Adapter.GetUserFieldValue(SPBuiltInFieldName.CheckoutUser);
+        return p == null ? 0 : p.ID;
+      }
     }
 
     string ISPModelMetaData.HitHighlightSummary {

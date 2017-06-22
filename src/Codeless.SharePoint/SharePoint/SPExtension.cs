@@ -253,13 +253,156 @@ namespace Codeless.SharePoint {
     /// <param name="codeToRun">Action to run.</param>
     public static void WithElevatedPrivileges(this SPSecurableObject securableObject, Action<SPSecurableObject> codeToRun) {
       CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
-
       if (securableObject is SPWeb) {
         ((SPWeb)securableObject).WithElevatedPrivileges((SPWeb v) => codeToRun(v));
       } else if (securableObject is SPList) {
         ((SPList)securableObject).WithElevatedPrivileges((SPList v) => codeToRun(v));
       } else if (securableObject is SPListItem) {
         ((SPListItem)securableObject).WithElevatedPrivileges((SPListItem v) => codeToRun(v));
+      } else {
+        throw new ArgumentException("securableObject", "securableObject");
+      }
+    }
+
+    /// <summary>
+    /// Performs operation on the site collection with the specified account.
+    /// </summary>
+    /// <param name="site">A site collection object.</param>
+    /// <param name="user">A user object that represents the account who operations are performed as.</param>
+    /// <param name="codeToRun">Action to run.</param>
+    public static void WithUser(this SPSite site, SPUser user, Action<SPSite> codeToRun) {
+      CommonHelper.ConfirmNotNull(user, "user");
+      CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
+        using (SPSite elevatedSite = new SPSite(site.ID, user.UserToken)) {
+          using (elevatedSite.GetAllowUnsafeUpdatesScope()) {
+            using (elevatedSite.RootWeb.GetAllowUnsafeUpdatesScope()) {
+              codeToRun(elevatedSite);
+            }
+          }
+        }
+      }
+    }
+
+    /// <summary>
+    /// Performs operation on the site with the specified account.
+    /// </summary>
+    /// <param name="web">A site object.</param>
+    /// <param name="user">A user object that represents the account who operations are performed as.</param>
+    /// <param name="codeToRun">Action to run.</param>
+    public static void WithUser(this SPWeb web, SPUser user, Action<SPWeb> codeToRun) {
+      CommonHelper.ConfirmNotNull(user, "user");
+      CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
+        using (SPSite elevatedSite = new SPSite(web.Site.ID, user.UserToken)) {
+          using (SPWeb elevatedWeb = elevatedSite.OpenWeb(web.ID)) {
+            using (elevatedWeb.GetAllowUnsafeUpdatesScope()) {
+              codeToRun(elevatedWeb);
+            }
+          }
+        }
+      }
+    }
+
+    /// <summary>
+    /// Performs operation on the list with the specified account.
+    /// </summary>
+    /// <param name="list">A list object.</param>
+    /// <param name="user">A user object that represents the account who operations are performed as.</param>
+    /// <param name="codeToRun">Action to run.</param>
+    public static void WithUser(this SPList list, SPUser user, Action<SPList> codeToRun) {
+      CommonHelper.ConfirmNotNull(user, "user");
+      CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
+        using (SPSite elevatedSite = new SPSite(list.ParentWeb.Site.ID, user.UserToken)) {
+          using (SPWeb elevatedWeb = elevatedSite.OpenWeb(list.ParentWeb.ID)) {
+            using (elevatedWeb.GetAllowUnsafeUpdatesScope()) {
+              SPList elevatedList = elevatedWeb.Lists[list.ID];
+              codeToRun(elevatedList);
+            }
+          }
+        }
+      }
+    }
+
+    /// <summary>
+    /// Performs operation on the list item with the specified account.
+    /// </summary>
+    /// <param name="listItem">A list item object.</param>
+    /// <param name="user">A user object that represents the account who operations are performed as.</param>
+    /// <param name="codeToRun">Action to run.</param>
+    public static void WithUser(this SPListItem listItem, SPUser user, Action<SPListItem> codeToRun) {
+      CommonHelper.ConfirmNotNull(user, "user");
+      CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
+        using (SPSite elevatedSite = new SPSite(listItem.Web.Site.ID, user.UserToken)) {
+          using (SPWeb elevatedWeb = elevatedSite.OpenWeb(listItem.Web.ID)) {
+            using (elevatedWeb.GetAllowUnsafeUpdatesScope()) {
+              SPList elevatedList = elevatedWeb.Lists[listItem.ParentList.ID];
+              SPListItem elevatedItem = elevatedList.GetItemById(listItem.ID);
+              codeToRun(elevatedItem);
+            }
+          }
+        }
+      }
+    }
+
+    /// <summary>
+    /// Performs operation on the folder with the specified account.
+    /// </summary>
+    /// <param name="folder">A folder objet.</param>
+    /// <param name="user">A user object that represents the account who operations are performed as.</param>
+    /// <param name="codeToRun">Action to run.</param>
+    public static void WithUser(this SPFolder folder, SPUser user, Action<SPFolder> codeToRun) {
+      CommonHelper.ConfirmNotNull(user, "user");
+      CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
+        using (SPSite elevatedSite = new SPSite(folder.ParentWeb.Site.ID, user.UserToken)) {
+          using (SPWeb elevatedWeb = elevatedSite.OpenWeb(folder.ParentWeb.ID)) {
+            using (elevatedWeb.GetAllowUnsafeUpdatesScope()) {
+              SPFolder elevatedFolder = elevatedWeb.GetFolder(folder.UniqueId);
+              codeToRun(elevatedFolder);
+            }
+          }
+        }
+      }
+    }
+
+    /// <summary>
+    /// Performs operation on the file with the specified account.
+    /// </summary>
+    /// <param name="file">A file objet.</param>
+    /// <param name="user">A user object that represents the account who operations are performed as.</param>
+    /// <param name="codeToRun">Action to run.</param>
+    public static void WithUser(this SPFile file, SPUser user, Action<SPFile> codeToRun) {
+      CommonHelper.ConfirmNotNull(user, "user");
+      CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
+        using (SPSite elevatedSite = new SPSite(file.Web.Site.ID, user.UserToken)) {
+          using (SPWeb elevatedWeb = elevatedSite.OpenWeb(file.Web.ID)) {
+            using (elevatedWeb.GetAllowUnsafeUpdatesScope()) {
+              SPFile elevatedFile = elevatedWeb.GetFile(file.UniqueId);
+              codeToRun(elevatedFile);
+            }
+          }
+        }
+      }
+    }
+
+    /// <summary>
+    /// Performs operation on the secureable object with the specified account.
+    /// </summary>
+    /// <param name="securableObject">SPSecurableObject.</param>
+    /// <param name="user">A user object that represents the account who operations are performed as.</param>
+    /// <param name="codeToRun">Action to run.</param>
+    public static void WithUser(this SPSecurableObject securableObject, SPUser user, Action<SPSecurableObject> codeToRun) {
+      CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      if (securableObject is SPWeb) {
+        ((SPWeb)securableObject).WithUser(user, (SPWeb v) => codeToRun(v));
+      } else if (securableObject is SPList) {
+        ((SPList)securableObject).WithUser(user, (SPList v) => codeToRun(v));
+      } else if (securableObject is SPListItem) {
+        ((SPListItem)securableObject).WithUser(user, (SPListItem v) => codeToRun(v));
       } else {
         throw new ArgumentException("securableObject", "securableObject");
       }
@@ -695,6 +838,52 @@ namespace Codeless.SharePoint {
     }
 
     /// <summary>
+    /// Starts the specified workflow on the list item that is associated to the parent list.
+    /// </summary>
+    /// <param name="listItem">A list item to start workflow with.</param>
+    /// <param name="workflowBaseId">A GUID specifying the workflow.</param>
+    /// <param name="data">A string containing custom data.</param>
+    public static void StartWorkflow(this SPListItem listItem, Guid workflowBaseId, string data) {
+      SPWorkflowAssociation assoc = listItem.ParentList.WorkflowAssociations.GetAssociationByBaseIDSafe(workflowBaseId);
+      if (assoc == null) {
+        throw new ArgumentOutOfRangeException("workflowBaseId", "Specified workflow is not associated with this list.");
+      }
+      SPWorkflowManager manager = listItem.Web.Site.WorkflowManager;
+      manager.StartWorkflow(listItem, assoc, data, SPWorkflowRunOptions.Synchronous);
+      foreach (SPWorkflow wf in manager.GetItemActiveWorkflows(listItem)) {
+        if (wf.ParentAssociation.BaseId == workflowBaseId) {
+          return;
+        }
+      }
+      SPWorkflow workflow = manager.GetItemWorkflows(listItem, new SPWorkflowFilter(SPWorkflowState.Cancelled, SPWorkflowState.None))[0];
+      SPQuery query = new SPQuery();
+      query.Query = Caml.And(
+        Caml.Equals(SPBuiltInFieldName.WorkflowInstance, workflow.InstanceId.ToString("B")),
+        Caml.Equals(SPBuiltInFieldName.Event, (int)SPWorkflowHistoryEventType.WorkflowError)).ToString();
+      SPListItemCollection collection = workflow.HistoryList.GetItems(query);
+      if (collection.Count > 0) {
+        throw new Exception("Workflow failed to start with the following error: " + collection[0][SPBuiltInFieldName.Description]);
+      }
+      throw new Exception("Workflow failed to start.");
+    }
+
+    /// <summary>
+    /// Gets the user or group with the specified member ID.
+    /// </summary>
+    /// <param name="web">Site object.</param>
+    /// <param name="id">Member ID.</param>
+    /// <returns>A <see cref="SPPrincipal"/> object that represents either the specified user or group; -or- *null* if there is no member with the specified member ID.</returns>
+    public static SPPrincipal GetSiteMemberByID(this SPWeb web, int id) {
+      try {
+        return web.SiteUsers.GetByID(id);
+      } catch { }
+      try {
+        return web.SiteGroups.GetByID(id);
+      } catch { }
+      return null;
+    }
+
+    /// <summary>
     /// Determines whether a SharePoint group with the given name exists.
     /// If it does not, creates a new SharePoint group with the given name.
     /// </summary>
@@ -882,6 +1071,20 @@ namespace Codeless.SharePoint {
         permissions |= definition.BasePermissions;
       }
       return permissions;
+    }
+
+    /// <summary>
+    /// Gets a collection of users or groups that are granted the specified permissions on the specified securable object.
+    /// </summary>
+    /// <param name="obj">Securable object.</param>
+    /// <param name="permissions">A bitmask value representing required permissions.</param>
+    /// <returns>A enumerable collection of users or groups that are granted the specified permissions.</returns>
+    public static IEnumerable<SPPrincipal> GetMembersWithPermissions(this SPSecurableObject obj, SPBasePermissions permissions) {
+      foreach (SPRoleAssignment assignment in obj.RoleAssignments) {
+        if (assignment.GetEffectivePermissions().HasFlag(permissions)) {
+          yield return assignment.Member;
+        }
+      }
     }
 
     /// <summary>
