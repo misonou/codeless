@@ -1,4 +1,6 @@
 ﻿using Microsoft.SharePoint;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
@@ -39,6 +41,18 @@ namespace Codeless.SharePoint.ObjectModel {
         return (T)model.ParentCollection.Manager.TryCreateModel(new SPListItemVersionAdapter(previousVersion), true);
       }
       return null;
+    }
+
+    /// <summary>
+    /// Gets all versions of the list item.
+    /// </summary>
+    /// <typeparam name="T">Type of model.</typeparam>
+    /// <param name="model">A model object representing the list item.</param>
+    /// <returns>A enumerable collection containing read-only model objects of type <typeparamref name="T"/> representing different versions of the list item.</returns>
+    public static IEnumerable<T> GetVersions<T>(this T model) where T : SPModel {
+      foreach (SPListItemVersion version in model.Adapter.ListItem.Versions) {
+        yield return (T)model.ParentCollection.Manager.TryCreateModel(new SPListItemVersionAdapter(version), true);
+      }
     }
   }
 }
