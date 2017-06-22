@@ -492,7 +492,7 @@ namespace Codeless.SharePoint.ObjectModel {
       if (contentTypeAttribute != null) {
         provisionedSites.TryAdd(siteId, true);
         try {
-          SPModelProvisionEventReceiver eventReceiver = GetProvisionEventReceiver();
+          SPModelProvisionEventReceiver eventReceiver = GetProvisionEventReceiver(true);
           using (SPModelProvisionHelper helper = new SPModelProvisionHelper(siteId, eventReceiver)) {
             SPContentType contentType = helper.EnsureContentType(contentTypeAttribute);
             helper.UpdateContentType(contentType, contentTypeAttribute, fieldAttributes);
@@ -540,7 +540,7 @@ namespace Codeless.SharePoint.ObjectModel {
 
     private void ProvisionList(string siteUrl, Guid siteId, Guid webId, SPModelListProvisionOptions listOptions, HashSet<SPModelUsage> deferredListUrls) {
       SPList targetList = null;
-      SPModelProvisionEventReceiver eventReceiver = GetProvisionEventReceiver();
+      SPModelProvisionEventReceiver eventReceiver = GetProvisionEventReceiver(true);
       using (SPModelProvisionHelper helper = new SPModelProvisionHelper(siteId, eventReceiver)) {
         if (listOptions.TargetListId != Guid.Empty) {
           targetList = helper.TargetSite.AllWebs[listOptions.TargetWebId].Lists[listOptions.TargetListId];
@@ -568,9 +568,22 @@ namespace Codeless.SharePoint.ObjectModel {
       deferredListUrls.Add(SPModelUsage.Create(targetList).GetWithoutList());
     }
 
-    private SPModelProvisionEventReceiver GetProvisionEventReceiver() {
+    private SPModelProvisionEventReceiver GetProvisionEventReceiver(bool includeInterfaces) {
+      SPModelProvisionMulticastEventReceiver eventReceivers = new SPModelProvisionMulticastEventReceiver();
+      if (this.Parent != null) {
+        eventReceivers.Add(this.Parent.GetProvisionEventReceiver(false));
+      }
+      foreach (SPModelDescriptor descriptor in this.Interfaces) {
+        eventReceivers.Add(descriptor.GetProvisionEventReceiver(false));
+      }
       if (provisionEventReceiverType != null) {
-        return (SPModelProvisionEventReceiver)provisionEventReceiverType.CreateInstance();
+        eventReceivers.Add((SPModelProvisionEventReceiver)provisionEventReceiverType.CreateInstance());
+      }
+      if (eventReceivers.Count > 1) {
+        return eventReceivers;
+      }
+      if (eventReceivers.Count == 1) {
+        return eventReceivers[0];
       }
       return SPModelProvisionEventReceiver.Default;
     }
