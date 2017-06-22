@@ -689,19 +689,27 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     private void UpdateItem(SPListItem item, SPModelCommitMode mode) {
-      switch(mode) {
+      bool systemCheckIn = false;
+      if (item.ParentList.ForceCheckout && item.FileSystemObjectType == SPFileSystemObjectType.File && item.File.CheckOutType == SPFile.SPCheckOutType.None) {
+        item.File.CheckOut();
+        systemCheckIn = true;
+      }
+      switch (mode) {
         case SPModelCommitMode.Default:
           item.Update();
-          return;
+          break;
         case SPModelCommitMode.OverwriteVersion:
           item.UpdateOverwriteVersion();
-          return;
+          break;
         case SPModelCommitMode.SystemUpdate:
           item.SystemUpdate();
-          return;
+          break;
         case SPModelCommitMode.SystemUpdateOverwriteVersion:
           item.SystemUpdate(false);
-          return;
+          break;
+      }
+      if (systemCheckIn) {
+        item.File.CheckIn(String.Empty);
       }
     }
 
