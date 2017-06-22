@@ -281,6 +281,23 @@ namespace Codeless.SharePoint.ObjectModel {
           if (eventArgs.TargetModified) {
             contentType.Update();
           }
+          if (contentType.ParentList != null) {
+            SPFolder rootFolder = contentType.ParentList.RootFolder;
+            List<SPContentType> visibleContentTypes = new List<SPContentType>(rootFolder.ContentTypeOrder);
+            if (definition.HiddenInList) {
+              if (visibleContentTypes.Contains(contentType)) {
+                visibleContentTypes.Remove(contentType);
+                rootFolder.UniqueContentTypeOrder = visibleContentTypes;
+                rootFolder.Update();
+              }
+            } else {
+              if (!visibleContentTypes.Contains(contentType)) {
+                visibleContentTypes.Add(contentType);
+                rootFolder.UniqueContentTypeOrder = visibleContentTypes;
+                rootFolder.Update();
+              }
+            }
+          }
         }
         eventReceiver.OnContentTypeProvisioned(eventArgs);
       }
