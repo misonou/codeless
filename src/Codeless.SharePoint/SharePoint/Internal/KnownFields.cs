@@ -5,6 +5,12 @@ using System.Collections.ObjectModel;
 namespace Codeless.SharePoint.Internal {
   internal static class KnownFields {
     public static readonly ReadOnlyDictionary<string, SPFieldType> FieldTypeDictionary = (new Dictionary<string, SPFieldType> { 
+      // known fields and their field types extracted from site columns
+      // with the following exceptions that when these fields are added to lists by SharePoint
+      // they have different field types than the site columns
+      // WorkflowAssociation: GUID -> Text
+      // WorkflowInstance: GUID -> Text
+      // WorkflowTemplate: GUID -> Text
       { "_Author", SPFieldType.Text }, 
       { "_Category", SPFieldType.Text }, 
       { "_CheckinComment", SPFieldType.Lookup }, 
@@ -538,16 +544,16 @@ namespace Codeless.SharePoint.Internal {
       { "WorkCity", SPFieldType.Text }, 
       { "WorkCountry", SPFieldType.Text }, 
       { "WorkFax", SPFieldType.Text }, 
-      { "WorkflowAssociation", SPFieldType.Guid }, 
+      { "WorkflowAssociation", SPFieldType.Text }, 
       { "WorkflowDisplayName", SPFieldType.Text }, 
-      { "WorkflowInstance", SPFieldType.Guid }, 
+      { "WorkflowInstance", SPFieldType.Text }, 
       { "WorkflowInstanceID", SPFieldType.Guid }, 
       { "WorkflowItemId", SPFieldType.Integer }, 
       { "WorkflowLink", SPFieldType.URL }, 
       { "WorkflowListId", SPFieldType.Guid }, 
       { "WorkflowName", SPFieldType.Text }, 
       { "WorkflowOutcome", SPFieldType.Text }, 
-      { "WorkflowTemplate", SPFieldType.Guid }, 
+      { "WorkflowTemplate", SPFieldType.Text }, 
       { "WorkflowVersion", SPFieldType.Integer }, 
       { "WorkPhone", SPFieldType.Text }, 
       { "Workspace", SPFieldType.URL }, 
