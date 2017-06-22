@@ -206,9 +206,9 @@ namespace Codeless.SharePoint {
             break;
         }
         if (enumeratedType != null) {
-          return new CamlParameterBindingString(ResolveValueCollection<string>(value));
+          return new CamlParameterBindingString(ResolveValueCollection(value, ResolveValueAsString));
         }
-        return new CamlParameterBindingString(ResolveValue<string>(value));
+        return new CamlParameterBindingString(ResolveValueAsString(value));
       } catch (InvalidCastException) {
         throw new ArgumentException(String.Format("Supplied value cannot be converted to binding type '{0}'", fieldTypeAsString), "value");
       }
@@ -221,14 +221,28 @@ namespace Codeless.SharePoint {
       return (T)Convert.ChangeType(value, typeof(T));
     }
 
+    private static string ResolveValueAsString(object value) {
+      if (value == null) {
+        return String.Empty;
+      }
+      if (value is Guid) {
+        return ((Guid)value).ToString("B");
+      }
+      return value.ToString();
+    }
+
     private static IEnumerable<T> ResolveValueCollection<T>(object value) {
+      return ResolveValueCollection(value, ResolveValue<T>);
+    }
+
+    private static IEnumerable<T> ResolveValueCollection<T>(object value, Func<object, T> converter) {
       if (value != null) {
         IEnumerable enumerable = CommonHelper.TryCastOrDefault<IEnumerable>(value);
         if (enumerable != null) {
-          return enumerable.OfType<object>().Select(ResolveValue<T>);
+          return enumerable.OfType<object>().Select(converter);
         }
         try {
-          T typedValue = ResolveValue<T>(value);
+          T typedValue = converter(value);
           return new[] { typedValue };
         } catch { }
       }
