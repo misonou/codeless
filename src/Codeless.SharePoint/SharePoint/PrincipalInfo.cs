@@ -17,6 +17,9 @@ namespace Codeless.SharePoint {
       : this(principal, CommonHelper.ConfirmNotNull(principal, "principal").DistinguishedName ?? principal.SamAccountName, parentPrincipal) {
       this.DisplayName = principal.DisplayName ?? principal.DistinguishedName ?? principal.SamAccountName;
       this.EmailAddress = principal.EmailAddress;
+      if (String.IsNullOrEmpty(this.EmailAddress) && parentPrincipal is SPUser) {
+        this.EmailAddress = ((SPUser)parentPrincipal).Email;
+      }
       this.ProviderType = SPIdentityProviderTypes.Windows;
       this.EncodedClaim = SPClaimProviderManager.Local.ConvertIdentifierToClaim(((NTAccount)principal.Sid.Translate(typeof(NTAccount))).Value, SPIdentifierTypes.WindowsSamAccountName).ToEncodedString();
     }
