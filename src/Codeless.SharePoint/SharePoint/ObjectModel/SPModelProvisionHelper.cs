@@ -483,26 +483,19 @@ namespace Codeless.SharePoint.ObjectModel {
         // delete the list field that is automatically added to the default content type
         // if it belongs to the default content type it will be added back later
         SPContentType defaultContentType = parentList.ContentTypes[0];
-        defaultContentType.FieldLinks.Delete(siteField.Id);
-        defaultContentType.Update();
-      }
-      if (!attachLookupList) {
-        if (!parentList.ContentTypes.OfType<SPContentType>().Any(v => v.Fields.Contains(listField.Id))) {
-          bool needUpdate = false;
-          needUpdate |= SetFieldAttribute(listField, "X-DependentField", "TRUE");
-          needUpdate |= CopyProperties(new { Hidden = true, ReadOnlyField = true }, listField);
-          if (needUpdate) {
-            listField.Update();
-          }
+        if (defaultContentType.FieldLinks[siteField.Id] != null) {
+          defaultContentType.FieldLinks.Delete(siteField.Id);
+          defaultContentType.Update();
         }
-      } else {
-        if (GetFieldAttribute(listField, "X-DependentField") == "TRUE") {
-          bool needUpdate = false;
-          needUpdate |= SetFieldAttribute(listField, "X-DependentField", "FALSE");
-          needUpdate |= CopyProperties(new { Hidden = false, ReadOnlyField = false }, listField);
-          if (needUpdate) {
-            listField.Update();
-          }
+      }
+      string depValue = GetFieldAttribute(listField, "X-DependentField");
+      bool isDepField = !attachLookupList && depValue != "FALSE" && !parentList.ContentTypes.OfType<SPContentType>().Any(v => v.Fields.Contains(listField.Id));
+      if (isDepField || depValue != String.Empty) {
+        bool needUpdate = false;
+        needUpdate |= SetFieldAttribute(listField, "X-DependentField", isDepField ? "TRUE" : "FALSE");
+        needUpdate |= CopyProperties(new { Hidden = isDepField, ReadOnlyField = isDepField }, listField);
+        if (needUpdate) {
+          listField.Update();
         }
       }
       objectCache.AddField(listField);
