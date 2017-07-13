@@ -285,13 +285,13 @@ namespace Codeless.SharePoint.ObjectModel {
             SPFolder rootFolder = contentType.ParentList.RootFolder;
             List<SPContentType> visibleContentTypes = new List<SPContentType>(rootFolder.ContentTypeOrder);
             if (definition.HiddenInList) {
-              if (visibleContentTypes.Contains(contentType)) {
+              if (visibleContentTypes.Contains(contentType, SPContentTypeEqualityComparer.Default)) {
                 visibleContentTypes.Remove(contentType);
                 rootFolder.UniqueContentTypeOrder = visibleContentTypes;
                 rootFolder.Update();
               }
             } else {
-              if (!visibleContentTypes.Contains(contentType)) {
+              if (!visibleContentTypes.Contains(contentType, SPContentTypeEqualityComparer.Default)) {
                 visibleContentTypes.Add(contentType);
                 rootFolder.UniqueContentTypeOrder = visibleContentTypes;
                 rootFolder.Update();
@@ -598,6 +598,18 @@ namespace Codeless.SharePoint.ObjectModel {
           collection.EnsureEventReceiver(t, typeof(SPModelEventReceiver), SPEventReceiverSynchronization.Synchronous);
           collection.EnsureEventReceiver(t, typeof(SPModelAsyncEventReceiver), SPEventReceiverSynchronization.Asynchronous);
         }
+      }
+    }
+
+    private class SPContentTypeEqualityComparer : EqualityComparer<SPContentType> {
+      public static readonly SPContentTypeEqualityComparer Default = new SPContentTypeEqualityComparer();
+
+      public override bool Equals(SPContentType x, SPContentType y) {
+        return x.Id == y.Id;
+      }
+
+      public override int GetHashCode(SPContentType obj) {
+        return obj.Id.GetHashCode();
       }
     }
 
