@@ -3,10 +3,10 @@
   <system.web>
     <compilation>
       <assemblies>
-        <add assembly="System.Core, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-        <add assembly="System.Data.Linq, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-        <add assembly="Codeless, Version=15.0.0.0, Culture=neutral, PublicKeyToken=6e028f30b8da22f9" />
-        <add assembly="Codeless.SharePoint, Version=15.0.0.0, Culture=neutral, PublicKeyToken=6e028f30b8da22f9" />
+        <add assembly="System.Core, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
+        <add assembly="System.Data.Linq, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
+        <add assembly="Codeless, Version=1.0.0.0, Culture=neutral, PublicKeyToken=6e028f30b8da22f9" />
+        <add assembly="Codeless.SharePoint, Version=14.0.0.0, Culture=neutral, PublicKeyToken=6e028f30b8da22f9" />
       </assemblies>
     </compilation>
     <pages>
