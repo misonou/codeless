@@ -458,6 +458,28 @@ namespace Codeless.SharePoint.ObjectModel {
       return TargetTypeDictionary.Count != beforeCount;
     }
 
+    protected virtual void CheckFieldConsistency() {
+      if (this.Parent != null) {
+        CheckFieldConsistency(this.Parent);
+      }
+    }
+
+    protected void CheckFieldConsistency(SPModelDescriptor other) {
+      foreach (SPFieldAttribute definition in fieldAttributes) {
+        SPFieldAttribute parentDefinition = other.fieldAttributes.FirstOrDefault(v => v.InternalName == definition.InternalName);
+        if (definition.GetType() != parentDefinition.GetType()) {
+          throw new SPModelProvisionException(String.Format("Definition for field '{0}' in content type '{1}' conflicts with parent content type.", definition.InternalName, contentTypeAttribute.Name));
+        }
+        foreach (PropertyInfo property in definition.GetType().GetProperties()) {
+          object myValue = property.GetValue(definition, null);
+          object paValue = property.GetValue(parentDefinition, null);
+          if (myValue != paValue && (property.PropertyType != typeof(SPOption) || ((SPOption)myValue) != SPOption.Unspecified)) {
+            throw new SPModelProvisionException(String.Format("Definition for field '{0}' in content type '{1}' conflicts with parent content type.", definition.InternalName, contentTypeAttribute.Name));
+          }
+        }
+      }
+    }
+
     private void Provision(string siteUrl, Guid siteId, Guid webId, bool provisionContentType, bool provisionList, SPModelListProvisionOptions listOptions, ProvisionResult result, bool requireLock) {
       try {
         if (requireLock) {
@@ -468,6 +490,7 @@ namespace Codeless.SharePoint.ObjectModel {
         }
         enteredLock = true;
         if (provisionContentType) {
+          CheckFieldConsistency();
           ProvisionContentType(siteUrl, siteId, true, true, listOptions != SPModelListProvisionOptions.Default ? null : result.ProvisionedLists);
         }
         if (provisionList && (listOptions != SPModelListProvisionOptions.Default || !String.IsNullOrEmpty(listAttribute.Url))) {
@@ -741,6 +764,11 @@ namespace Codeless.SharePoint.ObjectModel {
     public static SPModelDescriptor Create(Type type) {
       CommonHelper.ConfirmNotNull(type, "type");
       return new SPModelInterfaceTypeDescriptor(type);
+    }
+
+    protected override void CheckFieldConsistency() {
+      base.CheckFieldConsistency();
+      this.Children.ForEach(CheckFieldConsistency);
     }
   }
 }
