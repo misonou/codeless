@@ -96,7 +96,15 @@ namespace Codeless.SharePoint {
       if (forceRefresh) {
         InstanceFactory.Destroy(siteId);
       }
-      return InstanceFactory.GetInstance(siteId, LoadInternal);
+      T config = null;
+      try {
+        return InstanceFactory.GetInstance(siteId, () => {
+          return LoadInternal(siteId, out config);
+        });
+      } catch (Exception ex) {
+        Logger.Error(ex);
+        return config ?? new T();
+      }
     }
 
     /// <summary>
@@ -125,8 +133,8 @@ namespace Codeless.SharePoint {
       Invalidate(siteId);
     }
 
-    private static T LoadInternal(Guid siteId) {
-      T config = new T();
+    private static T LoadInternal(Guid siteId, out T config) {
+      config = new T();
       config.siteId = siteId;
       using (SPSite elevatedSite = new SPSite(siteId, SPUserToken.SystemAccount)) {
         SiteConfigProviderAttribute attribute = typeof(T).GetCustomAttribute<SiteConfigProviderAttribute>(false);
@@ -185,12 +193,7 @@ namespace Codeless.SharePoint {
             pd.SetValue(config, Activator.CreateInstance(pd.PropertyType));
           }
         }
-        try {
-          SiteConfigEntry.IsInternalUpdate = true;
-          provider.CommitChanges();
-        } finally {
-          SiteConfigEntry.IsInternalUpdate = false;
-        }
+        provider.CommitChanges();
 
         if (HttpContext.Current != null) {
           CacheDependency cacheDependency = provider.GetCacheDependency();

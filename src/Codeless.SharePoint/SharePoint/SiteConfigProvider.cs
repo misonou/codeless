@@ -75,7 +75,12 @@ namespace Codeless.SharePoint {
     void ISiteConfigProvider.UpdateEntry(ISiteConfigEntry entry) { }
 
     void ISiteConfigProvider.CommitChanges() {
-      manager.CommitChanges();
+      try {
+        SiteConfigEntry.IsInternalUpdate = true;
+        manager.CommitChanges();
+      } finally {
+        SiteConfigEntry.IsInternalUpdate = false;
+      }
     }
   }
 }
