@@ -31,8 +31,8 @@ namespace Codeless.SharePoint {
 
       listAttribute = InitializeListSettings(listAttribute);
       SPModelDescriptor descriptor = SPModelDescriptor.Resolve(typeof(SiteConfigEntry));
-      IList<SPList> lists = descriptor.Provision(site.RootWeb, SPModelProvisionOptions.None, new SPModelListProvisionOptions(listAttribute)).GetListCollection();
-      return new SPModelManager<SiteConfigEntry>(site.RootWeb, lists);
+      descriptor.Provision(site.RootWeb, SPModelProvisionOptions.Asynchronous, new SPModelListProvisionOptions(listAttribute)).GetListCollection();
+      return new SPModelManager<SiteConfigEntry>(site.RootWeb);
     }
 
     void ISiteConfigProvider.Initialize(SPSite site) {
