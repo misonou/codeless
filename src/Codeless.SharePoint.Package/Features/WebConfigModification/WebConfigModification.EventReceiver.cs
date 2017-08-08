@@ -23,7 +23,9 @@ namespace Codeless.SharePoint.Package.Features {
 
     public override void FeatureUninstalling(SPFeatureReceiverProperties properties) {
       string owner;
-      GetWebConfigModifications(reader, out owner);
+      using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream("WebConfigModifications.xml")) {
+        GetWebConfigModifications(XmlReader.Create(s), out owner);
+      }
       foreach (SPWebApplication app in SPFarm.Local.Solutions[properties.Definition.SolutionId].DeployedWebApplications) {
         foreach (SPWebConfigModification mod in app.WebConfigModifications.Where(v => v.Owner == owner).ToArray()) {
           app.WebConfigModifications.Remove(mod);
