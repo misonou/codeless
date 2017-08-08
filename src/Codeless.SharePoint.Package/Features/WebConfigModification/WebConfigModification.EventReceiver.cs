@@ -22,8 +22,10 @@ namespace Codeless.SharePoint.Package.Features {
     }
 
     public override void FeatureUninstalling(SPFeatureReceiverProperties properties) {
+      string owner;
+      GetWebConfigModifications(reader, out owner);
       foreach (SPWebApplication app in SPFarm.Local.Solutions[properties.Definition.SolutionId].DeployedWebApplications) {
-        foreach (SPWebConfigModification mod in app.WebConfigModifications.Where(v => v.Owner == "Codeless.SharePoint")) {
+        foreach (SPWebConfigModification mod in app.WebConfigModifications.Where(v => v.Owner == owner).ToArray()) {
           app.WebConfigModifications.Remove(mod);
         }
         app.Update();
@@ -34,8 +36,12 @@ namespace Codeless.SharePoint.Package.Features {
     private const string NS = "http://sharepoint.codeless.org/webconfigmod";
 
     private static void ApplyWebConfigModifications(XmlReader reader, ICollection<SPWebApplication> apps) {
-      SPWebConfigModification[] mods = GetWebConfigModifications(reader);
+      string owner;
+      SPWebConfigModification[] mods = GetWebConfigModifications(reader, out owner);
       foreach (SPWebApplication app in apps) {
+        foreach (SPWebConfigModification mod in app.WebConfigModifications.Where(v => v.Owner == owner).ToArray()) {
+          app.WebConfigModifications.Remove(mod);
+        }
         foreach (SPWebConfigModification mod in mods) {
           app.WebConfigModifications.Add(mod);
         }
@@ -44,53 +50,56 @@ namespace Codeless.SharePoint.Package.Features {
       }
     }
 
-    private static SPWebConfigModification[] GetWebConfigModifications(XmlReader reader) {
+    private static SPWebConfigModification[] GetWebConfigModifications(XmlReader reader, out string owner) {
       XDocument doc = XDocument.Load(reader);
       XAttribute ownerAttr = doc.Root.Attribute("{" + NS + "}owner");
+      owner = ownerAttr.Value;
       return GetWebConfigModifications(ownerAttr.Value, doc.Root, "/").ToArray();
     }
 
     private static IEnumerable<SPWebConfigModification> GetWebConfigModifications(string owner, XElement node, string path) {
-      List<string> keys = new List<string>();
-      XAttribute keyAttr = node.Attribute("{" + NS + "}key");
-      if (keyAttr != null) {
-        keys.AddRange(keyAttr.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries));
-      } else {
-        keys.AddRange(node.Attributes().Where(v => v.Name.Namespace.NamespaceName != NS).Select(v => v.Name.LocalName));
-      }
-      StringBuilder sb = new StringBuilder(node.Name.LocalName);
-      foreach (XAttribute attr in node.Attributes()) {
-        if (keys.Contains(attr.Name.LocalName)) {
-          sb.AppendFormat("[@{0}='{1}']", attr.Name.LocalName, attr.Value);
+      if (node != node.Document.Root) {
+        List<string> keys = new List<string>();
+        XAttribute keyAttr = node.Attribute("{" + NS + "}key");
+        if (keyAttr != null) {
+          keys.AddRange(keyAttr.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries));
+        } else {
+          keys.AddRange(node.Attributes().Where(v => v.Name.Namespace.NamespaceName != NS && v.Name.Namespace != XNamespace.Xmlns).Select(v => v.Name.LocalName));
         }
-      }
-      XElement clone = new XElement(node.Name);
-      foreach (XAttribute attr in node.Attributes()) {
-        if (attr.Name.Namespace.NamespaceName != NS) {
-          clone.Add(new XAttribute(attr));
-        }
-      }
-      XmlReader reader = clone.CreateReader();
-      reader.Read();
-      string xmlValue = reader.ReadOuterXml();
-
-      yield return new SPWebConfigModification {
-        Path = path,
-        Name = sb.ToString(),
-        Owner = owner,
-        Type = node.Elements().Count() == 0 ? SPWebConfigModification.SPWebConfigModificationType.EnsureChildNode : SPWebConfigModification.SPWebConfigModificationType.EnsureSection,
-        Value = xmlValue
-      };
-      if (keys.Count > 0) {
+        StringBuilder sb = new StringBuilder(node.Name.LocalName);
         foreach (XAttribute attr in node.Attributes()) {
-          if (!keys.Contains(attr.Name.LocalName)) {
-            yield return new SPWebConfigModification {
-              Path = path,
-              Name = attr.Name.LocalName,
-              Owner = owner,
-              Type = SPWebConfigModification.SPWebConfigModificationType.EnsureAttribute,
-              Value = attr.Value
-            };
+          if (keys.Contains(attr.Name.LocalName)) {
+            sb.AppendFormat("[@{0}='{1}']", attr.Name.LocalName, attr.Value);
+          }
+        }
+        XElement clone = new XElement(node.Name);
+        foreach (XAttribute attr in node.Attributes()) {
+          if (attr.Name.Namespace.NamespaceName != NS) {
+            clone.Add(new XAttribute(attr));
+          }
+        }
+        XmlReader reader = clone.CreateReader();
+        reader.Read();
+        string xmlValue = reader.ReadOuterXml();
+
+        yield return new SPWebConfigModification {
+          Path = path,
+          Name = sb.ToString(),
+          Owner = owner,
+          Type = node.Elements().Count() == 0 ? SPWebConfigModification.SPWebConfigModificationType.EnsureChildNode : SPWebConfigModification.SPWebConfigModificationType.EnsureSection,
+          Value = xmlValue
+        };
+        if (keys.Count > 0) {
+          foreach (XAttribute attr in node.Attributes()) {
+            if (!keys.Contains(attr.Name.LocalName)) {
+              yield return new SPWebConfigModification {
+                Path = path,
+                Name = attr.Name.LocalName,
+                Owner = owner,
+                Type = SPWebConfigModification.SPWebConfigModificationType.EnsureAttribute,
+                Value = attr.Value
+              };
+            }
           }
         }
       }
