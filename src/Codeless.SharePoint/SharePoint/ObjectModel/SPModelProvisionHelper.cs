@@ -489,14 +489,16 @@ namespace Codeless.SharePoint.ObjectModel {
           defaultContentType.Update();
         }
       }
-      string depValue = GetFieldAttribute(listField, "X-DependentField");
-      bool isDepField = !attachLookupList && depValue != "FALSE" && !parentList.ContentTypes.OfType<SPContentType>().Any(v => v.Fields.Contains(listField.Id));
-      if (isDepField || depValue != String.Empty) {
-        bool needUpdate = false;
-        needUpdate |= SetFieldAttribute(listField, "X-DependentField", isDepField ? "TRUE" : "FALSE");
-        needUpdate |= CopyProperties(new { Hidden = isDepField, ReadOnlyField = isDepField }, listField);
-        if (needUpdate) {
-          listField.Update();
+      if (!listField.IsSystemField()) {
+        string depValue = GetFieldAttribute(listField, "X-DependentField");
+        bool isDepField = !attachLookupList && depValue != "FALSE" && !parentList.ContentTypes.OfType<SPContentType>().Any(v => v.Fields.Contains(listField.Id));
+        if (isDepField || depValue != String.Empty) {
+          bool needUpdate = false;
+          needUpdate |= SetFieldAttribute(listField, "X-DependentField", isDepField ? "TRUE" : "FALSE");
+          needUpdate |= CopyProperties(new { Hidden = isDepField, ReadOnlyField = isDepField }, listField);
+          if (needUpdate) {
+            listField.Update();
+          }
         }
       }
       objectCache.AddField(listField);
