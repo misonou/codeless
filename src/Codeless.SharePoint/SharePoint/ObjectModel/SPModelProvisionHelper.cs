@@ -282,25 +282,23 @@ namespace Codeless.SharePoint.ObjectModel {
             contentType.Update();
           }
           // TODO: feature temporarily off because of possible save conflicts
-          /*
-          if (contentType.ParentList != null) {
-            SPFolder rootFolder = contentType.ParentList.RootFolder;
-            List<SPContentType> visibleContentTypes = new List<SPContentType>(rootFolder.ContentTypeOrder);
-            if (definition.HiddenInList) {
-              if (visibleContentTypes.Contains(contentType, SPContentTypeEqualityComparer.Default)) {
-                visibleContentTypes.Remove(contentType);
-                rootFolder.UniqueContentTypeOrder = visibleContentTypes;
-                rootFolder.Update();
-              }
-            } else {
-              if (!visibleContentTypes.Contains(contentType, SPContentTypeEqualityComparer.Default)) {
-                visibleContentTypes.Add(contentType);
-                rootFolder.UniqueContentTypeOrder = visibleContentTypes;
-                rootFolder.Update();
-              }
-            }
-          }
-          */
+          // if (contentType.ParentList != null) {
+          //   SPFolder rootFolder = contentType.ParentList.RootFolder;
+          //   List<SPContentType> visibleContentTypes = new List<SPContentType>(rootFolder.ContentTypeOrder);
+          //   if (definition.HiddenInList) {
+          //     if (visibleContentTypes.Contains(contentType, SPContentTypeEqualityComparer.Default)) {
+          //       visibleContentTypes.Remove(contentType);
+          //       rootFolder.UniqueContentTypeOrder = visibleContentTypes;
+          //       rootFolder.Update();
+          //     }
+          //   } else {
+          //     if (!visibleContentTypes.Contains(contentType, SPContentTypeEqualityComparer.Default)) {
+          //       visibleContentTypes.Add(contentType);
+          //       rootFolder.UniqueContentTypeOrder = visibleContentTypes;
+          //       rootFolder.Update();
+          //     }
+          //   }
+          // }
         }
         eventReceiver.OnContentTypeProvisioned(eventArgs);
       }
