@@ -91,6 +91,11 @@ namespace Codeless.SharePoint.ObjectModel {
     public bool Hidden { get; set; }
 
     /// <summary>
+    /// Gets or sets whether the content type is hidden in the "New Item" menu.
+    /// </summary>
+    public bool HiddenInList { get; set; }
+
+    /// <summary>
     /// Gets or sets whether the attributed class represents a third-party content type.
     /// A third-party content type will not be provisioned, nor any modifications will be made to existing content type.
     /// </summary>
