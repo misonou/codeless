@@ -319,7 +319,7 @@ namespace Codeless.SharePoint {
       Dictionary<string, string> dictionary = new Dictionary<string, string>();
       Schema schema = new Schema(searchApplication);
       foreach (ManagedProperty info in schema.AllManagedProperties) {
-        foreach (CrawledProperty property in info.GetMappings()) {
+        foreach (CrawledProperty property in info.GetMappedCrawledProperties(1)) {
           Match match = Regex.Match(property.Name, @"^ows_(?:taxId_|[qr]_(?:TEXT|MTXT|BOOL|INTG|GUID|URLH|DATE|HTML|IMGE|CHCS|USER)_)?");
           if (match.Success) {
             string fieldName = property.Name.Substring(match.Length);
