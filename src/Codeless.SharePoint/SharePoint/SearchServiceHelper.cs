@@ -24,7 +24,9 @@ namespace Codeless.SharePoint {
       public readonly ManagedDataType DataType;
 
       public ManagedPropertyDefinition(SPField field) {
-        this.CrawledPropertyName = String.Concat("ows_", field.InternalName);
+        if (!MappedSystemCrawledProperties.TryGetValue(field.InternalName, out this.CrawledPropertyName)) {
+          this.CrawledPropertyName = String.Concat("ows_", field.InternalName);
+        }
         this.MappedPropertyName = field.InternalName.Replace("_", "");
         this.DataType = GetManagedDataType(field);
       }
@@ -52,6 +54,19 @@ namespace Codeless.SharePoint {
 
     private static readonly ReadOnlyDictionary<string, string> MappedSystemProperties = (new Dictionary<string, string>{
       { SPBuiltInFieldName.ID, BuiltInManagedPropertyName.ListItemID }
+    }).AsReadOnly();
+
+    private static readonly ReadOnlyDictionary<string, string> MappedSystemCrawledProperties = (new Dictionary<string, string>{
+      { SPBuiltInFieldName.ContentTypeId, "ContentTypeId" },
+      { SPBuiltInFieldName.Title, "ows_Title" },
+      { SPBuiltInFieldName.UniqueId, "ows_GUID" },
+      { SPBuiltInFieldName.FileRef, "ows_FileRef" },
+      { SPBuiltInFieldName.FileLeafRef, "ows_FileLeafRef" },
+      //{ SPBuiltInFieldName.PermMask, "ows_ID" },
+      { SPBuiltInFieldName.ID, "ows_ID" },
+      { SPBuiltInFieldName._UIVersionString, "ows__UIVersionString" },
+      { SPBuiltInFieldName.CheckoutUser, "ows_CheckoutUser" },
+      { SPBuiltInFieldName.Modified, "ows_Modified" },
     }).AsReadOnly();
 
     private static readonly ReadOnlyDictionary<ManagedDataType, int> VariantTypeDictionary = (new Dictionary<ManagedDataType, int> {
@@ -184,7 +199,12 @@ namespace Codeless.SharePoint {
         throw new Exception("Search executor did not return result table of type RelevantResults");
       }
       if (refiners != null) {
-        ResultTable refinementResults = queryResults[ResultType.RefinementResults];
+        ResultTable refinementResults = null;
+        try {
+          refinementResults = queryResults[ResultType.RefinementResults];
+        } catch (KeyNotFoundException) {
+          throw new Exception("Search executor did not return result table of type RefinementResults");
+        }
         if (refinementResults == null) {
           throw new Exception("Search executor did not return result table of type RefinementResults");
         }
@@ -272,7 +292,6 @@ namespace Codeless.SharePoint {
           if (rawProperty == null || rawProperty.GetMappedManagedProperties().GetEnumerator().MoveNext()) {
             continue;
           }
-
           ManagedProperty property;
           try {
             property = schema.AllManagedProperties[definition.MappedPropertyName];
@@ -319,10 +338,10 @@ namespace Codeless.SharePoint {
       Dictionary<string, string> dictionary = new Dictionary<string, string>();
       Schema schema = new Schema(searchApplication);
       foreach (ManagedProperty info in schema.AllManagedProperties) {
-        foreach (CrawledProperty property in info.GetMappings()) {
-          Match match = Regex.Match(property.Name, @"^ows_(?:taxId_|[qr]_(?:TEXT|MTXT|BOOL|INTG|GUID|URLH|DATE|HTML|IMGE|CHCS|USER)_)?");
+        foreach (Mapping mapping in info.GetMappings()) {
+          Match match = Regex.Match(mapping.CrawledPropertyName, @"^ows_(?:taxId_|[qr]_(?:TEXT|MTXT|BOOL|INTG|GUID|URLH|DATE|HTML|IMGE|CHCS|USER)_)?");
           if (match.Success) {
-            string fieldName = property.Name.Substring(match.Length);
+            string fieldName = mapping.CrawledPropertyName.Substring(match.Length);
             if (!dictionary.ContainsKey(fieldName)) {
               dictionary.Add(fieldName, info.Name);
             }
