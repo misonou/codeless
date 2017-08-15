@@ -644,6 +644,14 @@
             <param name="version">Version number.</param>
             <returns>A read-only model object of type <typeparamref name="T"/> if the specified version or *null* if such version does not exist.</returns>
         </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelExtension.GetVersions``1(``0)">
+            <summary>
+            Gets all versions of the list item.
+            </summary>
+            <typeparam name="T">Type of model.</typeparam>
+            <param name="model">A model object representing the list item.</param>
+            <returns>A enumerable collection containing read-only model objects of type <typeparamref name="T"/> representing different versions of the list item.</returns>
+        </member>
         <member name="T:Codeless.SharePoint.ObjectModel.SPOption">
             <summary>
             Specifies the value when provisioning a <see cref="T:System.Boolean"/> property.
@@ -1970,6 +1978,11 @@
         <member name="P:Codeless.SharePoint.ObjectModel.SPContentTypeAttribute.Hidden">
             <summary>
             Gets or sets whether the associated content type is hidden. See <see cref="P:Microsoft.SharePoint.SPContentType.Hidden"/> for details.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.ObjectModel.SPContentTypeAttribute.HiddenInList">
+            <summary>
+            Gets or sets whether the content type is hidden in the "New Item" menu.
             </summary>
         </member>
         <member name="P:Codeless.SharePoint.ObjectModel.SPContentTypeAttribute.ExternalContentType">
@@ -5384,6 +5397,62 @@
             <param name="securableObject">SPSecurableObject.</param>
             <param name="codeToRun">Action to run.</param>
         </member>
+        <member name="M:Codeless.SharePoint.SPExtension.WithUser(Microsoft.SharePoint.SPSite,Microsoft.SharePoint.SPUser,System.Action{Microsoft.SharePoint.SPSite})">
+            <summary>
+            Performs operation on the site collection with the specified account.
+            </summary>
+            <param name="site">A site collection object.</param>
+            <param name="user">A user object that represents the account who operations are performed as.</param>
+            <param name="codeToRun">Action to run.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.SPExtension.WithUser(Microsoft.SharePoint.SPWeb,Microsoft.SharePoint.SPUser,System.Action{Microsoft.SharePoint.SPWeb})">
+            <summary>
+            Performs operation on the site with the specified account.
+            </summary>
+            <param name="web">A site object.</param>
+            <param name="user">A user object that represents the account who operations are performed as.</param>
+            <param name="codeToRun">Action to run.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.SPExtension.WithUser(Microsoft.SharePoint.SPList,Microsoft.SharePoint.SPUser,System.Action{Microsoft.SharePoint.SPList})">
+            <summary>
+            Performs operation on the list with the specified account.
+            </summary>
+            <param name="list">A list object.</param>
+            <param name="user">A user object that represents the account who operations are performed as.</param>
+            <param name="codeToRun">Action to run.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.SPExtension.WithUser(Microsoft.SharePoint.SPListItem,Microsoft.SharePoint.SPUser,System.Action{Microsoft.SharePoint.SPListItem})">
+            <summary>
+            Performs operation on the list item with the specified account.
+            </summary>
+            <param name="listItem">A list item object.</param>
+            <param name="user">A user object that represents the account who operations are performed as.</param>
+            <param name="codeToRun">Action to run.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.SPExtension.WithUser(Microsoft.SharePoint.SPFolder,Microsoft.SharePoint.SPUser,System.Action{Microsoft.SharePoint.SPFolder})">
+            <summary>
+            Performs operation on the folder with the specified account.
+            </summary>
+            <param name="folder">A folder objet.</param>
+            <param name="user">A user object that represents the account who operations are performed as.</param>
+            <param name="codeToRun">Action to run.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.SPExtension.WithUser(Microsoft.SharePoint.SPFile,Microsoft.SharePoint.SPUser,System.Action{Microsoft.SharePoint.SPFile})">
+            <summary>
+            Performs operation on the file with the specified account.
+            </summary>
+            <param name="file">A file objet.</param>
+            <param name="user">A user object that represents the account who operations are performed as.</param>
+            <param name="codeToRun">Action to run.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.SPExtension.WithUser(Microsoft.SharePoint.SPSecurableObject,Microsoft.SharePoint.SPUser,System.Action{Microsoft.SharePoint.SPSecurableObject})">
+            <summary>
+            Performs operation on the secureable object with the specified account.
+            </summary>
+            <param name="securableObject">SPSecurableObject.</param>
+            <param name="user">A user object that represents the account who operations are performed as.</param>
+            <param name="codeToRun">Action to run.</param>
+        </member>
         <member name="M:Codeless.SharePoint.SPExtension.TryGetWebForCurrentUser(Microsoft.SharePoint.SPSite,System.Guid)">
             <summary>
             Finds a descendant site of the specified ID.
@@ -5597,6 +5666,22 @@
             <param name="workflowBaseId">The GUID of a workflow.</param>
             <returns>The workflow association object that associates the specified workflow and the given content type.</returns>
         </member>
+        <member name="M:Codeless.SharePoint.SPExtension.StartWorkflow(Microsoft.SharePoint.SPListItem,System.Guid,System.String)">
+            <summary>
+            Starts the specified workflow on the list item that is associated to the parent list.
+            </summary>
+            <param name="listItem">A list item to start workflow with.</param>
+            <param name="workflowBaseId">A GUID specifying the workflow.</param>
+            <param name="data">A string containing custom data.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.SPExtension.GetSiteMemberByID(Microsoft.SharePoint.SPWeb,System.Int32)">
+            <summary>
+            Gets the user or group with the specified member ID.
+            </summary>
+            <param name="web">Site object.</param>
+            <param name="id">Member ID.</param>
+            <returns>A <see cref="T:Microsoft.SharePoint.SPPrincipal"/> object that represents either the specified user or group; -or- *null* if there is no member with the specified member ID.</returns>
+        </member>
         <member name="M:Codeless.SharePoint.SPExtension.EnsureGroup(Microsoft.SharePoint.SPWeb,System.String)">
             <summary>
             Determines whether a SharePoint group with the given name exists.
@@ -5678,6 +5763,14 @@
             </summary>
             <param name="assignment">Role assignment object.</param>
             <returns>Permission granted by the given role assignment.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.SPExtension.GetMembersWithPermissions(Microsoft.SharePoint.SPSecurableObject,Microsoft.SharePoint.SPBasePermissions)">
+            <summary>
+            Gets a collection of users or groups that are granted the specified permissions on the specified securable object.
+            </summary>
+            <param name="obj">Securable object.</param>
+            <param name="permissions">A bitmask value representing required permissions.</param>
+            <returns>A enumerable collection of users or groups that are granted the specified permissions.</returns>
         </member>
         <member name="M:Codeless.SharePoint.SPExtension.IsMembershipOfCurrentUser(Microsoft.SharePoint.SPPrincipal)">
             <summary>
