@@ -281,6 +281,23 @@ namespace Codeless.SharePoint.ObjectModel {
           if (eventArgs.TargetModified) {
             contentType.Update();
           }
+          if (contentType.ParentList != null) {
+            SPFolder rootFolder = contentType.ParentList.RootFolder;
+            List<SPContentType> visibleContentTypes = new List<SPContentType>(rootFolder.ContentTypeOrder);
+            if (definition.HiddenInList) {
+              if (visibleContentTypes.Contains(contentType, SPContentTypeEqualityComparer.Default)) {
+                visibleContentTypes.Remove(contentType);
+                rootFolder.UniqueContentTypeOrder = visibleContentTypes;
+                rootFolder.Update();
+              }
+            } else {
+              if (!visibleContentTypes.Contains(contentType, SPContentTypeEqualityComparer.Default)) {
+                visibleContentTypes.Add(contentType);
+                rootFolder.UniqueContentTypeOrder = visibleContentTypes;
+                rootFolder.Update();
+              }
+            }
+          }
         }
         eventReceiver.OnContentTypeProvisioned(eventArgs);
       }
@@ -466,26 +483,19 @@ namespace Codeless.SharePoint.ObjectModel {
         // delete the list field that is automatically added to the default content type
         // if it belongs to the default content type it will be added back later
         SPContentType defaultContentType = parentList.ContentTypes[0];
-        defaultContentType.FieldLinks.Delete(siteField.Id);
-        defaultContentType.Update();
-      }
-      if (!attachLookupList) {
-        if (!parentList.ContentTypes.OfType<SPContentType>().Any(v => v.Fields.Contains(listField.Id))) {
-          bool needUpdate = false;
-          needUpdate |= SetFieldAttribute(listField, "X-DependentField", "TRUE");
-          needUpdate |= CopyProperties(new { Hidden = true, ReadOnlyField = true }, listField);
-          if (needUpdate) {
-            listField.Update();
-          }
+        if (defaultContentType.FieldLinks[siteField.Id] != null) {
+          defaultContentType.FieldLinks.Delete(siteField.Id);
+          defaultContentType.Update();
         }
-      } else {
-        if (GetFieldAttribute(listField, "X-DependentField") == "TRUE") {
-          bool needUpdate = false;
-          needUpdate |= SetFieldAttribute(listField, "X-DependentField", "FALSE");
-          needUpdate |= CopyProperties(new { Hidden = false, ReadOnlyField = false }, listField);
-          if (needUpdate) {
-            listField.Update();
-          }
+      }
+      string depValue = GetFieldAttribute(listField, "X-DependentField");
+      bool isDepField = !attachLookupList && depValue != "FALSE" && !parentList.ContentTypes.OfType<SPContentType>().Any(v => v.Fields.Contains(listField.Id));
+      if (isDepField || depValue != String.Empty) {
+        bool needUpdate = false;
+        needUpdate |= SetFieldAttribute(listField, "X-DependentField", isDepField ? "TRUE" : "FALSE");
+        needUpdate |= CopyProperties(new { Hidden = isDepField, ReadOnlyField = isDepField }, listField);
+        if (needUpdate) {
+          listField.Update();
         }
       }
       objectCache.AddField(listField);
@@ -581,6 +591,18 @@ namespace Codeless.SharePoint.ObjectModel {
           collection.EnsureEventReceiver(t, typeof(SPModelEventReceiver), SPEventReceiverSynchronization.Synchronous);
           collection.EnsureEventReceiver(t, typeof(SPModelAsyncEventReceiver), SPEventReceiverSynchronization.Asynchronous);
         }
+      }
+    }
+
+    private class SPContentTypeEqualityComparer : EqualityComparer<SPContentType> {
+      public static readonly SPContentTypeEqualityComparer Default = new SPContentTypeEqualityComparer();
+
+      public override bool Equals(SPContentType x, SPContentType y) {
+        return x.Id == y.Id;
+      }
+
+      public override int GetHashCode(SPContentType obj) {
+        return obj.Id.GetHashCode();
       }
     }
 
