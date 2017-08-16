@@ -1,11 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-<<<<<<< HEAD
-VisualStudioVersion = 14.0.24720.0
-=======
 VisualStudioVersion = 14.0.25420.1
->>>>>>> 8fc2d1a... Update known fields
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Codeless.SharePoint", "Codeless.SharePoint\Codeless.SharePoint.csproj", "{98FED525-A528-4868-AC09-01C90E95DBD3}"
 EndProject
@@ -44,11 +40,4 @@ Global
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		EnterpriseLibraryConfigurationToolBinariesPath = packages\Unity.2.1.505.0\lib\NET35;packages\Unity.Interception.2.1.505.0\lib\NET35;packages\EnterpriseLibrary.Common.5.0.505.0\lib\NET35;packages\EnterpriseLibrary.Logging.5.0.505.1\lib\NET35;packages\EnterpriseLibrary.Validation.5.0.505.0\lib\NET35
 	EndGlobalSection
-<<<<<<< HEAD
-	GlobalSection(SubversionScc) = preSolution
-		Svn-Managed = True
-		Manager = AnkhSVN - Subversion Support for Visual Studio
-	EndGlobalSection
-=======
->>>>>>> 8fc2d1a... Update known fields
 EndGlobal
