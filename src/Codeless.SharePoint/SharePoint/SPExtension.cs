@@ -728,6 +728,18 @@ namespace Codeless.SharePoint {
     }
 
     /// <summary>
+    /// Ensures the specified file is checked out to the current user before performing edit operation, and optionally publish the file on dispose.
+    /// </summary>
+    /// <param name="file">An <see cref="SPFile"/> object.</param>
+    /// <param name="publishOnDispose">Whether to publish the file on dispose.</param>
+    /// <param name="checkInComment">Comment message.</param>
+    /// <returns>An <see cref="IDisposable"/> object.</returns>
+    public static IDisposable GetCheckOutScope(this SPFile file, bool publishOnDispose, string checkInComment) {
+      return new SPFileCheckOutScope(file, true, publishOnDispose, checkInComment);
+    }
+
+
+    /// <summary>
     /// Enables scheduled publishing on the given list.
     /// </summary>
     /// <param name="targetList">List object.</param>

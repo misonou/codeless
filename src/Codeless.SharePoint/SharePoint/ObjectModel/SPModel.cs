@@ -29,6 +29,7 @@ namespace Codeless.SharePoint.ObjectModel {
       SPBuiltInFieldName.FileRef,
       SPBuiltInFieldName.FileLeafRef,
       SPBuiltInFieldName.PermMask,
+      SPBuiltInFieldName.ScopeId,
       SPBuiltInFieldName.ID,
       SPBuiltInFieldName._UIVersionString,
       SPBuiltInFieldName.CheckoutUser,
