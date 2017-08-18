@@ -12,6 +12,30 @@ namespace Codeless.SharePoint {
     #region Helper Class
     private interface ILookupKey<T> { }
 
+    private struct SPReusableAclLookupKey : IEquatable<SPReusableAclLookupKey>, ILookupKey<SPReusableAcl> {
+      public Guid ScopeId { get; private set; }
+
+      public SPReusableAclLookupKey(Guid scopeId)
+        : this() {
+        this.ScopeId = scopeId;
+      }
+
+      public bool Equals(SPReusableAclLookupKey other) {
+        return ScopeId == other.ScopeId;
+      }
+
+      public override bool Equals(object obj) {
+        if (obj is SPReusableAclLookupKey) {
+          return Equals((SPReusableAclLookupKey)obj);
+        }
+        return base.Equals(obj);
+      }
+
+      public override int GetHashCode() {
+        return ScopeId.GetHashCode();
+      }
+    }
+
     private struct SPWebLookupKey : IEquatable<SPWebLookupKey>, ILookupKey<SPWeb> {
       public Guid WebId { get; private set; }
 
@@ -104,7 +128,7 @@ namespace Codeless.SharePoint {
       public SPContentTypeLookupKey(SPContentType contentType)
         : this(contentType.ParentList == null ? Guid.Empty : contentType.ParentList.ID, contentType.Id) { }
 
-      public SPContentTypeLookupKey(Guid listId, SPContentTypeId contentTypeId):this() {
+      public SPContentTypeLookupKey(Guid listId, SPContentTypeId contentTypeId) : this() {
         this.ListId = listId;
         this.ContentTypeId = contentTypeId;
       }
@@ -399,7 +423,7 @@ namespace Codeless.SharePoint {
       SPContentTypeLookupKey lookupKey = new SPContentTypeLookupKey(listInfo.ListId, contentTypeId);
       return GetOrAdd(lookupKey, () => GetList(listInfo.WebId, listInfo.ListId).ContentTypes[contentTypeId]);
     }
-    
+
     /// <summary>
     /// Adds the given <see cref="Microsoft.SharePoint.SPView"/> object to the cache
     /// </summary>
@@ -410,6 +434,24 @@ namespace Codeless.SharePoint {
       CommonHelper.ConfirmNotNull(view, "view");
       SPViewLookupKey lookupKey = new SPViewLookupKey(view);
       return GetOrAdd(lookupKey, view);
+    }
+
+    public SPReusableAcl GetReusableAcl(Guid scopeId) {
+      SPReusableAclLookupKey lookupKey = new SPReusableAclLookupKey(scopeId);
+      return GetOrAdd(lookupKey, () => {
+        SPReusableAcl acl = null;
+        contextSite.WithElevatedPrivileges(elevatedSite => {
+          if (!hashtable.Keys.OfType<SPReusableAclLookupKey>().Any()) {
+            foreach (KeyValuePair<Guid, SPReusableAcl> item in elevatedSite.GetAllReusableAcls()) {
+              hashtable[new SPReusableAclLookupKey(item.Key)] = item.Value;
+            }
+            acl = (SPReusableAcl)hashtable[lookupKey];
+            return;
+          }
+          acl = elevatedSite.GetReusableAclForScope(scopeId);
+        });
+        return acl;
+      });
     }
 
     private T GetOrAdd<T>(ILookupKey<T> lookupKey, Func<T> factory) {

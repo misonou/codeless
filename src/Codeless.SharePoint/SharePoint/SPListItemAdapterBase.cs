@@ -156,7 +156,15 @@ namespace Codeless.SharePoint {
     public virtual SPBasePermissions EffectivePermissions {
       get {
         string value = GetString(SPBuiltInFieldName.PermMask);
-        return (SPBasePermissions)UInt64.Parse(value.Substring(2), NumberStyles.HexNumber);
+        if (!String.IsNullOrEmpty(value)) {
+          return (SPBasePermissions)UInt64.Parse(value.Substring(2), NumberStyles.HexNumber);
+        }
+        Guid scopeId = new Guid(GetLookupFieldValue(SPBuiltInFieldName.ScopeId));
+        SPReusableAcl acl = this.ObjectCache.GetReusableAcl(scopeId);
+        if (acl == null) {
+          throw new Exception("Unable to get ACL information for list item.");
+        }
+        return this.Site.GetEffectiveRightsForAcl(acl);
       }
     }
 
