@@ -621,6 +621,10 @@ namespace Codeless.SharePoint.ObjectModel {
       get { return this.Adapter.ServerRelativeUrl.TrimStart('/'); }
     }
 
+    string ISPModelMetaData.ServerRelativeUrl {
+      get { return this.Adapter.ServerRelativeUrl; }
+    }
+
     Guid ISPModelMetaData.SiteId {
       get { return this.Adapter.Site.ID; }
     }
@@ -634,6 +638,10 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     string ISPModelMetaData.FileLeafRef {
+      get { return this.Adapter.Filename; }
+    }
+
+    string ISPModelMetaData.Filename {
       get { return this.Adapter.Filename; }
     }
 
