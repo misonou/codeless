@@ -598,7 +598,9 @@ namespace Codeless.SharePoint.ObjectModel {
     private IEnumerable<ISPListItemAdapter> ExecuteSiteQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit) {
       DataTable dt = ExecuteSiteQuery(typeInfo, query, limit, true);
       foreach (DataRow row in dt.Rows) {
-        yield return new DataRowAdapter(currentWeb.Site, row, objectCache);
+        DataRowAdapter adapter = new DataRowAdapter(currentWeb.Site, row, objectCache);
+        objectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
+        yield return adapter;
       }
     }
 
@@ -606,7 +608,11 @@ namespace Codeless.SharePoint.ObjectModel {
       ResultTable queryResultsTable = ExecuteKeywordSearch(typeInfo, query, limit, startRow, keywords, refiners, keywordInclusion, true, out totalCount);
       DataTable queryDataTable = new DataTable();
       queryDataTable.Load(queryResultsTable, LoadOption.OverwriteChanges);
-      return queryDataTable.Rows.OfType<DataRow>().Select(row => (ISPListItemAdapter)new KeywordQueryResultAdapter(currentWeb.Site, row, objectCache));
+      return queryDataTable.Rows.OfType<DataRow>().Select(v => {
+        ISPListItemAdapter adapter = new KeywordQueryResultAdapter(currentWeb.Site, v, objectCache);
+        objectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
+        return adapter;
+      });
     }
 
     private IEnumerable<SPListItem> ExecuteListQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, bool selectProperties) {
