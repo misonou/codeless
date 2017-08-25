@@ -8,6 +8,7 @@ using Microsoft.Win32.SafeHandles;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -467,14 +468,26 @@ namespace Codeless.SharePoint.ObjectModel {
     protected void CheckFieldConsistency(SPModelDescriptor other) {
       foreach (SPFieldAttribute definition in fieldAttributes) {
         SPFieldAttribute parentDefinition = other.fieldAttributes.FirstOrDefault(v => v.InternalName == definition.InternalName);
-        if (definition.GetType() != parentDefinition.GetType()) {
-          throw new SPModelProvisionException(String.Format("Definition for field '{0}' in content type '{1}' conflicts with parent content type.", definition.InternalName, contentTypeAttribute.Name));
-        }
-        foreach (PropertyInfo property in definition.GetType().GetProperties()) {
-          object myValue = property.GetValue(definition, null);
-          object paValue = property.GetValue(parentDefinition, null);
-          if (myValue != paValue && (property.PropertyType != typeof(SPOption) || ((SPOption)myValue) != SPOption.Unspecified)) {
+        if (parentDefinition != null) {
+          if (definition.GetType() != parentDefinition.GetType()) {
             throw new SPModelProvisionException(String.Format("Definition for field '{0}' in content type '{1}' conflicts with parent content type.", definition.InternalName, contentTypeAttribute.Name));
+          }
+          foreach (PropertyInfo property in definition.GetType().GetProperties()) {
+            object myValue = property.GetValue(definition, null);
+            object paValue = property.GetValue(parentDefinition, null);
+            if (!Object.Equals(myValue, paValue)) {
+              if (property.PropertyType == typeof(SPOption) && (SPOption)myValue == SPOption.Unspecified) {
+                continue;
+              }
+              if (property.PropertyType == typeof(StringCollection)) {
+                StringCollection sourceCollection = (StringCollection)myValue;
+                StringCollection targetCollection = (StringCollection)paValue;
+                if (sourceCollection.Count == targetCollection.Count && !sourceCollection.Cast<string>().Except(targetCollection.Cast<string>()).Any()) {
+                  continue;
+                }
+              }
+              throw new SPModelProvisionException(String.Format("Definition for field '{0}' in content type '{1}' conflicts with parent content type.", definition.InternalName, contentTypeAttribute.Name));
+            }
           }
         }
       }
