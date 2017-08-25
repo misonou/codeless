@@ -134,6 +134,13 @@ namespace Codeless.SharePoint.ObjectModel {
     private readonly bool explicitListScope;
 
     /// <summary>
+    /// Initializes an instance of the <see cref="SPModelManagerBase{T}"/> class that queries list items under the specified site collection and its sub-sites.
+    /// </summary>
+    /// <param name="site">The site collection object to query against.</param>
+    public SPModelManagerBase(SPSite site)
+      : this(site.RootWeb, null) { }
+
+    /// <summary>
     /// Initializes an instance of the <see cref="SPModelManagerBase{T}"/> class that queries list items under the specified site and its sub-sites.
     /// </summary>
     /// <param name="web">The site object to query against.</param>
