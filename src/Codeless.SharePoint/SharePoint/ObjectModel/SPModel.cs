@@ -354,7 +354,7 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <returns>An enumerable of list objects.</returns>
     public static IEnumerable<SPList> EnumerateLists(Type type, SPWeb contextWeb) {
       SPModelDescriptor descriptor = SPModelDescriptor.Resolve(type);
-      return descriptor.GetUsages(contextWeb).Select(v => v.EnsureList(contextWeb.Site).List).Where(v => v != null).ToArray();
+      return new SPModelUsageCollection(contextWeb.Site, descriptor.GetUsages(contextWeb).ToArray()).GetListCollection();
     }
 
     /// <summary>
@@ -403,6 +403,17 @@ namespace Codeless.SharePoint.ObjectModel {
       }
       ISPModelManagerInternal manager = descriptor.CreateManager(adapter.Web);
       return manager.TryCreateModel(adapter, false);
+    }
+
+    /// <summary>
+    /// Creates a model object representing the list item.
+    /// </summary>
+    /// <param name="adapter">A data access adapter of the list item.</param>
+    /// <param name="manager">An instance of the <see cref="ISPModelManager"/> class which model object created will belongs to this manager.</param>
+    /// <returns>A model object or *null* if there is no types associated with the content type of the list item.</returns>
+    public static SPModel TryCreate(ISPListItemAdapter adapter, ISPModelManager manager) {
+      CommonHelper.ConfirmNotNull(manager, "manager");
+      return ((ISPModelManagerInternal)manager).TryCreateModel(adapter, false);
     }
 
     internal static SPModel TryCreate(ISPListItemAdapter adapter, SPModelCollection parentCollection) {
