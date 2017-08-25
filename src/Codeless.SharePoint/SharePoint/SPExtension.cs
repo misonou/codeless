@@ -880,6 +880,22 @@ namespace Codeless.SharePoint {
     }
 
     /// <summary>
+    /// Gets a running workflow instance of the specified workflow associated with the list item.
+    /// </summary>
+    /// <param name="listItem">A list item.</param>
+    /// <param name="workflowBaseId">A GUID specifying the workflow.</param>
+    /// <returns>A instance of the <see cref="SPWorkflow"/> type that represents the workflow; -or- *null* if there is no running instance of the specified workflow.</returns>
+    public static SPWorkflow GetActiveWorkflow(this SPListItem listItem, Guid workflowBaseId) {
+      SPWorkflowManager manager = listItem.Web.Site.WorkflowManager;
+      foreach (SPWorkflow wf in manager.GetItemActiveWorkflows(listItem)) {
+        if (wf.ParentAssociation.BaseId == workflowBaseId) {
+          return wf;
+        }
+      }
+      return null;
+    }
+
+    /// <summary>
     /// Gets the user or group with the specified member ID.
     /// </summary>
     /// <param name="web">Site object.</param>
