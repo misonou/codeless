@@ -208,6 +208,8 @@ namespace Codeless.SharePoint {
     }
     #endregion
 
+    private static readonly PropertyInfo fieldNode = typeof(SPField).GetProperty("Node", true);
+
     private readonly SPSite contextSite;
     private readonly Hashtable hashtable = new Hashtable();
     private readonly Dictionary<string, SPListLookupKey> listUrls = new Dictionary<string, SPListLookupKey>();
@@ -337,6 +339,7 @@ namespace Codeless.SharePoint {
       if (field.ParentList == null) {
         fieldInternalNames.EnsureKeyValue(field.InternalName, () => new SPFieldLookupKey(Guid.Empty, field.Id));
       }
+      EnsureLocalXmlNode(field);
       return GetOrAdd(lookupKey, field);
     }
 
@@ -347,7 +350,7 @@ namespace Codeless.SharePoint {
     /// <returns>An <see cref="Microsoft.SharePoint.SPField"/> object in cache. NULL if site column of given GUID does not exist.</returns>
     public SPField GetField(Guid fieldId) {
       SPFieldLookupKey lookupKey = new SPFieldLookupKey(Guid.Empty, fieldId);
-      SPField field = GetOrAdd(lookupKey, () => contextSite.RootWeb.Fields[fieldId]);
+      SPField field = GetOrAdd(lookupKey, () => EnsureLocalXmlNode(contextSite.RootWeb.Fields[fieldId]));
       if (field != null && field.ParentList == null) {
         fieldInternalNames.EnsureKeyValue(field.InternalName, () => new SPFieldLookupKey(Guid.Empty, field.Id));
       }
@@ -363,7 +366,7 @@ namespace Codeless.SharePoint {
     /// <returns>An <see cref="Microsoft.SharePoint.SPField"/> object in cache. NULL if list column of given GUID does not exist, or specified list does not exist.</returns>
     public SPField GetField(Guid webId, Guid listId, Guid fieldId) {
       SPFieldLookupKey lookupKey = new SPFieldLookupKey(listId, fieldId);
-      SPField field = GetOrAdd(lookupKey, () => GetList(webId, listId).Fields[fieldId]);
+      SPField field = GetOrAdd(lookupKey, () => EnsureLocalXmlNode(GetList(webId, listId).Fields[fieldId]));
       if (field != null && field.ParentList == null) {
         fieldInternalNames.EnsureKeyValue(field.InternalName, () => new SPFieldLookupKey(Guid.Empty, field.Id));
       }
@@ -478,7 +481,9 @@ namespace Codeless.SharePoint {
       T value = default(T);
       try {
         value = factory();
-      } catch { }
+      } catch {
+        return value;
+      }
       hashtable[lookupKey] = value;
       return value;
     }
@@ -489,6 +494,14 @@ namespace Codeless.SharePoint {
       }
       hashtable[lookupKey] = value;
       return value;
+    }
+
+    private SPField EnsureLocalXmlNode(SPField field) {
+      // SPField object points to XML data in an array shared by the field collection until becoming dirty
+      // however adding new field to the collection and causing the shared array to mutate
+      // clean SPField object may corrupt as the same array index would instead point to XML data for another field
+      fieldNode.GetValue<object>(field);
+      return field;
     }
 
     private SPListLookupKey GetListInfoFromUrl(string listUrl) {
