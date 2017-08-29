@@ -27,6 +27,14 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="web">Site object.</param>
     public SPModelManager(SPWeb web)
       : base(web) { }
+    
+    /// <summary>
+    /// Initializes an instance of the <see cref="SPModelManager{T}"/> class that queries list items under the specified site and optionally its sub-sites.
+    /// </summary>
+    /// <param name="web">The site object to query against.</param>
+    /// <param name="currentWebOnly">A boolean value specifies whether lists in sub-sites should also be queried.</param>
+    public SPModelManager(SPWeb web, bool currentWebOnly)
+      : base(web, currentWebOnly) { }
 
     /// <summary>
     /// Initializes an instance of the <see cref="SPModelManager{T}"/> class that queries list items under the specified list.

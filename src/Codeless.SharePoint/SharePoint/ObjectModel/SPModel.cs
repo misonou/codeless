@@ -354,7 +354,7 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <returns>An enumerable of list objects.</returns>
     public static IEnumerable<SPList> EnumerateLists(Type type, SPWeb contextWeb) {
       SPModelDescriptor descriptor = SPModelDescriptor.Resolve(type);
-      return new SPModelUsageCollection(contextWeb.Site, descriptor.GetUsages(contextWeb).ToArray()).GetListCollection();
+      return descriptor.GetUsages(contextWeb).GetListCollection();
     }
 
     /// <summary>

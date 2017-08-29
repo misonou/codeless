@@ -358,6 +358,16 @@ namespace Codeless.SharePoint.ObjectModel {
               }
             }
 
+            try {
+              SPFieldIndex index = cachedList.FieldIndexes[SPBuiltInFieldId.ContentTypeId];
+            } catch (ArgumentException) {
+              SPField contentTypeIdField = cachedList.Fields[SPBuiltInFieldId.ContentTypeId];
+              if (CopyProperties(new { Indexed = true }, contentTypeIdField)) {
+                listFieldsToUpdate.Add(contentTypeIdField);
+              }
+              cachedList.FieldIndexes.Add(contentTypeIdField);
+            }
+
             // remove unwanted content type that are most likely exist when list is created
             foreach (SPContentTypeId id in contentTypesToRemove) {
               cachedList.ContentTypes.Delete(id);

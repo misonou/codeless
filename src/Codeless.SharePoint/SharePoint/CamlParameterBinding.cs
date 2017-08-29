@@ -611,10 +611,16 @@ namespace Codeless.SharePoint {
     public CamlParameterBindingContentTypeId(SPContentTypeId value)
       : base(value) { }
 
+    public CamlParameterBindingContentTypeId(IEnumerable<SPContentTypeId> value)
+      : base(value) { }
+
     public CamlParameterBindingContentTypeId(CamlParameterName parameterName)
       : base(parameterName) { }
 
     public CamlParameterBindingContentTypeId(CamlParameterName parameterName, SPContentTypeId value)
+      : base(parameterName, value) { }
+
+    public CamlParameterBindingContentTypeId(CamlParameterName parameterName, IEnumerable<SPContentTypeId> value)
       : base(parameterName, value) { }
 
     public override CamlValueType ValueType {
