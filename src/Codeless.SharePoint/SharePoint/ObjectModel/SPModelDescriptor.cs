@@ -270,22 +270,42 @@ namespace Codeless.SharePoint.ObjectModel {
       get { yield return contentTypeAttribute.ContentTypeId; }
     }
 
-    public virtual IEnumerable<SPModelUsage> GetUsages(SPWeb web) {
+    public virtual SPModelUsageCollection GetUsages(SPWeb web) {
       CommonHelper.ConfirmNotNull(web, "web");
+      List<SPModelUsage> collection = new List<SPModelUsage>();
       SPContentType contentType = web.AvailableContentTypes[contentTypeAttribute.ContentTypeId];
       if (contentType != null) {
-        HashSet<string> collection = new HashSet<string>();
         string startUrl = web.ServerRelativeUrl;
         if (listAttribute.RootWebOnly) {
           startUrl = web.Site.ServerRelativeUrl;
         }
         startUrl = startUrl.TrimEnd('/');
         foreach (SPContentTypeUsage usage in SPContentTypeUsage.GetUsages(contentType)) {
-          if (usage.IsUrlToList && collection.Add(usage.Url) && IsUrlInScope(startUrl, usage.Url)) {
-            yield return SPModelUsage.Create(web.Site, usage);
+          if (usage.IsUrlToList && IsUrlInScope(startUrl, usage.Url)) {
+            collection.Add(SPModelUsage.Create(web.Site, usage));
           }
         }
       }
+      return new SPModelUsageCollection(web.Site, collection);
+    }
+
+    public SPModelUsageCollection GetUsages(SPWeb web, bool currentWebOnly) {
+      SPModelUsageCollection collection = GetUsages(web);
+      if (currentWebOnly) {
+        return new SPModelUsageCollection(web.Site, collection.Where(v => v.WebId == web.ID));
+      }
+      return collection;
+    }
+
+    public virtual SPModelUsageCollection GetUsages(SPList list) {
+      CommonHelper.ConfirmNotNull(list, "list");
+      List<SPModelUsage> collection = new List<SPModelUsage>();
+      foreach (SPContentType ct in list.ContentTypes) {
+        if (this.ContentTypeIds.Any(v => v.IsParentOf(ct.Id))) {
+          collection.Add(SPModelUsage.Create(list, ct.Id));
+        }
+      }
+      return new SPModelUsageCollection(list.ParentWeb.Site, collection);
     }
 
     public SPModelUsageCollection Provision(SPWeb targetWeb) {
@@ -539,7 +559,7 @@ namespace Codeless.SharePoint.ObjectModel {
                           helper2.UpdateContentType(listContentType, contentTypeAttribute, fieldAttributes);
                           helper2.UpdateList(list, listAttribute.Clone(list.RootFolder.Url), contentTypeAttribute, fieldAttributes, hiddenFields.ToArray(), new SPContentTypeId[0]);
                           if (deferredListUrls != null) {
-                            deferredListUrls.Add(SPModelUsage.Create(list).GetWithoutList());
+                            deferredListUrls.Add(SPModelUsage.Create(list, usage.Id).GetWithoutList());
                           }
                         }
                       }
@@ -571,9 +591,8 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     private void ProvisionList(string siteUrl, Guid siteId, Guid webId, SPModelListProvisionOptions listOptions, HashSet<SPModelUsage> deferredListUrls) {
-      SPList targetList = null;
-      SPModelProvisionEventReceiver eventReceiver = GetProvisionEventReceiver(true);
-      using (SPModelProvisionHelper helper = new SPModelProvisionHelper(siteId, eventReceiver)) {
+      using (SPModelProvisionHelper helper = new SPModelProvisionHelper(siteId, GetProvisionEventReceiver(true))) {
+        SPList targetList = null;
         if (listOptions.TargetListId != Guid.Empty) {
           targetList = helper.TargetSite.AllWebs[listOptions.TargetWebId].Lists[listOptions.TargetListId];
         }
@@ -596,8 +615,13 @@ namespace Codeless.SharePoint.ObjectModel {
             helper.UpdateList(targetList, implListAttribute, contentTypeAttribute, fieldAttributes, hiddenFields.ToArray(), contentTypes);
           }
         }
+        foreach (SPContentType ct in targetList.ContentTypes) {
+          if (ct.Id.Parent == contentTypeAttribute.ContentTypeId) {
+            deferredListUrls.Add(SPModelUsage.Create(targetList, ct.Id).GetWithoutList());
+            break;
+          }
+        }
       }
-      deferredListUrls.Add(SPModelUsage.Create(targetList).GetWithoutList());
     }
 
     private bool TryLockSite(Guid siteId) {
@@ -750,8 +774,14 @@ namespace Codeless.SharePoint.ObjectModel {
       get { return base.Children.SelectMany(v => v.ContentTypeIds); }
     }
 
-    public override IEnumerable<SPModelUsage> GetUsages(SPWeb web) {
-      return base.Children.SelectMany(v => v.GetUsages(web)).Distinct();
+    public override SPModelUsageCollection GetUsages(SPWeb web) {
+      CommonHelper.ConfirmNotNull(web, "web");
+      return new SPModelUsageCollection(web.Site, base.Children.SelectMany(v => v.GetUsages(web)));
+    }
+
+    public override SPModelUsageCollection GetUsages(SPList list) {
+      CommonHelper.ConfirmNotNull(list, "list");
+      return new SPModelUsageCollection(list.ParentWeb.Site, base.Children.SelectMany(v => v.GetUsages(list)));
     }
 
     public void AddImplementedType(SPModelDescriptor descriptor) {

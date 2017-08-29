@@ -145,7 +145,15 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     /// <param name="web">The site object to query against.</param>
     public SPModelManagerBase(SPWeb web)
-      : this(web, null) { }
+      : this(web, null, false) { }
+
+    /// <summary>
+    /// Initializes an instance of the <see cref="SPModelManagerBase{T}"/> class that queries list items under the specified site and optionally its sub-sites.
+    /// </summary>
+    /// <param name="web">The site object to query against.</param>
+    /// <param name="currentWebOnly">A boolean value specifies whether lists in sub-sites should also be queried.</param>
+    public SPModelManagerBase(SPWeb web, bool currentWebOnly)
+      : this(web, null, currentWebOnly) { }
 
     /// <summary>
     /// Initializes an instance of the <see cref="SPModelManagerBase{T}"/> class that queries list items under the specified list.
@@ -162,7 +170,7 @@ namespace Codeless.SharePoint.ObjectModel {
     public SPModelManagerBase(SPWeb currentWeb, IList<SPList> contextLists)
       : this(currentWeb, contextLists, false) { }
 
-    private SPModelManagerBase(SPWeb currentWeb, IList<SPList> contextLists, bool dummy) {
+    private SPModelManagerBase(SPWeb currentWeb, IList<SPList> contextLists, bool currentWebOnly) {
       CommonHelper.ConfirmNotNull(currentWeb, "currentWeb");
 
       using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
@@ -174,17 +182,18 @@ namespace Codeless.SharePoint.ObjectModel {
         descriptor.Provision(currentWeb, SPModelProvisionOptions.Asynchronous | SPModelProvisionOptions.SuppressListCreation, SPModelListProvisionOptions.Default);
 
         if (contextLists != null) {
-          currentLists.AddRange(contextLists.Where(v => v != null).Select(SPModelUsage.Create));
+          currentLists.AddRange(contextLists.Where(v => v != null).SelectMany(descriptor.GetUsages));
           explicitListScope = true;
         }
         if (contextLists == null) {
-          currentLists.AddRange(descriptor.GetUsages(currentWeb));
+          currentLists.AddRange(descriptor.GetUsages(currentWeb, currentWebOnly));
         }
-        if (currentLists.Count > 1 && descriptor.BaseType == SPBaseType.UnspecifiedBaseType) {
+        int listCount = currentLists.Select(v => v.ListId).Distinct().Count();
+        if (listCount > 1 && descriptor.BaseType == SPBaseType.UnspecifiedBaseType) {
           this.queryMode = SPModelImplicitQueryMode.KeywordSearch;
-        } else if (currentLists.Count > 1) {
+        } else if (listCount > 1) {
           this.queryMode = SPModelImplicitQueryMode.SiteQuery;
-        } else if (currentLists.Count == 1) {
+        } else if (listCount == 1) {
           this.queryMode = SPModelImplicitQueryMode.ListQuery;
         } else {
           this.queryMode = SPModelImplicitQueryMode.None;
@@ -431,7 +440,7 @@ namespace Codeless.SharePoint.ObjectModel {
       if (exactType.ItemType != SPModelItemType.GenericItem && String.IsNullOrEmpty(name)) {
         throw new ArgumentNullException("File or folder name cannot be null.");
       }
-      if (currentLists.Count > 1) {
+      if (currentLists.Select(v => v.ListId).Distinct().Count() > 1) {
         throw new InvalidOperationException("Ambiguous target list found. Try instanstite SPModelManager with SPList constructor to specify target list.");
       }
       if (currentLists.Count == 0) {
@@ -630,7 +639,7 @@ namespace Codeless.SharePoint.ObjectModel {
 
       SPQuery listQuery = new SPQuery();
       listQuery.ViewFields = selectProperties ? (Caml.ViewFields(typeInfo.RequiredViewFields) + Caml.ViewFields(SPModel.RequiredViewFields)).ToString() : String.Empty;
-      listQuery.Query = query.ToString();
+      listQuery.Query = ContentTypeIdExpressionTransformVisitor.Transform(query, currentLists).ToString();
       listQuery.RowLimit = limit;
       listQuery.ViewAttributes = "Scope=\"RecursiveAll\"";
       OnExecutingListQuery(new SPModelListQueryEventArgs { Query = listQuery });
@@ -648,9 +657,9 @@ namespace Codeless.SharePoint.ObjectModel {
     private DataTable ExecuteSiteQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, bool selectProperties) {
       SPSiteDataQuery siteQuery = new SPSiteDataQuery();
       siteQuery.Webs = Caml.WebsScope.Recursive;
-      siteQuery.Lists = Caml.ListsScope(currentLists.Select(v => v.ListId).ToArray()).ToString();
+      siteQuery.Lists = Caml.ListsScope(currentLists.Select(v => v.ListId).Distinct().ToArray()).ToString();
       siteQuery.ViewFields = (query.GetViewFieldsExpression() + (selectProperties ? (Caml.ViewFields(typeInfo.RequiredViewFields) + Caml.ViewFields(SPModel.RequiredViewFields)) : Caml.Empty)).ToString();
-      siteQuery.Query = query.ToString();
+      siteQuery.Query = ContentTypeIdExpressionTransformVisitor.Transform(query, currentLists).ToString();
       siteQuery.RowLimit = limit;
       OnExecutingSiteQuery(new SPModelSiteQueryEventArgs { Query = siteQuery });
 
@@ -823,5 +832,84 @@ namespace Codeless.SharePoint.ObjectModel {
       CommitChanges((T)item, mode);
     }
     #endregion
+
+    private class ContentTypeIdExpressionTransformVisitor : CamlVisitor {
+      private static readonly Hashtable ht = new Hashtable();
+      private readonly Stack<CamlExpression> stack = new Stack<CamlExpression>(new [] { Caml.Empty });
+      private readonly List<SPModelUsage> usages;
+
+      private ContentTypeIdExpressionTransformVisitor(List<SPModelUsage> usages) {
+        this.usages = usages;
+      }
+
+      public static CamlExpression Transform(CamlExpression expr, List<SPModelUsage> usages) {
+        ContentTypeIdExpressionTransformVisitor visitor = new ContentTypeIdExpressionTransformVisitor(usages);
+        visitor.Visit(expr);
+        return visitor.stack.Peek();
+      }
+
+      protected internal override void VisitViewFieldsFieldRefExpression(CamlParameterBindingFieldRef fieldName) {
+        stack.Push(stack.Pop() + Caml.ViewFields(fieldName));
+      }
+
+      protected internal override void VisitOrderByFieldRefExpression(CamlParameterBindingFieldRef fieldName, CamlParameterBindingOrder orderBinding) {
+        stack.Push(stack.Pop() + Caml.OrderBy(fieldName, orderBinding));
+      }
+
+      protected internal override void VisitGroupByFieldRefExpression(CamlParameterBindingFieldRef fieldName) {
+        stack.Push(stack.Pop() + Caml.GroupBy(fieldName));
+      }
+
+      protected internal override void VisitWhereUnaryComparisonExpression(CamlUnaryOperator operatorValue, CamlParameterBindingFieldRef fieldName) {
+        stack.Push(stack.Pop() + new CamlWhereUnaryComparisonExpression(operatorValue, fieldName));
+      }
+
+      protected internal override void VisitWhereBinaryComparisonExpression(CamlBinaryOperator operatorValue, CamlParameterBindingFieldRef fieldName, ICamlParameterBinding value, bool? includeTimeValue) {
+        if (fieldName.Bind(ht) == SPBuiltInFieldName.ContentTypeId && operatorValue == CamlBinaryOperator.BeginsWith) {
+          SPContentTypeId id = new SPContentTypeId(value.Bind(ht));
+          SPContentTypeId[] ids = usages.Where(v => v.ContentTypeId.IsChildOf(id)).Select(v => v.ContentTypeId).ToArray();
+          CamlExpression expression;
+          if (ids.Length == 0) {
+            expression = Caml.False;
+          } else if (ids.Length == 1) {
+            expression = Caml.Equals(SPBuiltInFieldName.ContentTypeId, ids[0]);
+          } else {
+            expression = Caml.EqualsAny(SPBuiltInFieldName.ContentTypeId, new CamlParameterBindingContentTypeId(ids));
+          }
+          stack.Push(stack.Pop() + expression);
+        } else {
+          stack.Push(stack.Pop() + new CamlWhereBinaryComparisonExpression(operatorValue, fieldName, value));
+        }
+      }
+
+      protected internal override void VisitWhereLogicalExpression(CamlLogicalOperator operatorValue, CamlExpression leftExpression, CamlExpression rightExpression) {
+        stack.Push(Caml.Empty);
+        Visit(leftExpression);
+        leftExpression = stack.Pop();
+
+        if (rightExpression != null) {
+          stack.Push(Caml.Empty);
+          Visit(rightExpression);
+          rightExpression = stack.Pop();
+        }
+
+        stack.Pop();
+        switch (operatorValue) {
+          case CamlLogicalOperator.And:
+            stack.Push(Caml.And(leftExpression, rightExpression));
+            break;
+          case CamlLogicalOperator.Or:
+            stack.Push(Caml.Or(leftExpression, rightExpression));
+            break;
+          case CamlLogicalOperator.Not:
+            stack.Push(Caml.Not(leftExpression));
+            break;
+        }
+      }
+
+      protected internal override void VisitWhereExpression(CamlExpression expression) {
+        Visit(expression);
+      }
+    }
   }
 }
