@@ -121,6 +121,7 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SharePoint\CamlExpression.cs" />
+    <Compile Include="SharePoint\CamlExpressionVisitor.cs" />
     <Compile Include="SharePoint\CamlParameterBinding.cs" />
     <Compile Include="SharePoint\Internal\KnownFields.cs" />
     <Compile Include="SharePoint\Internal\SPChangeQueryExecutor.cs" />

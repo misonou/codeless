@@ -40,7 +40,7 @@ namespace Codeless.SharePoint {
     /// <summary>
     /// Represents an empty collection of parameter values. This collection is read-only.
     /// </summary>
-    protected static readonly Hashtable EmptyBindings = new ReadOnlyHashtable();
+    protected internal static readonly Hashtable EmptyBindings = new ReadOnlyHashtable();
 
     /// <summary>
     /// Performs a logical And operation between two CAML expressions.
@@ -394,12 +394,16 @@ namespace Codeless.SharePoint {
     T Expression { get; }
   }
 
-  internal abstract class CamlFieldRefExpression : CamlExpression, IEquatable<CamlFieldRefExpression>, ICamlFieldRefComponent {
-    protected readonly CamlParameterBindingFieldRef FieldName;
+  public abstract class CamlFieldRefExpression : CamlExpression, IEquatable<CamlFieldRefExpression>, ICamlFieldRefComponent {
+    private readonly CamlParameterBindingFieldRef fieldName;
 
-    public CamlFieldRefExpression(CamlParameterBindingFieldRef fieldName)
+    internal CamlFieldRefExpression(CamlParameterBindingFieldRef fieldName)
       : base() {
-      FieldName = fieldName;
+      this.fieldName = fieldName;
+    }
+
+    public CamlParameterBindingFieldRef FieldName {
+      get { return fieldName; }
     }
 
     public static bool operator ==(CamlFieldRefExpression x, CamlFieldRefExpression y) {
@@ -443,8 +447,8 @@ namespace Codeless.SharePoint {
     }
   }
 
-  internal class CamlViewFieldsFieldRefExpression : CamlFieldRefExpression {
-    public CamlViewFieldsFieldRefExpression(CamlParameterBindingFieldRef fieldName)
+  public class CamlViewFieldsFieldRefExpression : CamlFieldRefExpression {
+    internal CamlViewFieldsFieldRefExpression(CamlParameterBindingFieldRef fieldName)
       : base(fieldName) { }
 
     public override CamlExpressionType Type {
@@ -467,13 +471,13 @@ namespace Codeless.SharePoint {
     }
   }
 
-  internal class CamlWhereFieldRefExpression : CamlFieldRefExpression {
+  public class CamlWhereFieldRefExpression : CamlFieldRefExpression {
     private readonly CamlValueType valueType;
 
-    public CamlWhereFieldRefExpression(CamlParameterBindingFieldRef fieldName)
+    internal CamlWhereFieldRefExpression(CamlParameterBindingFieldRef fieldName)
       : this(fieldName, CamlValueType.Text) { }
 
-    public CamlWhereFieldRefExpression(CamlParameterBindingFieldRef fieldName, CamlValueType fieldType)
+    internal CamlWhereFieldRefExpression(CamlParameterBindingFieldRef fieldName, CamlValueType fieldType)
       : base(fieldName) {
       valueType = fieldType;
     }
@@ -491,10 +495,10 @@ namespace Codeless.SharePoint {
     }
   }
 
-  internal class CamlOrderByFieldRefExpression : CamlFieldRefExpression, ICamlQueryComponent<CamlOrderByExpression> {
+  public class CamlOrderByFieldRefExpression : CamlFieldRefExpression, ICamlQueryComponent<CamlOrderByExpression> {
     private readonly CamlParameterBindingOrder orderBinding;
 
-    public CamlOrderByFieldRefExpression(CamlParameterBindingFieldRef fieldName, CamlParameterBindingOrder isAscending)
+    internal CamlOrderByFieldRefExpression(CamlParameterBindingFieldRef fieldName, CamlParameterBindingOrder isAscending)
       : base(fieldName) {
       orderBinding = isAscending;
     }
@@ -523,8 +527,8 @@ namespace Codeless.SharePoint {
     }
   }
 
-  internal class CamlGroupByFieldRefExpression : CamlFieldRefExpression, ICamlQueryComponent<CamlGroupByExpression> {
-    public CamlGroupByFieldRefExpression(CamlParameterBindingFieldRef fieldName)
+  public class CamlGroupByFieldRefExpression : CamlFieldRefExpression, ICamlQueryComponent<CamlGroupByExpression> {
+    internal CamlGroupByFieldRefExpression(CamlParameterBindingFieldRef fieldName)
       : base(fieldName) { }
 
     public override CamlExpressionType Type {
@@ -549,10 +553,10 @@ namespace Codeless.SharePoint {
     }
   }
 
-  internal abstract class CamlWhereComparisonExpression : CamlExpression, ICamlQueryComponent<CamlWhereExpression> {
+  public abstract class CamlWhereComparisonExpression : CamlExpression, ICamlQueryComponent<CamlWhereExpression> {
     protected string OperatorString { get; private set; }
 
-    public CamlWhereComparisonExpression(string operatorString)
+    internal CamlWhereComparisonExpression(string operatorString)
       : base() {
       this.OperatorString = operatorString;
     }
@@ -603,12 +607,12 @@ namespace Codeless.SharePoint {
     }
   }
 
-  internal class CamlWhereUnaryComparisonExpression : CamlWhereComparisonExpression, ICamlFieldRefComponent {
+  public class CamlWhereUnaryComparisonExpression : CamlWhereComparisonExpression, ICamlFieldRefComponent {
     private readonly CamlFieldRefExpression fieldRef;
     private readonly CamlParameterBindingFieldRef fieldName;
     private readonly CamlUnaryOperator operatorValue;
 
-    public CamlWhereUnaryComparisonExpression(CamlUnaryOperator op, CamlParameterBindingFieldRef fieldName)
+    internal CamlWhereUnaryComparisonExpression(CamlUnaryOperator op, CamlParameterBindingFieldRef fieldName)
       : base(GetOperatorString(op)) {
       this.fieldRef = new CamlWhereFieldRefExpression(fieldName);
       this.fieldName = fieldName;
@@ -617,6 +621,14 @@ namespace Codeless.SharePoint {
 
     public override CamlExpressionType Type {
       get { return CamlExpressionType.WhereUnaryComparison; }
+    }
+
+    public CamlParameterBindingFieldRef FieldName {
+      get { return fieldName; }
+    }
+
+    public CamlUnaryOperator Operator {
+      get { return operatorValue; }
     }
 
     protected override void Visit(CamlVisitor visitor) {
@@ -642,14 +654,14 @@ namespace Codeless.SharePoint {
     }
   }
 
-  internal class CamlWhereBinaryComparisonExpression : CamlWhereComparisonExpression, ICamlFieldRefComponent {
+  public class CamlWhereBinaryComparisonExpression : CamlWhereComparisonExpression, ICamlFieldRefComponent {
     private readonly CamlFieldRefExpression fieldRef;
     private readonly CamlParameterBindingFieldRef fieldName;
     private readonly CamlBinaryOperator operatorValue;
     private readonly ICamlParameterBinding value;
     private readonly bool? includeTimeValue;
 
-    public CamlWhereBinaryComparisonExpression(CamlBinaryOperator op, CamlParameterBindingFieldRef fieldName, ICamlParameterBinding value)
+    internal CamlWhereBinaryComparisonExpression(CamlBinaryOperator op, CamlParameterBindingFieldRef fieldName, ICamlParameterBinding value)
       : base(GetOperatorString(op)) {
       this.fieldRef = new CamlWhereFieldRefExpression(fieldName, value.ValueType);
       this.fieldName = fieldName;
@@ -663,6 +675,18 @@ namespace Codeless.SharePoint {
 
     public override CamlExpressionType Type {
       get { return CamlExpressionType.WhereBinaryComparison; }
+    }
+
+    public CamlParameterBindingFieldRef FieldName {
+      get { return fieldName; }
+    }
+
+    public ICamlParameterBinding Value {
+      get { return value; }
+    }
+
+    public CamlBinaryOperator Operator {
+      get { return operatorValue; }
     }
 
     protected override void Visit(CamlVisitor visitor) {
@@ -772,12 +796,12 @@ namespace Codeless.SharePoint {
     }
   }
 
-  internal class CamlWhereLogicalExpression : CamlWhereComparisonExpression, ICamlFieldRefComponent {
+  public class CamlWhereLogicalExpression : CamlWhereComparisonExpression, ICamlFieldRefComponent {
     private readonly CamlWhereComparisonExpression leftExpression;
     private readonly CamlWhereComparisonExpression rightExpression;
     private readonly CamlLogicalOperator operatorValue;
 
-    public CamlWhereLogicalExpression(CamlLogicalOperator op, CamlWhereComparisonExpression x, CamlWhereComparisonExpression y)
+    internal CamlWhereLogicalExpression(CamlLogicalOperator op, CamlWhereComparisonExpression x, CamlWhereComparisonExpression y)
       : base(GetOperatorString(op)) {
       leftExpression = x;
       rightExpression = y;
@@ -786,6 +810,18 @@ namespace Codeless.SharePoint {
 
     public override CamlExpressionType Type {
       get { return CamlExpressionType.WhereLogical; }
+    }
+
+    public CamlWhereComparisonExpression Left {
+      get { return leftExpression; }
+    }
+
+    public CamlWhereComparisonExpression Right {
+      get { return rightExpression; }
+    }
+
+    public CamlLogicalOperator Operator {
+      get { return operatorValue; }
     }
 
     protected override void Visit(CamlVisitor visitor) {
@@ -821,16 +857,20 @@ namespace Codeless.SharePoint {
     }
   }
 
-  internal class CamlWhereExpression : CamlExpression, ICamlFieldRefComponent, ICamlQueryComponent<CamlWhereExpression> {
+  public class CamlWhereExpression : CamlExpression, ICamlFieldRefComponent, ICamlQueryComponent<CamlWhereExpression> {
     private CamlWhereComparisonExpression expression;
 
-    public CamlWhereExpression(CamlWhereComparisonExpression expression)
+    internal CamlWhereExpression(CamlWhereComparisonExpression expression)
       : base() {
       this.expression = expression;
     }
 
     public override CamlExpressionType Type {
       get { return CamlExpressionType.Where; }
+    }
+
+    public CamlWhereComparisonExpression Body {
+      get { return expression; }
     }
 
     protected override CamlExpression HandleAnd(CamlExpression x) {
@@ -892,45 +932,49 @@ namespace Codeless.SharePoint {
     }
   }
 
-  internal abstract class CamlExpressionList<T> : CamlExpression where T : CamlExpression {
-    protected readonly HashSet<T> Expressions = new HashSet<T>();
+  public abstract class CamlExpressionList<T> : CamlExpression where T : CamlExpression {
+    protected readonly HashSet<T> expressions = new HashSet<T>();
 
-    public CamlExpressionList(T expression) {
-      Expressions.Add(expression);
+    internal CamlExpressionList(T expression) {
+      expressions.Add(expression);
     }
 
-    public CamlExpressionList(IEnumerable<T> list) {
+    internal CamlExpressionList(IEnumerable<T> list) {
       foreach (T expression in list) {
-        Expressions.Add(expression);
+        expressions.Add(expression);
       }
+    }
+    
+    public T[] Expressions {
+      get { return expressions.ToArray(); }
     }
 
     protected abstract string CollectionElementName { get; }
 
     protected override void Visit(CamlVisitor visitor) {
-      foreach (T expression in Expressions) {
+      foreach (T expression in expressions) {
         visitor.Visit(expression);
       }
     }
 
     protected override void WriteXml(XmlWriter writer, Hashtable bindings) {
       writer.WriteStartElement(CollectionElementName);
-      foreach (T expression in Expressions) {
+      foreach (T expression in expressions) {
         WriteXmlStatic(expression, writer, bindings);
       }
       writer.WriteEndElement();
     }
   }
 
-  internal abstract class CamlFieldRefExpressionList<T> : CamlExpressionList<T>, ICamlFieldRefComponent where T : CamlFieldRefExpression {
-    public CamlFieldRefExpressionList(T expression)
+  public abstract class CamlFieldRefExpressionList<T> : CamlExpressionList<T>, ICamlFieldRefComponent where T : CamlFieldRefExpression {
+    internal CamlFieldRefExpressionList(T expression)
       : base(expression) { }
 
-    public CamlFieldRefExpressionList(IEnumerable<T> list)
+    internal CamlFieldRefExpressionList(IEnumerable<T> list)
       : base(list) { }
 
     IEnumerable<CamlFieldRefExpression> ICamlFieldRefComponent.EnumerateFieldRefExpression() {
-      foreach (CamlFieldRefExpression expression in Expressions) {
+      foreach (CamlFieldRefExpression expression in expressions) {
         foreach (CamlFieldRefExpression fieldRef in ((ICamlFieldRefComponent)expression).EnumerateFieldRefExpression()) {
           yield return fieldRef;
         }
@@ -938,11 +982,11 @@ namespace Codeless.SharePoint {
     }
   }
 
-  internal class CamlViewFieldsExpression : CamlFieldRefExpressionList<CamlViewFieldsFieldRefExpression> {
-    public CamlViewFieldsExpression(CamlViewFieldsFieldRefExpression expression)
+  public class CamlViewFieldsExpression : CamlFieldRefExpressionList<CamlViewFieldsFieldRefExpression> {
+    internal CamlViewFieldsExpression(CamlViewFieldsFieldRefExpression expression)
       : base(expression) { }
 
-    public CamlViewFieldsExpression(IEnumerable<CamlViewFieldsFieldRefExpression> list)
+    internal CamlViewFieldsExpression(IEnumerable<CamlViewFieldsFieldRefExpression> list)
       : base(list) { }
 
     public override CamlExpressionType Type {
@@ -956,9 +1000,9 @@ namespace Codeless.SharePoint {
     protected override CamlExpression HandleAnd(CamlExpression x) {
       switch (x.Type) {
         case CamlExpressionType.ViewFieldsFieldRef:
-          return new CamlViewFieldsExpression(Expressions.Concat(new[] { (CamlViewFieldsFieldRefExpression)x }));
+          return new CamlViewFieldsExpression(expressions.Concat(new[] { (CamlViewFieldsFieldRefExpression)x }));
         case CamlExpressionType.ViewFields:
-          return new CamlViewFieldsExpression(Expressions.Concat(((CamlViewFieldsExpression)x).Expressions));
+          return new CamlViewFieldsExpression(expressions.Concat(((CamlViewFieldsExpression)x).expressions));
       }
       return base.HandleAnd(x);
     }
@@ -966,7 +1010,7 @@ namespace Codeless.SharePoint {
     protected override string ToString(XmlWriterSettings settings, Hashtable bindings) {
       StringBuilder sb = new StringBuilder();
       AppendToStringBuilder append = CreateAppendToStringBuilderDelegate(sb, settings);
-      foreach (CamlExpression expression in Expressions) {
+      foreach (CamlExpression expression in expressions) {
         append(ToStringStatic(expression, settings, bindings));
       }
       string queryText = sb.ToString();
@@ -975,11 +1019,11 @@ namespace Codeless.SharePoint {
     }
   }
 
-  internal class CamlOrderByExpression : CamlFieldRefExpressionList<CamlOrderByFieldRefExpression>, ICamlQueryComponent<CamlOrderByExpression> {
-    public CamlOrderByExpression(CamlOrderByFieldRefExpression expression)
+  public class CamlOrderByExpression : CamlFieldRefExpressionList<CamlOrderByFieldRefExpression>, ICamlQueryComponent<CamlOrderByExpression> {
+    internal CamlOrderByExpression(CamlOrderByFieldRefExpression expression)
       : base(expression) { }
 
-    public CamlOrderByExpression(IEnumerable<CamlOrderByFieldRefExpression> list)
+    internal CamlOrderByExpression(IEnumerable<CamlOrderByFieldRefExpression> list)
       : base(list) { }
 
     public override CamlExpressionType Type {
@@ -993,9 +1037,9 @@ namespace Codeless.SharePoint {
     protected override CamlExpression HandleAnd(CamlExpression x) {
       switch (x.Type) {
         case CamlExpressionType.OrderByFieldRef:
-          return new CamlOrderByExpression(Expressions.Concat(new[] { (CamlOrderByFieldRefExpression)x }));
+          return new CamlOrderByExpression(expressions.Concat(new[] { (CamlOrderByFieldRefExpression)x }));
         case CamlExpressionType.OrderBy:
-          return new CamlOrderByExpression(Expressions.Concat(((CamlOrderByExpression)x).Expressions));
+          return new CamlOrderByExpression(expressions.Concat(((CamlOrderByExpression)x).expressions));
       }
       return base.HandleAnd(x);
     }
@@ -1005,11 +1049,11 @@ namespace Codeless.SharePoint {
     }
   }
 
-  internal class CamlGroupByExpression : CamlFieldRefExpressionList<CamlGroupByFieldRefExpression>, ICamlQueryComponent<CamlGroupByExpression> {
-    public CamlGroupByExpression(CamlGroupByFieldRefExpression expression)
+  public class CamlGroupByExpression : CamlFieldRefExpressionList<CamlGroupByFieldRefExpression>, ICamlQueryComponent<CamlGroupByExpression> {
+    internal CamlGroupByExpression(CamlGroupByFieldRefExpression expression)
       : base(expression) { }
 
-    public CamlGroupByExpression(IEnumerable<CamlGroupByFieldRefExpression> list)
+    internal CamlGroupByExpression(IEnumerable<CamlGroupByFieldRefExpression> list)
       : base(list) { }
 
     public override CamlExpressionType Type {
@@ -1023,9 +1067,9 @@ namespace Codeless.SharePoint {
     protected override CamlExpression HandleAnd(CamlExpression x) {
       switch (x.Type) {
         case CamlExpressionType.GroupByFieldRef:
-          return new CamlGroupByExpression(Expressions.Concat(new[] { (CamlGroupByFieldRefExpression)x }));
+          return new CamlGroupByExpression(expressions.Concat(new[] { (CamlGroupByFieldRefExpression)x }));
         case CamlExpressionType.GroupBy:
-          return new CamlGroupByExpression(Expressions.Concat(((CamlGroupByExpression)x).Expressions));
+          return new CamlGroupByExpression(expressions.Concat(((CamlGroupByExpression)x).expressions));
       }
       return base.HandleAnd(x);
     }
@@ -1035,12 +1079,12 @@ namespace Codeless.SharePoint {
     }
   }
 
-  internal class CamlQueryExpression : CamlExpression, ICamlFieldRefComponent {
+  public class CamlQueryExpression : CamlExpression, ICamlFieldRefComponent {
     private CamlWhereExpression whereExpression;
     private CamlOrderByExpression orderByExpression;
     private CamlGroupByExpression groupByExpression;
 
-    public CamlQueryExpression(ICamlQueryComponent<CamlWhereExpression> x, ICamlQueryComponent<CamlOrderByExpression> y, ICamlQueryComponent<CamlGroupByExpression> z)
+    internal CamlQueryExpression(ICamlQueryComponent<CamlWhereExpression> x, ICamlQueryComponent<CamlOrderByExpression> y, ICamlQueryComponent<CamlGroupByExpression> z)
       : base() {
       if (x != null) whereExpression = x.Expression;
       if (y != null) orderByExpression = y.Expression;
@@ -1049,6 +1093,18 @@ namespace Codeless.SharePoint {
 
     public override CamlExpressionType Type {
       get { return CamlExpressionType.Query; }
+    }
+
+    public CamlWhereExpression Where {
+      get { return whereExpression; }
+    }
+
+    public CamlOrderByExpression OrderBy {
+      get { return orderByExpression; }
+    }
+
+    public CamlGroupByExpression GroupBy {
+      get { return groupByExpression; }
     }
 
     protected override CamlExpression HandleAnd(CamlExpression x) {
@@ -1219,17 +1275,25 @@ namespace Codeless.SharePoint {
     }
   }
 
-  internal sealed class CamlBindedExpression : CamlExpression {
+  public sealed class CamlBindedExpression : CamlExpression {
     private readonly CamlExpression expression;
     private readonly Hashtable bindings;
 
-    public CamlBindedExpression(CamlExpression expression, Hashtable bindings) {
+    internal CamlBindedExpression(CamlExpression expression, Hashtable bindings) {
       this.expression = expression;
       this.bindings = bindings;
     }
 
     public override CamlExpressionType Type {
       get { return CamlExpressionType.Binded; }
+    }
+
+    public CamlExpression Expression {
+      get { return expression; }
+    }
+
+    public Hashtable Bindings {
+      get { return bindings; }
     }
 
     protected override CamlExpression HandleAnd(CamlExpression x) {
