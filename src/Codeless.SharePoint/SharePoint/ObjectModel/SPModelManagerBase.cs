@@ -833,9 +833,8 @@ namespace Codeless.SharePoint.ObjectModel {
     }
     #endregion
 
-    private class ContentTypeIdExpressionTransformVisitor : CamlVisitor {
+    private class ContentTypeIdExpressionTransformVisitor : CamlExpressionVisitor {
       private static readonly Hashtable ht = new Hashtable();
-      private readonly Stack<CamlExpression> stack = new Stack<CamlExpression>(new [] { Caml.Empty });
       private readonly List<SPModelUsage> usages;
 
       private ContentTypeIdExpressionTransformVisitor(List<SPModelUsage> usages) {
@@ -844,71 +843,22 @@ namespace Codeless.SharePoint.ObjectModel {
 
       public static CamlExpression Transform(CamlExpression expr, List<SPModelUsage> usages) {
         ContentTypeIdExpressionTransformVisitor visitor = new ContentTypeIdExpressionTransformVisitor(usages);
-        visitor.Visit(expr);
-        return visitor.stack.Peek();
+        return visitor.Visit(expr);
       }
 
-      protected internal override void VisitViewFieldsFieldRefExpression(CamlParameterBindingFieldRef fieldName) {
-        stack.Push(stack.Pop() + Caml.ViewFields(fieldName));
-      }
-
-      protected internal override void VisitOrderByFieldRefExpression(CamlParameterBindingFieldRef fieldName, CamlParameterBindingOrder orderBinding) {
-        stack.Push(stack.Pop() + Caml.OrderBy(fieldName, orderBinding));
-      }
-
-      protected internal override void VisitGroupByFieldRefExpression(CamlParameterBindingFieldRef fieldName) {
-        stack.Push(stack.Pop() + Caml.GroupBy(fieldName));
-      }
-
-      protected internal override void VisitWhereUnaryComparisonExpression(CamlUnaryOperator operatorValue, CamlParameterBindingFieldRef fieldName) {
-        stack.Push(stack.Pop() + new CamlWhereUnaryComparisonExpression(operatorValue, fieldName));
-      }
-
-      protected internal override void VisitWhereBinaryComparisonExpression(CamlBinaryOperator operatorValue, CamlParameterBindingFieldRef fieldName, ICamlParameterBinding value, bool? includeTimeValue) {
-        if (fieldName.Bind(ht) == SPBuiltInFieldName.ContentTypeId && operatorValue == CamlBinaryOperator.BeginsWith) {
-          SPContentTypeId id = new SPContentTypeId(value.Bind(ht));
+      protected override CamlExpression VisitWhereBinaryComparisonExpression(CamlWhereBinaryComparisonExpression expression) {
+        if (expression.Operator == CamlBinaryOperator.BeginsWith && expression.FieldName.Bind(this.Bindings) == SPBuiltInFieldName.ContentTypeId) {
+          SPContentTypeId id = new SPContentTypeId(expression.Value.Bind(ht));
           SPContentTypeId[] ids = usages.Where(v => v.ContentTypeId.IsChildOf(id)).Select(v => v.ContentTypeId).ToArray();
-          CamlExpression expression;
           if (ids.Length == 0) {
-            expression = Caml.False;
+            return Caml.False;
           } else if (ids.Length == 1) {
-            expression = Caml.Equals(SPBuiltInFieldName.ContentTypeId, ids[0]);
+            return Caml.Equals(SPBuiltInFieldName.ContentTypeId, ids[0]);
           } else {
-            expression = Caml.EqualsAny(SPBuiltInFieldName.ContentTypeId, new CamlParameterBindingContentTypeId(ids));
+            return Caml.EqualsAny(SPBuiltInFieldName.ContentTypeId, new CamlParameterBindingContentTypeId(ids));
           }
-          stack.Push(stack.Pop() + expression);
-        } else {
-          stack.Push(stack.Pop() + new CamlWhereBinaryComparisonExpression(operatorValue, fieldName, value));
         }
-      }
-
-      protected internal override void VisitWhereLogicalExpression(CamlLogicalOperator operatorValue, CamlExpression leftExpression, CamlExpression rightExpression) {
-        stack.Push(Caml.Empty);
-        Visit(leftExpression);
-        leftExpression = stack.Pop();
-
-        if (rightExpression != null) {
-          stack.Push(Caml.Empty);
-          Visit(rightExpression);
-          rightExpression = stack.Pop();
-        }
-
-        stack.Pop();
-        switch (operatorValue) {
-          case CamlLogicalOperator.And:
-            stack.Push(Caml.And(leftExpression, rightExpression));
-            break;
-          case CamlLogicalOperator.Or:
-            stack.Push(Caml.Or(leftExpression, rightExpression));
-            break;
-          case CamlLogicalOperator.Not:
-            stack.Push(Caml.Not(leftExpression));
-            break;
-        }
-      }
-
-      protected internal override void VisitWhereExpression(CamlExpression expression) {
-        Visit(expression);
+        return base.VisitWhereBinaryComparisonExpression(expression);
       }
     }
   }
