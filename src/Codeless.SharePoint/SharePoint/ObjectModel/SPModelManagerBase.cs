@@ -639,7 +639,7 @@ namespace Codeless.SharePoint.ObjectModel {
 
       SPQuery listQuery = new SPQuery();
       listQuery.ViewFields = selectProperties ? (Caml.ViewFields(typeInfo.RequiredViewFields) + Caml.ViewFields(SPModel.RequiredViewFields)).ToString() : String.Empty;
-      listQuery.Query = ContentTypeIdExpressionTransformVisitor.Transform(query, currentLists).ToString();
+      listQuery.Query = query.ToString();
       listQuery.RowLimit = limit;
       listQuery.ViewAttributes = "Scope=\"RecursiveAll\"";
       OnExecutingListQuery(new SPModelListQueryEventArgs { Query = listQuery });
@@ -659,7 +659,7 @@ namespace Codeless.SharePoint.ObjectModel {
       siteQuery.Webs = Caml.WebsScope.Recursive;
       siteQuery.Lists = Caml.ListsScope(currentLists.Select(v => v.ListId).Distinct().ToArray()).ToString();
       siteQuery.ViewFields = (query.GetViewFieldsExpression() + (selectProperties ? (Caml.ViewFields(typeInfo.RequiredViewFields) + Caml.ViewFields(SPModel.RequiredViewFields)) : Caml.Empty)).ToString();
-      siteQuery.Query = ContentTypeIdExpressionTransformVisitor.Transform(query, currentLists).ToString();
+      siteQuery.Query = query.ToString();
       siteQuery.RowLimit = limit;
       OnExecutingSiteQuery(new SPModelSiteQueryEventArgs { Query = siteQuery });
 
@@ -832,34 +832,5 @@ namespace Codeless.SharePoint.ObjectModel {
       CommitChanges((T)item, mode);
     }
     #endregion
-
-    private class ContentTypeIdExpressionTransformVisitor : CamlExpressionVisitor {
-      private static readonly Hashtable ht = new Hashtable();
-      private readonly List<SPModelUsage> usages;
-
-      private ContentTypeIdExpressionTransformVisitor(List<SPModelUsage> usages) {
-        this.usages = usages;
-      }
-
-      public static CamlExpression Transform(CamlExpression expr, List<SPModelUsage> usages) {
-        ContentTypeIdExpressionTransformVisitor visitor = new ContentTypeIdExpressionTransformVisitor(usages);
-        return visitor.Visit(expr);
-      }
-
-      protected override CamlExpression VisitWhereBinaryComparisonExpression(CamlWhereBinaryComparisonExpression expression) {
-        if (expression.Operator == CamlBinaryOperator.BeginsWith && expression.FieldName.Bind(this.Bindings) == SPBuiltInFieldName.ContentTypeId) {
-          SPContentTypeId id = new SPContentTypeId(expression.Value.Bind(ht));
-          SPContentTypeId[] ids = usages.Where(v => v.ContentTypeId.IsChildOf(id)).Select(v => v.ContentTypeId).ToArray();
-          if (ids.Length == 0) {
-            return Caml.False;
-          } else if (ids.Length == 1) {
-            return Caml.Equals(SPBuiltInFieldName.ContentTypeId, ids[0]);
-          } else {
-            return Caml.EqualsAny(SPBuiltInFieldName.ContentTypeId, new CamlParameterBindingContentTypeId(ids));
-          }
-        }
-        return base.VisitWhereBinaryComparisonExpression(expression);
-      }
-    }
   }
 }
