@@ -49,7 +49,7 @@ namespace Codeless.SharePoint {
     /// <param name="y">Second expression.</param>
     /// <returns>A resulting expression.</returns>
     public static CamlExpression operator &(CamlExpression x, CamlExpression y) {
-      return x + y;
+      return HandleAnd(x, y, true);
     }
 
     /// <summary>
@@ -59,16 +59,7 @@ namespace Codeless.SharePoint {
     /// <param name="y">Second expression.</param>
     /// <returns>A resulting expression.</returns>
     public static CamlExpression operator +(CamlExpression x, CamlExpression y) {
-      if (x == null) {
-        return y;
-      }
-      if (y == null) {
-        return x;
-      }
-      if (x.Type >= y.Type) {
-        return x.HandleAnd(y);
-      }
-      return y.HandleAnd(x);
+      return HandleAnd(x, y, true);
     }
 
     /// <summary>
@@ -78,16 +69,7 @@ namespace Codeless.SharePoint {
     /// <param name="y">Second expression.</param>
     /// <returns>A resulting expression.</returns>
     public static CamlExpression operator |(CamlExpression x, CamlExpression y) {
-      if (x == null) {
-        return y;
-      }
-      if (y == null) {
-        return x;
-      }
-      if (x.Type >= y.Type) {
-        return x.HandleOr(y);
-      }
-      return y.HandleOr(x);
+      return HandleOr(x, y, true);
     }
 
     /// <summary>
@@ -210,7 +192,7 @@ namespace Codeless.SharePoint {
     /// </summary>
     /// <param name="x">Another expression.</param>
     /// <returns>A resulting expression.</returns>
-    protected virtual CamlExpression HandleAnd(CamlExpression x) {
+    protected virtual CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       throw new CamlInvalidJoinException(JoinType.And, this.Type, x.Type);
     }
 
@@ -219,7 +201,7 @@ namespace Codeless.SharePoint {
     /// </summary>
     /// <param name="x">Another expression.</param>
     /// <returns>A resulting expression.</returns>
-    protected virtual CamlExpression HandleOr(CamlExpression x) {
+    protected virtual CamlExpression HandleOr(CamlExpression x, bool selfPreceding) {
       throw new CamlInvalidJoinException(JoinType.Or, this.Type, x.Type);
     }
 
@@ -267,6 +249,32 @@ namespace Codeless.SharePoint {
     /// <param name="bindings"></param>
     protected static void WriteXmlStatic(CamlExpression x, XmlWriter writer, Hashtable bindings) {
       x.WriteXml(writer, bindings);
+    }
+
+    protected static CamlExpression HandleAnd(CamlExpression x, CamlExpression y, bool selfPreceding) {
+      if (x == null) {
+        return y;
+      }
+      if (y == null) {
+        return x;
+      }
+      if (x.Type >= y.Type) {
+        return x.HandleAnd(y, selfPreceding);
+      }
+      return y.HandleAnd(x, !selfPreceding);
+    }
+
+    protected static CamlExpression HandleOr(CamlExpression x, CamlExpression y, bool selfPreceding) {
+      if (x == null) {
+        return y;
+      }
+      if (y == null) {
+        return x;
+      }
+      if (x.Type >= y.Type) {
+        return x.HandleOr(y, selfPreceding);
+      }
+      return y.HandleOr(x, !selfPreceding);
     }
 
     /// <summary>
@@ -455,11 +463,11 @@ namespace Codeless.SharePoint {
       get { return CamlExpressionType.ViewFieldsFieldRef; }
     }
 
-    protected override CamlExpression HandleAnd(CamlExpression x) {
+    protected override CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       if (x.Type == this.Type) {
-        return new CamlViewFieldsExpression(new[] { this, (CamlViewFieldsFieldRefExpression)x });
+        return new CamlViewFieldsExpression(selfPreceding ? new[] { this, (CamlViewFieldsFieldRefExpression)x } : new[] { (CamlViewFieldsFieldRefExpression)x, this });
       }
-      return base.HandleAnd(x);
+      return base.HandleAnd(x, selfPreceding);
     }
 
     protected override void Visit(CamlVisitor visitor) {
@@ -507,11 +515,11 @@ namespace Codeless.SharePoint {
       get { return CamlExpressionType.OrderByFieldRef; }
     }
 
-    protected override CamlExpression HandleAnd(CamlExpression x) {
+    protected override CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       if (x.Type == this.Type) {
-        return new CamlOrderByExpression(new[] { this, (CamlOrderByFieldRefExpression)x });
+        return new CamlOrderByExpression(selfPreceding ? new[] { this, (CamlOrderByFieldRefExpression)x } : new[] { (CamlOrderByFieldRefExpression)x, this });
       }
-      return base.HandleAnd(x);
+      return base.HandleAnd(x, selfPreceding);
     }
 
     protected override void Visit(CamlVisitor visitor) {
@@ -535,11 +543,11 @@ namespace Codeless.SharePoint {
       get { return CamlExpressionType.GroupByFieldRef; }
     }
 
-    protected override CamlExpression HandleAnd(CamlExpression x) {
+    protected override CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       if (x.Type == this.Type) {
-        return new CamlGroupByExpression(new[] { this, (CamlGroupByFieldRefExpression)x });
+        return new CamlGroupByExpression(selfPreceding ? new[] { this, (CamlGroupByFieldRefExpression)x } : new[] { (CamlGroupByFieldRefExpression)x, this });
       }
-      return base.HandleAnd(x);
+      return base.HandleAnd(x, selfPreceding);
     }
 
     protected override void Visit(CamlVisitor visitor) {
@@ -561,7 +569,7 @@ namespace Codeless.SharePoint {
       this.OperatorString = operatorString;
     }
 
-    protected override CamlExpression HandleAnd(CamlExpression x) {
+    protected override CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       switch (x.Type) {
         case CamlExpressionType.OrderByFieldRef:
         case CamlExpressionType.OrderBy:
@@ -571,19 +579,21 @@ namespace Codeless.SharePoint {
         case CamlExpressionType.WhereLogical:
         case CamlExpressionType.WhereUnaryComparison:
         case CamlExpressionType.WhereBinaryComparison:
-          return new CamlWhereLogicalExpression(CamlLogicalOperator.And, this, (CamlWhereComparisonExpression)x);
+          CamlWhereComparisonExpression other = (CamlWhereComparisonExpression)x;
+          return selfPreceding ? new CamlWhereLogicalExpression(CamlLogicalOperator.And, this, other) : other.HandleAnd(this, true);
       }
-      return base.HandleAnd(x);
+      return base.HandleAnd(x, selfPreceding);
     }
 
-    protected override CamlExpression HandleOr(CamlExpression x) {
+    protected override CamlExpression HandleOr(CamlExpression x, bool selfPreceding) {
       switch (x.Type) {
         case CamlExpressionType.WhereUnaryComparison:
         case CamlExpressionType.WhereBinaryComparison:
         case CamlExpressionType.WhereLogical:
-          return new CamlWhereLogicalExpression(CamlLogicalOperator.Or, this, (CamlWhereComparisonExpression)x);
+          CamlWhereComparisonExpression other = (CamlWhereComparisonExpression)x;
+          return selfPreceding ? new CamlWhereLogicalExpression(CamlLogicalOperator.Or, this, other) : other.HandleOr(this, true);
       }
-      return base.HandleOr(x);
+      return base.HandleOr(x, selfPreceding);
     }
 
     protected override CamlExpression HandleNegate() {
@@ -873,7 +883,7 @@ namespace Codeless.SharePoint {
       get { return expression; }
     }
 
-    protected override CamlExpression HandleAnd(CamlExpression x) {
+    protected override CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       switch (x.Type) {
         case CamlExpressionType.OrderByFieldRef:
           return new CamlQueryExpression(this, new CamlOrderByExpression((CamlOrderByFieldRefExpression)x), null);
@@ -886,23 +896,23 @@ namespace Codeless.SharePoint {
         case CamlExpressionType.WhereLogical:
         case CamlExpressionType.WhereUnaryComparison:
         case CamlExpressionType.WhereBinaryComparison:
-          return new CamlWhereExpression((CamlWhereComparisonExpression)(expression + x));
+          return new CamlWhereExpression((CamlWhereComparisonExpression)HandleAnd(expression, x, selfPreceding));
         case CamlExpressionType.Where:
-          return new CamlWhereExpression((CamlWhereComparisonExpression)(expression + ((CamlWhereExpression)x).expression));
+          return new CamlWhereExpression((CamlWhereComparisonExpression)HandleAnd(expression, ((CamlWhereExpression)x).expression, selfPreceding));
       }
-      return base.HandleAnd(x);
+      return base.HandleAnd(x, selfPreceding);
     }
 
-    protected override CamlExpression HandleOr(CamlExpression x) {
+    protected override CamlExpression HandleOr(CamlExpression x, bool selfPreceding) {
       switch (x.Type) {
         case CamlExpressionType.WhereLogical:
         case CamlExpressionType.WhereUnaryComparison:
         case CamlExpressionType.WhereBinaryComparison:
-          return new CamlWhereExpression((CamlWhereComparisonExpression)(expression | x));
+          return new CamlWhereExpression((CamlWhereComparisonExpression)HandleOr(expression, x, selfPreceding));
         case CamlExpressionType.Where:
-          return new CamlWhereExpression((CamlWhereComparisonExpression)(expression | ((CamlWhereExpression)x).expression));
+          return new CamlWhereExpression((CamlWhereComparisonExpression)HandleOr(expression, ((CamlWhereExpression)x).expression, selfPreceding));
       }
-      return base.HandleOr(x);
+      return base.HandleOr(x, selfPreceding);
     }
 
     protected override CamlExpression HandleNegate() {
@@ -944,9 +954,33 @@ namespace Codeless.SharePoint {
         expressions.Add(expression);
       }
     }
-    
+
     public T[] Expressions {
       get { return expressions.ToArray(); }
+    }
+
+    protected T[] ConcatExpressions(T item, bool selfPreceding) {
+      T[] arr = new T[expressions.Count + 1];
+      if (selfPreceding) {
+        expressions.CopyTo(arr, 0);
+        arr[expressions.Count] = item;
+      } else {
+        arr[0] = item;
+        expressions.CopyTo(arr, 1);
+      }
+      return arr;
+    }
+
+    protected T[] ConcatExpressions(CamlExpressionList<T> list, bool selfPreceding) {
+      T[] arr = new T[expressions.Count + list.expressions.Count];
+      if (selfPreceding) {
+        expressions.CopyTo(arr, 0);
+        list.expressions.CopyTo(arr, expressions.Count);
+      } else {
+        list.expressions.CopyTo(arr, 0);
+        expressions.CopyTo(arr, list.expressions.Count);
+      }
+      return arr;
     }
 
     protected abstract string CollectionElementName { get; }
@@ -997,14 +1031,14 @@ namespace Codeless.SharePoint {
       get { return Element.ViewFields; }
     }
 
-    protected override CamlExpression HandleAnd(CamlExpression x) {
+    protected override CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       switch (x.Type) {
         case CamlExpressionType.ViewFieldsFieldRef:
-          return new CamlViewFieldsExpression(expressions.Concat(new[] { (CamlViewFieldsFieldRefExpression)x }));
+          return new CamlViewFieldsExpression(ConcatExpressions((CamlViewFieldsFieldRefExpression)x, selfPreceding));
         case CamlExpressionType.ViewFields:
-          return new CamlViewFieldsExpression(expressions.Concat(((CamlViewFieldsExpression)x).expressions));
+          return new CamlViewFieldsExpression(ConcatExpressions((CamlViewFieldsExpression)x, selfPreceding));
       }
-      return base.HandleAnd(x);
+      return base.HandleAnd(x, selfPreceding);
     }
 
     protected override string ToString(XmlWriterSettings settings, Hashtable bindings) {
@@ -1034,14 +1068,14 @@ namespace Codeless.SharePoint {
       get { return Element.OrderBy; }
     }
 
-    protected override CamlExpression HandleAnd(CamlExpression x) {
+    protected override CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       switch (x.Type) {
         case CamlExpressionType.OrderByFieldRef:
-          return new CamlOrderByExpression(expressions.Concat(new[] { (CamlOrderByFieldRefExpression)x }));
+          return new CamlOrderByExpression(ConcatExpressions((CamlOrderByFieldRefExpression)x, selfPreceding));
         case CamlExpressionType.OrderBy:
-          return new CamlOrderByExpression(expressions.Concat(((CamlOrderByExpression)x).expressions));
+          return new CamlOrderByExpression(ConcatExpressions((CamlOrderByExpression)x, selfPreceding));
       }
-      return base.HandleAnd(x);
+      return base.HandleAnd(x, selfPreceding);
     }
 
     CamlOrderByExpression ICamlQueryComponent<CamlOrderByExpression>.Expression {
@@ -1064,14 +1098,14 @@ namespace Codeless.SharePoint {
       get { return Element.GroupBy; }
     }
 
-    protected override CamlExpression HandleAnd(CamlExpression x) {
+    protected override CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       switch (x.Type) {
         case CamlExpressionType.GroupByFieldRef:
-          return new CamlGroupByExpression(expressions.Concat(new[] { (CamlGroupByFieldRefExpression)x }));
+          return new CamlGroupByExpression(ConcatExpressions((CamlGroupByFieldRefExpression)x, selfPreceding));
         case CamlExpressionType.GroupBy:
-          return new CamlGroupByExpression(expressions.Concat(((CamlGroupByExpression)x).expressions));
+          return new CamlGroupByExpression(ConcatExpressions((CamlGroupByExpression)x, selfPreceding));
       }
-      return base.HandleAnd(x);
+      return base.HandleAnd(x, selfPreceding);
     }
 
     CamlGroupByExpression ICamlQueryComponent<CamlGroupByExpression>.Expression {
@@ -1107,32 +1141,32 @@ namespace Codeless.SharePoint {
       get { return groupByExpression; }
     }
 
-    protected override CamlExpression HandleAnd(CamlExpression x) {
+    protected override CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       switch (x.Type) {
         case CamlExpressionType.OrderByFieldRef:
         case CamlExpressionType.OrderBy:
-          return new CamlQueryExpression(whereExpression, (ICamlQueryComponent<CamlOrderByExpression>)(orderByExpression + x), groupByExpression);
+          return new CamlQueryExpression(whereExpression, (ICamlQueryComponent<CamlOrderByExpression>)HandleAnd(orderByExpression, x, selfPreceding), groupByExpression);
         case CamlExpressionType.GroupByFieldRef:
         case CamlExpressionType.GroupBy:
-          return new CamlQueryExpression(whereExpression, orderByExpression, (ICamlQueryComponent<CamlGroupByExpression>)(groupByExpression + x));
+          return new CamlQueryExpression(whereExpression, orderByExpression, (ICamlQueryComponent<CamlGroupByExpression>)HandleAnd(groupByExpression, x, selfPreceding));
         case CamlExpressionType.WhereLogical:
         case CamlExpressionType.WhereUnaryComparison:
         case CamlExpressionType.WhereBinaryComparison:
         case CamlExpressionType.Where:
-          return new CamlQueryExpression((ICamlQueryComponent<CamlWhereExpression>)(whereExpression + x), orderByExpression, groupByExpression);
+          return new CamlQueryExpression((ICamlQueryComponent<CamlWhereExpression>)HandleAnd(whereExpression, x, selfPreceding), orderByExpression, groupByExpression);
       }
-      return base.HandleAnd(x);
+      return base.HandleAnd(x, selfPreceding);
     }
 
-    protected override CamlExpression HandleOr(CamlExpression x) {
+    protected override CamlExpression HandleOr(CamlExpression x, bool selfPreceding) {
       switch (x.Type) {
         case CamlExpressionType.WhereLogical:
         case CamlExpressionType.WhereUnaryComparison:
         case CamlExpressionType.WhereBinaryComparison:
         case CamlExpressionType.Where:
-          return new CamlQueryExpression((ICamlQueryComponent<CamlWhereExpression>)(whereExpression | x), orderByExpression, groupByExpression);
+          return new CamlQueryExpression((ICamlQueryComponent<CamlWhereExpression>)HandleOr(whereExpression, x, selfPreceding), orderByExpression, groupByExpression);
       }
-      return base.HandleOr(x);
+      return base.HandleOr(x, selfPreceding);
     }
 
     protected override CamlExpression HandleNegate() {
@@ -1296,20 +1330,20 @@ namespace Codeless.SharePoint {
       get { return bindings; }
     }
 
-    protected override CamlExpression HandleAnd(CamlExpression x) {
+    protected override CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       if (x.Type == CamlExpressionType.Binded) {
         CamlBindedExpression other = (CamlBindedExpression)x;
-        return new CamlBindedExpression(expression + other.expression, CopyBindings(other.bindings));
+        return new CamlBindedExpression(HandleAnd(expression, other.expression, selfPreceding), CopyBindings(other.bindings));
       }
-      return new CamlBindedExpression(expression + x, bindings);
+      return new CamlBindedExpression(HandleAnd(expression, x, selfPreceding), bindings);
     }
 
-    protected override CamlExpression HandleOr(CamlExpression x) {
+    protected override CamlExpression HandleOr(CamlExpression x, bool selfPreceding) {
       if (x.Type == CamlExpressionType.Binded) {
         CamlBindedExpression other = (CamlBindedExpression)x;
-        return new CamlBindedExpression(expression | other.expression, CopyBindings(other.bindings));
+        return new CamlBindedExpression(HandleOr(expression, other.expression, selfPreceding), CopyBindings(other.bindings));
       }
-      return new CamlBindedExpression(expression | x, bindings);
+      return new CamlBindedExpression(HandleOr(expression, x, selfPreceding), bindings);
     }
 
     protected override CamlExpression HandleNegate() {
@@ -1367,7 +1401,7 @@ namespace Codeless.SharePoint {
       get { return CamlExpressionType.Empty; }
     }
 
-    protected override CamlExpression HandleAnd(CamlExpression x) {
+    protected override CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       switch (emptyType) {
         case EmptyExpressionType.False:
           return this;
@@ -1376,7 +1410,7 @@ namespace Codeless.SharePoint {
       }
     }
 
-    protected override CamlExpression HandleOr(CamlExpression x) {
+    protected override CamlExpression HandleOr(CamlExpression x, bool selfPreceding) {
       switch (emptyType) {
         case EmptyExpressionType.True:
           return this;
