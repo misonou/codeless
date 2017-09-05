@@ -1,7 +1,13 @@
-﻿namespace Codeless.SharePoint {
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Codeless.SharePoint {
   /// <summary>
   /// Providers a base class that visits a CAML expression.
   /// </summary>
+  [Obsolete("Use CamlExpressionVisitor instead.")]
   public abstract class CamlVisitor {
     /// <summary>
     /// Visits a CAML expression.
