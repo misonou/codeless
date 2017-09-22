@@ -29,6 +29,7 @@ namespace Codeless.SharePoint.ObjectModel {
       SPBuiltInFieldName.FileRef,
       SPBuiltInFieldName.FileLeafRef,
       SPBuiltInFieldName.PermMask,
+      SPBuiltInFieldName.ScopeId,
       SPBuiltInFieldName.ID,
       SPBuiltInFieldName._UIVersionString,
       SPBuiltInFieldName.CheckoutUser,
@@ -353,7 +354,7 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <returns>An enumerable of list objects.</returns>
     public static IEnumerable<SPList> EnumerateLists(Type type, SPWeb contextWeb) {
       SPModelDescriptor descriptor = SPModelDescriptor.Resolve(type);
-      return descriptor.GetUsages(contextWeb).Select(v => v.EnsureList(contextWeb.Site).List).Where(v => v != null).ToArray();
+      return descriptor.GetUsages(contextWeb).GetListCollection();
     }
 
     /// <summary>
@@ -402,6 +403,17 @@ namespace Codeless.SharePoint.ObjectModel {
       }
       ISPModelManagerInternal manager = descriptor.CreateManager(adapter.Web);
       return manager.TryCreateModel(adapter, false);
+    }
+
+    /// <summary>
+    /// Creates a model object representing the list item.
+    /// </summary>
+    /// <param name="adapter">A data access adapter of the list item.</param>
+    /// <param name="manager">An instance of the <see cref="ISPModelManager"/> class which model object created will belongs to this manager.</param>
+    /// <returns>A model object or *null* if there is no types associated with the content type of the list item.</returns>
+    public static SPModel TryCreate(ISPListItemAdapter adapter, ISPModelManager manager) {
+      CommonHelper.ConfirmNotNull(manager, "manager");
+      return ((ISPModelManagerInternal)manager).TryCreateModel(adapter, false);
     }
 
     internal static SPModel TryCreate(ISPListItemAdapter adapter, SPModelCollection parentCollection) {
@@ -620,6 +632,10 @@ namespace Codeless.SharePoint.ObjectModel {
       get { return this.Adapter.ServerRelativeUrl.TrimStart('/'); }
     }
 
+    string ISPModelMetaData.ServerRelativeUrl {
+      get { return this.Adapter.ServerRelativeUrl; }
+    }
+
     Guid ISPModelMetaData.SiteId {
       get { return this.Adapter.Site.ID; }
     }
@@ -633,6 +649,10 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     string ISPModelMetaData.FileLeafRef {
+      get { return this.Adapter.Filename; }
+    }
+
+    string ISPModelMetaData.Filename {
       get { return this.Adapter.Filename; }
     }
 

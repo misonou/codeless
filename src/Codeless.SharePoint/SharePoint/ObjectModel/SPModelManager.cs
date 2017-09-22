@@ -15,16 +15,39 @@ namespace Codeless.SharePoint.ObjectModel {
     private bool currentItemInitialized;
 
     /// <summary>
-    /// Creates an instance of <see cref="SPModelManager{T}"/> with the specified site. 
-    /// Items under the specified site and its descendant sites can be queried.
+    /// Initializes an instance of the <see cref="SPModelManager{T}"/> class that queries list items under the specified site collection and its sub-sites.
+    /// </summary>
+    /// <param name="site">The site collection object to query against.</param>
+    public SPModelManager(SPSite site)
+      : base(site) { }
+
+    /// <summary>
+    /// Initializes an instance of the <see cref="SPModelManager{T}"/> class that queries list items under the specified site and its sub-sites.
     /// </summary>
     /// <param name="web">Site object.</param>
     public SPModelManager(SPWeb web)
       : base(web) { }
+    
+    /// <summary>
+    /// Initializes an instance of the <see cref="SPModelManager{T}"/> class that queries list items under the specified site and optionally its sub-sites.
+    /// </summary>
+    /// <param name="web">The site object to query against.</param>
+    /// <param name="currentWebOnly">A boolean value specifies whether lists in sub-sites should also be queried.</param>
+    public SPModelManager(SPWeb web, bool currentWebOnly)
+      : base(web, currentWebOnly) { }
 
+    /// <summary>
+    /// Initializes an instance of the <see cref="SPModelManager{T}"/> class that queries list items under the specified list.
+    /// </summary>
+    /// <param name="list">The list object to query against.</param>
     public SPModelManager(SPList list)
       : base(list) { }
 
+    /// <summary>
+    /// Initializes an instance of the <see cref="SPModelManager{T}"/> class that queries list items under the specified list(s).
+    /// </summary>
+    /// <param name="web">The site object.</param>
+    /// <param name="lists">A List of lists to query against.</param>
     public SPModelManager(SPWeb web, IList<SPList> lists)
       : base(web, lists) { }
 

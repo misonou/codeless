@@ -23,20 +23,18 @@ namespace Codeless.SharePoint.Internal {
       if (!disposed) {
         SPFile file = this.file.Web.GetFile(this.file.UniqueId);
         if (file.Item != null) {
-          if (file.Item.Level != SPFileLevel.Published) {
-            if (file.CheckOutType != SPFile.SPCheckOutType.None) {
-              file.CheckIn(comment, SPCheckinType.MajorCheckIn);
-            }
-            if (publishOnDispose) {
-              if (file.Item.ParentList.EnableModeration) {
-                file.Approve(comment);
-              }
-              if (file.Item.ParentList.EnableMinorVersions) {
-                file.Publish(comment);
-              }
-            }
+          if (file.CheckOutType != SPFile.SPCheckOutType.None) {
+            file.CheckIn(comment, file.Item.ParentList.EnableMinorVersions ? SPCheckinType.MinorCheckIn : SPCheckinType.MajorCheckIn);
           }
-          file.Item.EnsureApproved();
+          if (publishOnDispose && file.Item.Level != SPFileLevel.Published) {
+            if (file.Item.ParentList.EnableModeration) {
+              file.Approve(comment);
+            }
+            if (file.Item.ParentList.EnableMinorVersions) {
+              file.Publish(comment);
+            }
+            file.Item.EnsureApproved();
+          }
         }
         disposed = true;
       }
