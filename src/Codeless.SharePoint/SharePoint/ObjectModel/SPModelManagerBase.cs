@@ -134,11 +134,26 @@ namespace Codeless.SharePoint.ObjectModel {
     private readonly bool explicitListScope;
 
     /// <summary>
+    /// Initializes an instance of the <see cref="SPModelManagerBase{T}"/> class that queries list items under the specified site collection and its sub-sites.
+    /// </summary>
+    /// <param name="site">The site collection object to query against.</param>
+    public SPModelManagerBase(SPSite site)
+      : this(site.RootWeb, null) { }
+
+    /// <summary>
     /// Initializes an instance of the <see cref="SPModelManagerBase{T}"/> class that queries list items under the specified site and its sub-sites.
     /// </summary>
     /// <param name="web">The site object to query against.</param>
     public SPModelManagerBase(SPWeb web)
-      : this(web, null) { }
+      : this(web, null, false) { }
+
+    /// <summary>
+    /// Initializes an instance of the <see cref="SPModelManagerBase{T}"/> class that queries list items under the specified site and optionally its sub-sites.
+    /// </summary>
+    /// <param name="web">The site object to query against.</param>
+    /// <param name="currentWebOnly">A boolean value specifies whether lists in sub-sites should also be queried.</param>
+    public SPModelManagerBase(SPWeb web, bool currentWebOnly)
+      : this(web, null, currentWebOnly) { }
 
     /// <summary>
     /// Initializes an instance of the <see cref="SPModelManagerBase{T}"/> class that queries list items under the specified list.
@@ -155,7 +170,7 @@ namespace Codeless.SharePoint.ObjectModel {
     public SPModelManagerBase(SPWeb currentWeb, IList<SPList> contextLists)
       : this(currentWeb, contextLists, false) { }
 
-    private SPModelManagerBase(SPWeb currentWeb, IList<SPList> contextLists, bool dummy) {
+    private SPModelManagerBase(SPWeb currentWeb, IList<SPList> contextLists, bool currentWebOnly) {
       CommonHelper.ConfirmNotNull(currentWeb, "currentWeb");
 
       using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
@@ -167,17 +182,18 @@ namespace Codeless.SharePoint.ObjectModel {
         descriptor.Provision(currentWeb, SPModelProvisionOptions.Asynchronous | SPModelProvisionOptions.SuppressListCreation, SPModelListProvisionOptions.Default);
 
         if (contextLists != null) {
-          currentLists.AddRange(contextLists.Where(v => v != null).Select(SPModelUsage.Create));
+          currentLists.AddRange(contextLists.Where(v => v != null).SelectMany(descriptor.GetUsages));
           explicitListScope = true;
         }
         if (contextLists == null) {
-          currentLists.AddRange(descriptor.GetUsages(currentWeb));
+          currentLists.AddRange(descriptor.GetUsages(currentWeb, currentWebOnly));
         }
-        if (currentLists.Count > 1 && descriptor.BaseType == SPBaseType.UnspecifiedBaseType) {
+        int listCount = currentLists.Select(v => v.ListId).Distinct().Count();
+        if (listCount > 1 && descriptor.BaseType == SPBaseType.UnspecifiedBaseType) {
           this.queryMode = SPModelImplicitQueryMode.KeywordSearch;
-        } else if (currentLists.Count > 1) {
+        } else if (listCount > 1) {
           this.queryMode = SPModelImplicitQueryMode.SiteQuery;
-        } else if (currentLists.Count == 1) {
+        } else if (listCount == 1) {
           this.queryMode = SPModelImplicitQueryMode.ListQuery;
         } else {
           this.queryMode = SPModelImplicitQueryMode.None;
@@ -424,7 +440,7 @@ namespace Codeless.SharePoint.ObjectModel {
       if (exactType.ItemType != SPModelItemType.GenericItem && String.IsNullOrEmpty(name)) {
         throw new ArgumentNullException("File or folder name cannot be null.");
       }
-      if (currentLists.Count > 1) {
+      if (currentLists.Select(v => v.ListId).Distinct().Count() > 1) {
         throw new InvalidOperationException("Ambiguous target list found. Try instanstite SPModelManager with SPList constructor to specify target list.");
       }
       if (currentLists.Count == 0) {
@@ -598,7 +614,9 @@ namespace Codeless.SharePoint.ObjectModel {
     private IEnumerable<ISPListItemAdapter> ExecuteSiteQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit) {
       DataTable dt = ExecuteSiteQuery(typeInfo, query, limit, true);
       foreach (DataRow row in dt.Rows) {
-        yield return new DataRowAdapter(currentWeb.Site, row, objectCache);
+        DataRowAdapter adapter = new DataRowAdapter(currentWeb.Site, row, objectCache);
+        objectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
+        yield return adapter;
       }
     }
 
@@ -606,7 +624,11 @@ namespace Codeless.SharePoint.ObjectModel {
       ResultTable queryResultsTable = ExecuteKeywordSearch(typeInfo, query, limit, startRow, keywords, refiners, keywordInclusion, true, out totalCount);
       DataTable queryDataTable = new DataTable();
       queryDataTable.Load(queryResultsTable, LoadOption.OverwriteChanges);
-      return queryDataTable.Rows.OfType<DataRow>().Select(row => (ISPListItemAdapter)new KeywordQueryResultAdapter(currentWeb.Site, row, objectCache));
+      return queryDataTable.Rows.OfType<DataRow>().Select(v => {
+        ISPListItemAdapter adapter = new KeywordQueryResultAdapter(currentWeb.Site, v, objectCache);
+        objectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
+        return adapter;
+      });
     }
 
     private IEnumerable<SPListItem> ExecuteListQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, bool selectProperties) {
@@ -635,7 +657,7 @@ namespace Codeless.SharePoint.ObjectModel {
     private DataTable ExecuteSiteQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, bool selectProperties) {
       SPSiteDataQuery siteQuery = new SPSiteDataQuery();
       siteQuery.Webs = Caml.WebsScope.Recursive;
-      siteQuery.Lists = Caml.ListsScope(currentLists.Select(v => v.ListId).ToArray()).ToString();
+      siteQuery.Lists = Caml.ListsScope(currentLists.Select(v => v.ListId).Distinct().ToArray()).ToString();
       siteQuery.ViewFields = (query.GetViewFieldsExpression() + (selectProperties ? (Caml.ViewFields(typeInfo.RequiredViewFields) + Caml.ViewFields(SPModel.RequiredViewFields)) : Caml.Empty)).ToString();
       siteQuery.Query = query.ToString();
       siteQuery.RowLimit = limit;

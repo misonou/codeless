@@ -113,14 +113,14 @@
             </summary>
             <returns></returns>
         </member>
-        <member name="M:Codeless.SharePoint.CamlExpression.HandleAnd(Codeless.SharePoint.CamlExpression)">
+        <member name="M:Codeless.SharePoint.CamlExpression.HandleAnd(Codeless.SharePoint.CamlExpression,System.Boolean)">
             <summary>
             When overriden, handles a logical And operation against another expression.
             </summary>
             <param name="x">Another expression.</param>
             <returns>A resulting expression.</returns>
         </member>
-        <member name="M:Codeless.SharePoint.CamlExpression.HandleOr(Codeless.SharePoint.CamlExpression)">
+        <member name="M:Codeless.SharePoint.CamlExpression.HandleOr(Codeless.SharePoint.CamlExpression,System.Boolean)">
             <summary>
             When overriden, handles a logical Or operation against another expression.
             </summary>
@@ -198,6 +198,112 @@
             <param name="sb">A string builder object.</param>
             <param name="settings">XML writer settings.</param>
             <returns>A delegate of a string builder.</returns>
+        </member>
+        <member name="T:Codeless.SharePoint.CamlExpressionVisitor">
+            <summary>
+            Providers a base class that visits a CAML expression.
+            </summary>
+        </member>
+        <member name="M:Codeless.SharePoint.CamlExpressionVisitor.#ctor">
+            <summary>
+            Instantiate an instance of the <see cref="T:Codeless.SharePoint.CamlExpressionVisitor"/> class.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.CamlExpressionVisitor.Bindings">
+            <summary>
+            Gets the values binded to the CAML expression that is visiting.
+            </summary>
+        </member>
+        <member name="M:Codeless.SharePoint.CamlExpressionVisitor.Visit(Codeless.SharePoint.CamlExpression)">
+            <summary>
+            Called when visiting a sub-expression.
+            </summary>
+            <param name="expression">An instance of the <see cref="T:Codeless.SharePoint.CamlExpression"/> class representing the visiting expression.</param>
+            <returns>When overriden, returns an expression to replace the expression given in arguments.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.CamlExpressionVisitor.VisitBindedExpression(Codeless.SharePoint.CamlBindedExpression)">
+            <summary>
+            Called when visiting a CAML expression with binded values.
+            </summary>
+            <param name="expression">An instance of the <see cref="T:Codeless.SharePoint.CamlBindedExpression"/> class representing the value-binded expression.</param>
+            <returns>When overriden, returns an expression to replace the expression given in arguments.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.CamlExpressionVisitor.VisitViewFieldsExpression(Codeless.SharePoint.CamlViewFieldsExpression)">
+            <summary>
+            Called when visiting a &lt;ViewFields/&gt; element.
+            </summary>=
+            <param name="expression">An instance of the <see cref="T:Codeless.SharePoint.CamlViewFieldsExpression"/> class representing the &lt;ViewFields/&gt; expression.</param>
+            <returns>When overriden, returns an expression to replace the expression given in arguments.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.CamlExpressionVisitor.VisitOrderByExpression(Codeless.SharePoint.CamlOrderByExpression)">
+            <summary>
+            Called when visiting a &lt;OrderBy/&gt; element.
+            </summary>=
+            <param name="expression">An instance of the <see cref="T:Codeless.SharePoint.CamlOrderByExpression"/> class representing the &lt;OrderBy/&gt; expression.</param>
+            <returns>When overriden, returns an expression to replace the expression given in arguments.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.CamlExpressionVisitor.VisitGroupByExpression(Codeless.SharePoint.CamlGroupByExpression)">
+            <summary>
+            Called when visiting a &lt;GroupBy/&gt; element.
+            </summary>=
+            <param name="expression">An instance of the <see cref="T:Codeless.SharePoint.CamlGroupByExpression"/> class representing the &lt;GroupBy/&gt; expression.</param>
+            <returns>When overriden, returns an expression to replace the expression given in arguments.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.CamlExpressionVisitor.VisitViewFieldsFieldRefExpression(Codeless.SharePoint.CamlViewFieldsFieldRefExpression)">
+            <summary>
+            Called when visiting a &lt;FieldRef/&gt; expression inside a &lt;ViewFields/&gt; element.
+            </summary>
+            <param name="expression">An instance of the <see cref="T:Codeless.SharePoint.CamlViewFieldsFieldRefExpression"/> class representing the &lt;FieldRef/&gt; expression.</param>
+            <returns>When overriden, returns an expression to replace the expression given in arguments.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.CamlExpressionVisitor.VisitOrderByFieldRefExpression(Codeless.SharePoint.CamlOrderByFieldRefExpression)">
+            <summary>
+            Called when visiting a &lt;FieldRef/&gt; expression inside an &lt;OrderBy/&gt; element.
+            </summary>
+            <param name="expression">An instance of the <see cref="T:Codeless.SharePoint.CamlOrderByFieldRefExpression"/> class representing the &lt;FieldRef/&gt; expression.</param>
+            <returns>When overriden, returns an expression to replace the expression given in arguments.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.CamlExpressionVisitor.VisitGroupByFieldRefExpression(Codeless.SharePoint.CamlGroupByFieldRefExpression)">
+            <summary>
+            Called when visiting a &lt;FieldRef/&gt; expression inside a &lt;GroupBy/&gt; element.
+            </summary>
+            <param name="expression">An instance of the <see cref="T:Codeless.SharePoint.CamlGroupByFieldRefExpression"/> class representing the &lt;FieldRef/&gt; expression.</param>
+            <returns>When overriden, returns an expression to replace the expression given in arguments.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.CamlExpressionVisitor.VisitWhereUnaryComparisonExpression(Codeless.SharePoint.CamlWhereUnaryComparisonExpression)">
+            <summary>
+            Called when visiting a unary comparison expression inside a &lt;Where/&gt; element.
+            </summary>
+            <param name="expression">An instance of the <see cref="T:Codeless.SharePoint.CamlWhereUnaryComparisonExpression"/> class representing the unary comparison expression.</param>
+            <returns>When overriden, returns an expression to replace the expression given in arguments.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.CamlExpressionVisitor.VisitWhereBinaryComparisonExpression(Codeless.SharePoint.CamlWhereBinaryComparisonExpression)">
+            <summary>
+            Called when visiting a binary comparison expression inside a &lt;Where/&gt; element.
+            </summary>
+            <param name="expression">An instance of the <see cref="T:Codeless.SharePoint.CamlWhereBinaryComparisonExpression"/> class representing the binary comparison expression.</param>
+            <returns>When overriden, returns an expression to replace the expression given in arguments.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.CamlExpressionVisitor.VisitWhereLogicalExpression(Codeless.SharePoint.CamlWhereLogicalExpression)">
+            <summary>
+            Called when visiting a logical comparison expression inside a &lt;Where/&gt; element.
+            </summary>
+            <param name="expression">An instance of the <see cref="T:Codeless.SharePoint.CamlWhereLogicalExpression"/> class representing the logical comparison expression.</param>
+            <returns>When overriden, returns an expression to replace the expression given in arguments.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.CamlExpressionVisitor.VisitWhereExpression(Codeless.SharePoint.CamlWhereExpression)">
+            <summary>
+            Called when visiting a &lt;Where/&gt; expression.
+            </summary>
+            <param name="expression">An instance of the <see cref="T:Codeless.SharePoint.CamlWhereExpression"/> class representing the &lt;Where/&gt; expression.</param>
+            <returns>When overriden, returns an expression to replace the expression given in arguments.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.CamlExpressionVisitor.VisitQueryExpression(Codeless.SharePoint.CamlQueryExpression)">
+            <summary>
+            Called when visiting a &lt;Query/&gt; expression.
+            </summary>
+            <param name="expression">An instance of the <see cref="T:Codeless.SharePoint.CamlQueryExpression"/> class representing the &lt;Query/&gt; expression.</param>
+            <returns>When overriden, returns an expression to replace the expression given in arguments.</returns>
         </member>
         <member name="T:Codeless.SharePoint.CamlParameterName">
             <summary>
@@ -368,6 +474,11 @@
             Gets the server-relative path of the list item associated with an <see cref="T:Codeless.SharePoint.ObjectModel.SPModel"/> instance, without starting slash.
             </summary>
         </member>
+        <member name="P:Codeless.SharePoint.ObjectModel.ISPModelMetaData.ServerRelativeUrl">
+            <summary>
+            Gets the server-relative path of the list item associated with an <see cref="T:Codeless.SharePoint.ObjectModel.SPModel"/> instance, with starting slash.
+            </summary>
+        </member>
         <member name="P:Codeless.SharePoint.ObjectModel.ISPModelMetaData.SiteId">
             <summary>
             Gets the parent site collection ID of the list item associated with an <see cref="T:Codeless.SharePoint.ObjectModel.SPModel"/> instance.
@@ -384,6 +495,11 @@
             </summary>
         </member>
         <member name="P:Codeless.SharePoint.ObjectModel.ISPModelMetaData.FileLeafRef">
+            <summary>
+            Gets the filename of the list item associated with an <see cref="T:Codeless.SharePoint.ObjectModel.SPModel"/> instance.
+            </summary>
+        </member>
+        <member name="P:Codeless.SharePoint.ObjectModel.ISPModelMetaData.Filename">
             <summary>
             Gets the filename of the list item associated with an <see cref="T:Codeless.SharePoint.ObjectModel.SPModel"/> instance.
             </summary>
@@ -806,12 +922,37 @@
             </summary>
             <typeparam name="T">Type of model class.</typeparam>
         </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelManager`1.#ctor(Microsoft.SharePoint.SPSite)">
+            <summary>
+            Initializes an instance of the <see cref="T:Codeless.SharePoint.ObjectModel.SPModelManager`1"/> class that queries list items under the specified site collection and its sub-sites.
+            </summary>
+            <param name="site">The site collection object to query against.</param>
+        </member>
         <member name="M:Codeless.SharePoint.ObjectModel.SPModelManager`1.#ctor(Microsoft.SharePoint.SPWeb)">
             <summary>
-            Creates an instance of <see cref="T:Codeless.SharePoint.ObjectModel.SPModelManager`1"/> with the specified site. 
-            Items under the specified site and its descendant sites can be queried.
+            Initializes an instance of the <see cref="T:Codeless.SharePoint.ObjectModel.SPModelManager`1"/> class that queries list items under the specified site and its sub-sites.
             </summary>
             <param name="web">Site object.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelManager`1.#ctor(Microsoft.SharePoint.SPWeb,System.Boolean)">
+            <summary>
+            Initializes an instance of the <see cref="T:Codeless.SharePoint.ObjectModel.SPModelManager`1"/> class that queries list items under the specified site and optionally its sub-sites.
+            </summary>
+            <param name="web">The site object to query against.</param>
+            <param name="currentWebOnly">A boolean value specifies whether lists in sub-sites should also be queried.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelManager`1.#ctor(Microsoft.SharePoint.SPList)">
+            <summary>
+            Initializes an instance of the <see cref="T:Codeless.SharePoint.ObjectModel.SPModelManager`1"/> class that queries list items under the specified list.
+            </summary>
+            <param name="list">The list object to query against.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelManager`1.#ctor(Microsoft.SharePoint.SPWeb,System.Collections.Generic.IList{Microsoft.SharePoint.SPList})">
+            <summary>
+            Initializes an instance of the <see cref="T:Codeless.SharePoint.ObjectModel.SPModelManager`1"/> class that queries list items under the specified list(s).
+            </summary>
+            <param name="web">The site object.</param>
+            <param name="lists">A List of lists to query against.</param>
         </member>
         <member name="P:Codeless.SharePoint.ObjectModel.SPModelManager`1.Current">
             <summary>
@@ -1459,6 +1600,14 @@
             <param name="adapter">A data access adapter of the list item.</param>
             <returns>A model object or *null* if there is no types associated with the content type of the list item.</returns>
         </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModel.TryCreate(Codeless.SharePoint.ISPListItemAdapter,Codeless.SharePoint.ObjectModel.ISPModelManager)">
+            <summary>
+            Creates a model object representing the list item.
+            </summary>
+            <param name="adapter">A data access adapter of the list item.</param>
+            <param name="manager">An instance of the <see cref="T:Codeless.SharePoint.ObjectModel.ISPModelManager"/> class which model object created will belongs to this manager.</param>
+            <returns>A model object or *null* if there is no types associated with the content type of the list item.</returns>
+        </member>
         <member name="T:Codeless.SharePoint.ObjectModel.SPModelCollection">
             <summary>
             Provides a base class for a collection of <see cref="T:Codeless.SharePoint.ObjectModel.SPModel"/> queried from a site collection.
@@ -1693,11 +1842,24 @@
             </summary>
             <typeparam name="T"></typeparam>
         </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1.#ctor(Microsoft.SharePoint.SPSite)">
+            <summary>
+            Initializes an instance of the <see cref="T:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1"/> class that queries list items under the specified site collection and its sub-sites.
+            </summary>
+            <param name="site">The site collection object to query against.</param>
+        </member>
         <member name="M:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1.#ctor(Microsoft.SharePoint.SPWeb)">
             <summary>
             Initializes an instance of the <see cref="T:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1"/> class that queries list items under the specified site and its sub-sites.
             </summary>
             <param name="web">The site object to query against.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1.#ctor(Microsoft.SharePoint.SPWeb,System.Boolean)">
+            <summary>
+            Initializes an instance of the <see cref="T:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1"/> class that queries list items under the specified site and optionally its sub-sites.
+            </summary>
+            <param name="web">The site object to query against.</param>
+            <param name="currentWebOnly">A boolean value specifies whether lists in sub-sites should also be queried.</param>
         </member>
         <member name="M:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1.#ctor(Microsoft.SharePoint.SPList)">
             <summary>
@@ -3582,6 +3744,20 @@
             <param name="view">View object.</param>
             <returns>An <see cref="T:Microsoft.SharePoint.SPView"/> object in cache. Returned object is not necessary the same instance as the given one.</returns>
             <exception cref="T:System.ArgumentNullException">Throws when input parameter <paramref name="view"/> is null.</exception>
+        </member>
+        <member name="M:Codeless.SharePoint.SPObjectCache.RequestReusableAcl(System.Guid)">
+            <summary>
+            Requests an <see cref="T:Microsoft.SharePoint.SPReusableAcl"/> object representing ACL information of the specified scope ID in advance.
+            If the requested object has not been loaded, it will be loaded in batch in the next time <see cref="M:Codeless.SharePoint.SPObjectCache.GetReusableAcl(System.Guid)"/> is called.
+            </summary>
+            <param name="scopeId">Scope ID.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.SPObjectCache.GetReusableAcl(System.Guid)">
+            <summary>
+            Gets an <see cref="T:Microsoft.SharePoint.SPReusableAcl"/> object representing ACL information of the specified scope ID.
+            </summary>
+            <param name="scopeId">Scope ID.</param>
+            <returns>An <see cref="T:Microsoft.SharePoint.SPReusableAcl"/> object in cache. NULL if the specified scope ID does not exist in the site collection.</returns>
         </member>
         <member name="T:Codeless.SharePoint.SPRecurrenceDateRange">
             <summary>
@@ -5610,6 +5786,15 @@
             <param name="publishOnDispose">Whether to publish the file on dispose.</param>
             <returns>An <see cref="T:System.IDisposable"/> object.</returns>
         </member>
+        <member name="M:Codeless.SharePoint.SPExtension.GetCheckOutScope(Microsoft.SharePoint.SPFile,System.Boolean,System.String)">
+            <summary>
+            Ensures the specified file is checked out to the current user before performing edit operation, and optionally publish the file on dispose.
+            </summary>
+            <param name="file">An <see cref="T:Microsoft.SharePoint.SPFile"/> object.</param>
+            <param name="publishOnDispose">Whether to publish the file on dispose.</param>
+            <param name="checkInComment">Comment message.</param>
+            <returns>An <see cref="T:System.IDisposable"/> object.</returns>
+        </member>
         <member name="M:Codeless.SharePoint.SPExtension.EnableScheduledPublishing(Microsoft.SharePoint.SPList)">
             <summary>
             Enables scheduled publishing on the given list.
@@ -5673,6 +5858,14 @@
             <param name="listItem">A list item to start workflow with.</param>
             <param name="workflowBaseId">A GUID specifying the workflow.</param>
             <param name="data">A string containing custom data.</param>
+        </member>
+        <member name="M:Codeless.SharePoint.SPExtension.GetActiveWorkflow(Microsoft.SharePoint.SPListItem,System.Guid)">
+            <summary>
+            Gets a running workflow instance of the specified workflow associated with the list item.
+            </summary>
+            <param name="listItem">A list item.</param>
+            <param name="workflowBaseId">A GUID specifying the workflow.</param>
+            <returns>A instance of the <see cref="T:Microsoft.SharePoint.Workflow.SPWorkflow"/> type that represents the workflow; -or- *null* if there is no running instance of the specified workflow.</returns>
         </member>
         <member name="M:Codeless.SharePoint.SPExtension.GetSiteMemberByID(Microsoft.SharePoint.SPWeb,System.Int32)">
             <summary>

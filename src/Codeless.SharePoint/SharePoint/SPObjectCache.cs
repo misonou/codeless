@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace Codeless.SharePoint {
   /// <summary>
@@ -11,6 +12,30 @@ namespace Codeless.SharePoint {
   public sealed class SPObjectCache {
     #region Helper Class
     private interface ILookupKey<T> { }
+
+    private struct SPReusableAclLookupKey : IEquatable<SPReusableAclLookupKey>, ILookupKey<SPReusableAcl> {
+      public Guid ScopeId { get; private set; }
+
+      public SPReusableAclLookupKey(Guid scopeId)
+        : this() {
+        this.ScopeId = scopeId;
+      }
+
+      public bool Equals(SPReusableAclLookupKey other) {
+        return ScopeId == other.ScopeId;
+      }
+
+      public override bool Equals(object obj) {
+        if (obj is SPReusableAclLookupKey) {
+          return Equals((SPReusableAclLookupKey)obj);
+        }
+        return base.Equals(obj);
+      }
+
+      public override int GetHashCode() {
+        return ScopeId.GetHashCode();
+      }
+    }
 
     private struct SPWebLookupKey : IEquatable<SPWebLookupKey>, ILookupKey<SPWeb> {
       public Guid WebId { get; private set; }
@@ -104,7 +129,7 @@ namespace Codeless.SharePoint {
       public SPContentTypeLookupKey(SPContentType contentType)
         : this(contentType.ParentList == null ? Guid.Empty : contentType.ParentList.ID, contentType.Id) { }
 
-      public SPContentTypeLookupKey(Guid listId, SPContentTypeId contentTypeId):this() {
+      public SPContentTypeLookupKey(Guid listId, SPContentTypeId contentTypeId) : this() {
         this.ListId = listId;
         this.ContentTypeId = contentTypeId;
       }
@@ -184,10 +209,13 @@ namespace Codeless.SharePoint {
     }
     #endregion
 
+    private static readonly PropertyInfo fieldNode = typeof(SPField).GetProperty("Node", true);
+
     private readonly SPSite contextSite;
     private readonly Hashtable hashtable = new Hashtable();
     private readonly Dictionary<string, SPListLookupKey> listUrls = new Dictionary<string, SPListLookupKey>();
     private readonly Dictionary<string, SPFieldLookupKey> fieldInternalNames = new Dictionary<string, SPFieldLookupKey>();
+    private readonly HashSet<Guid> scopeIds = new HashSet<Guid>();
 
     /// <summary>
     /// Creates an <see cref="SPObjectCache"/> instance with the specific site collection.
@@ -312,6 +340,7 @@ namespace Codeless.SharePoint {
       if (field.ParentList == null) {
         fieldInternalNames.EnsureKeyValue(field.InternalName, () => new SPFieldLookupKey(Guid.Empty, field.Id));
       }
+      EnsureLocalXmlNode(field);
       return GetOrAdd(lookupKey, field);
     }
 
@@ -322,7 +351,7 @@ namespace Codeless.SharePoint {
     /// <returns>An <see cref="Microsoft.SharePoint.SPField"/> object in cache. NULL if site column of given GUID does not exist.</returns>
     public SPField GetField(Guid fieldId) {
       SPFieldLookupKey lookupKey = new SPFieldLookupKey(Guid.Empty, fieldId);
-      SPField field = GetOrAdd(lookupKey, () => contextSite.RootWeb.Fields[fieldId]);
+      SPField field = GetOrAdd(lookupKey, () => EnsureLocalXmlNode(contextSite.RootWeb.Fields[fieldId]));
       if (field != null && field.ParentList == null) {
         fieldInternalNames.EnsureKeyValue(field.InternalName, () => new SPFieldLookupKey(Guid.Empty, field.Id));
       }
@@ -338,7 +367,7 @@ namespace Codeless.SharePoint {
     /// <returns>An <see cref="Microsoft.SharePoint.SPField"/> object in cache. NULL if list column of given GUID does not exist, or specified list does not exist.</returns>
     public SPField GetField(Guid webId, Guid listId, Guid fieldId) {
       SPFieldLookupKey lookupKey = new SPFieldLookupKey(listId, fieldId);
-      SPField field = GetOrAdd(lookupKey, () => GetList(webId, listId).Fields[fieldId]);
+      SPField field = GetOrAdd(lookupKey, () => EnsureLocalXmlNode(GetList(webId, listId).Fields[fieldId]));
       if (field != null && field.ParentList == null) {
         fieldInternalNames.EnsureKeyValue(field.InternalName, () => new SPFieldLookupKey(Guid.Empty, field.Id));
       }
@@ -399,7 +428,7 @@ namespace Codeless.SharePoint {
       SPContentTypeLookupKey lookupKey = new SPContentTypeLookupKey(listInfo.ListId, contentTypeId);
       return GetOrAdd(lookupKey, () => GetList(listInfo.WebId, listInfo.ListId).ContentTypes[contentTypeId]);
     }
-    
+
     /// <summary>
     /// Adds the given <see cref="Microsoft.SharePoint.SPView"/> object to the cache
     /// </summary>
@@ -412,24 +441,68 @@ namespace Codeless.SharePoint {
       return GetOrAdd(lookupKey, view);
     }
 
-    private T GetOrAdd<T>(ILookupKey<T> lookupKey, Func<T> factory) {
-      T cachedItem = (T)hashtable[lookupKey];
-      if (cachedItem == null) {
-        try {
-          cachedItem = factory();
-        } catch (Exception) { }
-        hashtable[lookupKey] = cachedItem;
+    /// <summary>
+    /// Requests an <see cref="SPReusableAcl"/> object representing ACL information of the specified scope ID in advance.
+    /// If the requested object has not been loaded, it will be loaded in batch in the next time <see cref="GetReusableAcl(Guid)"/> is called.
+    /// </summary>
+    /// <param name="scopeId">Scope ID.</param>
+    public void RequestReusableAcl(Guid scopeId) {
+      if (!hashtable.ContainsKey(new SPReusableAclLookupKey(scopeId))) {
+        scopeIds.Add(scopeId);
       }
-      return cachedItem;
+    }
+
+    /// <summary>
+    /// Gets an <see cref="SPReusableAcl"/> object representing ACL information of the specified scope ID.
+    /// </summary>
+    /// <param name="scopeId">Scope ID.</param>
+    /// <returns>An <see cref="SPReusableAcl"/> object in cache. NULL if the specified scope ID does not exist in the site collection.</returns>
+    public SPReusableAcl GetReusableAcl(Guid scopeId) {
+      SPReusableAclLookupKey lookupKey = new SPReusableAclLookupKey(scopeId);
+      return GetOrAdd(lookupKey, () => {
+        contextSite.WithElevatedPrivileges(elevatedSite => {
+          scopeIds.Add(scopeId);
+          foreach (Guid id in scopeIds) {
+            try {
+              hashtable[new SPReusableAclLookupKey(id)] = elevatedSite.GetReusableAclForScope(id);
+            } catch {
+              hashtable[new SPReusableAclLookupKey(id)] = null;
+            }
+          }
+          scopeIds.Clear();
+        });
+        return (SPReusableAcl)hashtable[lookupKey];
+      });
+    }
+
+    private T GetOrAdd<T>(ILookupKey<T> lookupKey, Func<T> factory) {
+      if (hashtable.ContainsKey(lookupKey)) {
+        return (T)hashtable[lookupKey];
+      }
+      T value = default(T);
+      try {
+        value = factory();
+      } catch {
+        return value;
+      }
+      hashtable[lookupKey] = value;
+      return value;
     }
 
     private T GetOrAdd<T>(ILookupKey<T> lookupKey, T value) {
-      T cachedItem = (T)hashtable[lookupKey];
-      if (cachedItem == null) {
-        cachedItem = value;
-        hashtable[lookupKey] = cachedItem;
+      if (hashtable.ContainsKey(lookupKey)) {
+        return (T)hashtable[lookupKey];
       }
-      return cachedItem;
+      hashtable[lookupKey] = value;
+      return value;
+    }
+
+    private SPField EnsureLocalXmlNode(SPField field) {
+      // SPField object points to XML data in an array shared by the field collection until becoming dirty
+      // however adding new field to the collection and causing the shared array to mutate
+      // clean SPField object may corrupt as the same array index would instead point to XML data for another field
+      fieldNode.GetValue<object>(field);
+      return field;
     }
 
     private SPListLookupKey GetListInfoFromUrl(string listUrl) {

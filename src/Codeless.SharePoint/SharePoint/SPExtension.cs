@@ -728,6 +728,18 @@ namespace Codeless.SharePoint {
     }
 
     /// <summary>
+    /// Ensures the specified file is checked out to the current user before performing edit operation, and optionally publish the file on dispose.
+    /// </summary>
+    /// <param name="file">An <see cref="SPFile"/> object.</param>
+    /// <param name="publishOnDispose">Whether to publish the file on dispose.</param>
+    /// <param name="checkInComment">Comment message.</param>
+    /// <returns>An <see cref="IDisposable"/> object.</returns>
+    public static IDisposable GetCheckOutScope(this SPFile file, bool publishOnDispose, string checkInComment) {
+      return new SPFileCheckOutScope(file, true, publishOnDispose, checkInComment);
+    }
+
+
+    /// <summary>
     /// Enables scheduled publishing on the given list.
     /// </summary>
     /// <param name="targetList">List object.</param>
@@ -865,6 +877,22 @@ namespace Codeless.SharePoint {
         throw new Exception("Workflow failed to start with the following error: " + collection[0][SPBuiltInFieldName.Description]);
       }
       throw new Exception("Workflow failed to start.");
+    }
+
+    /// <summary>
+    /// Gets a running workflow instance of the specified workflow associated with the list item.
+    /// </summary>
+    /// <param name="listItem">A list item.</param>
+    /// <param name="workflowBaseId">A GUID specifying the workflow.</param>
+    /// <returns>A instance of the <see cref="SPWorkflow"/> type that represents the workflow; -or- *null* if there is no running instance of the specified workflow.</returns>
+    public static SPWorkflow GetActiveWorkflow(this SPListItem listItem, Guid workflowBaseId) {
+      SPWorkflowManager manager = listItem.Web.Site.WorkflowManager;
+      foreach (SPWorkflow wf in manager.GetItemActiveWorkflows(listItem)) {
+        if (wf.ParentAssociation.BaseId == workflowBaseId) {
+          return wf;
+        }
+      }
+      return null;
     }
 
     /// <summary>
