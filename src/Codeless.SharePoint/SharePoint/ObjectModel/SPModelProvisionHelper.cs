@@ -557,7 +557,7 @@ namespace Codeless.SharePoint.ObjectModel {
         }
       }
 
-      if (customLookupField) {
+      if (attachLookupList && customLookupField) {
         using (CreateTraceScope(listLookupField)) {
           bool needUpdate = false;
           needUpdate |= SetFieldAttribute(listLookupField, "WebId", lookupWebId.ToString("B"));
