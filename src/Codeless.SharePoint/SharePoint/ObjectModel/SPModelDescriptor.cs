@@ -189,12 +189,19 @@ namespace Codeless.SharePoint.ObjectModel {
       this.listAttribute = targetType.GetCustomAttribute<SPListAttribute>(true) ?? new SPListAttribute();
       this.fieldAttributes = SPModelFieldAssociationCollection.EnumerateFieldAttributes(this, targetType).ToArray();
 
-      if (defaultsAttribute != null) {
-        if (contentTypeAttribute.Group == null) {
-          contentTypeAttribute.Group = defaultsAttribute.DefaultContentTypeGroup;
-        }
-        foreach (SPFieldAttribute attribute in fieldAttributes) {
-          if (attribute.Group == null) {
+      if (contentTypeAttribute.Group == null && defaultsAttribute != null) {
+        contentTypeAttribute.Group = defaultsAttribute.DefaultContentTypeGroup;
+      }
+      foreach (SPFieldAttribute attribute in fieldAttributes) {
+        if (attribute.Group == null) {
+          if (this.Parent != null) {
+            SPFieldAttribute baseAttribute = this.Parent.fieldAttributes.FirstOrDefault(v => v.InternalName == attribute.InternalName);
+            if (baseAttribute != null) {
+              attribute.Group = baseAttribute.Group;
+              continue;
+            }
+          }
+          if (defaultsAttribute != null) {
             attribute.Group = defaultsAttribute.DefaultFieldGroup;
           }
         }
