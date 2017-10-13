@@ -28,7 +28,7 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
     public SPModelQueryExpressionTranslateResult Translate(Expression expression) {
       string[] allowedFields = null;
       if (!useOfficeSearch && manager.ImplicitQueryMode == SPModelImplicitQueryMode.ListQuery) {
-        SPList targetList = manager.ContextLists.First().EnsureList(manager.Site).List;
+        SPList targetList = manager.ContextLists.First().EnsureList(manager.ObjectCache).List;
         if (targetList != null) {
           allowedFields = targetList.Fields.OfType<SPField>().Select(v => v.InternalName).ToArray();
         }

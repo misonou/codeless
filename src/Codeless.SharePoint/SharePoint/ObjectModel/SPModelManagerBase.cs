@@ -450,14 +450,14 @@ namespace Codeless.SharePoint.ObjectModel {
         }
       }
 
-      SPList targetList = currentLists[0].EnsureList(currentWeb.Site).List;
+      SPList targetList = currentLists[0].EnsureList(objectCache).List;
       if (targetList == null) {
         throw new InvalidOperationException("No target list is specified to create item. User may not have sufficient permission to access the list.");
       }
       if (!exactType.UsedInList(targetList)) {
         currentLists.Clear();
         currentLists.AddRange(exactType.Provision(targetList.ParentWeb, new SPModelListProvisionOptions(targetList)));
-        targetList = currentLists[0].EnsureList(currentWeb.Site).List;
+        targetList = currentLists[0].EnsureList(objectCache).List;
       }
 
       SPContentTypeId contentTypeId = exactType.ContentTypeIds.First();
@@ -632,7 +632,7 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     private IEnumerable<SPListItem> ExecuteListQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, bool selectProperties) {
-      SPList list = currentLists[0].EnsureList(currentWeb.Site).List;
+      SPList list = currentLists[0].EnsureList(objectCache).List;
       if (list == null || list.ItemCount == 0) {
         return new SPListItem[0];
       }
@@ -670,7 +670,7 @@ namespace Codeless.SharePoint.ObjectModel {
           if (ex.InnerException is COMException && (ex.InnerException.Message.IndexOf("0x80131904") >= 0 || ex.InnerException.Message.IndexOf("0x80020009") >= 0)) {
             try {
               foreach (SPModelUsage v in currentLists) {
-                SPList list = v.EnsureList(currentWeb.Site).List;
+                SPList list = v.EnsureList(objectCache).List;
                 if (list != null) {
                   typeInfo.CheckMissingFields(list);
                 }
