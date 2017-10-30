@@ -59,6 +59,7 @@ namespace Codeless.SharePoint.ObjectModel {
 
     [NonSerialized]
     private object syncRoot;
+    private Hashtable hashtable;
     private readonly ISPModelManagerInternal manager;
     private readonly bool readOnly;
 
@@ -81,7 +82,46 @@ namespace Codeless.SharePoint.ObjectModel {
       get { return readOnly; }
     }
 
-    internal abstract bool TryGetCachedModel(SPList lookupList, int lookupId, out SPModel item);
+    internal IEnumerable<T> TryGetCachedModel<T>(ISPListItemAdapter source, string fieldName, params int[] lookupIds) {
+      List<T> collection = new List<T>();
+      SPObjectCache cache = this.Manager.ObjectCache;
+      SPFieldLookup lookupField = cache.GetField(source.WebId, source.ListId, fieldName) as SPFieldLookup;
+      
+      if (lookupField != null) {
+        if (hashtable == null) {
+          hashtable = new Hashtable();
+        }
+        Guid listId = lookupField.LookupList == "Self" ? source.ListId : new Guid(lookupField.LookupList);
+        List<int> lookupIdsToQuery = new List<int>();
+
+        foreach (int id in lookupIds) {
+          LookupKey key = new LookupKey(listId, id);
+          if (hashtable.ContainsKey(key)) {
+            object cachedItem = hashtable[key];
+            if (cachedItem is T) {
+              collection.Add((T)cachedItem);
+            }
+          } else {
+            lookupIdsToQuery.Add(id);
+          }
+        }
+        if (lookupIdsToQuery.Count > 0) {
+          ISPModelManagerInternal manager = hashtable.EnsureKeyValue(typeof(T), () => (ISPModelManagerInternal)SPModel.GetDefaultManager(typeof(T), this.manager.Site.RootWeb, cache));
+          SPList list = cache.GetList(lookupField.LookupWebId, listId);
+          SPQuery query = new SPQuery { Query = Caml.EqualsAny(SPBuiltInFieldName.ID, lookupIdsToQuery).ToString() };
+          
+          foreach (SPListItem item in list.GetItems(query)) {
+            object model = manager.TryCreateModel(new SPListItemAdapter(item, cache), false);
+            hashtable[new LookupKey(listId, item.ID)] = model;
+            if (model is T) {
+              collection.Add((T)model);
+            }
+            cache.AddListItem(item);
+          }
+        }
+      }
+      return collection;
+    }
 
     /// <summary>
     /// Copies items in this collection to the specified array at an arbitrary position.
@@ -201,22 +241,6 @@ namespace Codeless.SharePoint.ObjectModel {
         }
       }
       return collection;
-    }
-
-    internal override bool TryGetCachedModel(SPList lookupList, int lookupId, out SPModel item) {
-      CommonHelper.ConfirmNotNull(lookupList, "lookupList");
-      LookupKey key = new LookupKey(lookupList.ID, lookupId);
-      if (lookupDictionary.TryGetValue(key, out item)) {
-        return true;
-      }
-      SPListItem listItem = lookupList.GetItemById(lookupId);
-      if (listItem != null) {
-        item = SPModel.TryCreate(new SPListItemAdapter(listItem, this.Manager.ObjectCache), this);
-        lookupDictionary.Add(key, item);
-        return true;
-      }
-      item = null;
-      return false;
     }
 
     /// <summary>

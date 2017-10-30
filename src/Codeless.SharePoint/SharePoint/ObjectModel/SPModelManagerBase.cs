@@ -124,14 +124,14 @@ namespace Codeless.SharePoint.ObjectModel {
   public abstract class SPModelManagerBase<T> : ISPModelManager, ISPModelManagerInternal {
     private readonly SPWeb currentWeb;
     private readonly SPModelDescriptor descriptor;
-    private readonly SPObjectCache objectCache;
     private readonly List<SPModelUsage> currentLists = new List<SPModelUsage>();
-    private readonly TermStore termStore;
-    private readonly CultureInfo workingCulture;
     private readonly HashSet<ISPListItemAdapter> itemsToSave = new HashSet<ISPListItemAdapter>();
     private readonly SPModelImplicitQueryMode queryMode;
     private readonly uint throttlingLimit;
     private readonly bool explicitListScope;
+    private SPObjectCache objectCache;
+    private TermStore termStore;
+    private CultureInfo workingCulture;
 
     /// <summary>
     /// Initializes an instance of the <see cref="SPModelManagerBase{T}"/> class that queries list items under the specified site collection and its sub-sites.
@@ -175,7 +175,6 @@ namespace Codeless.SharePoint.ObjectModel {
 
       using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
         this.currentWeb = currentWeb;
-        this.objectCache = new SPObjectCache(currentWeb.Site);
         this.throttlingLimit = currentWeb.Site.WebApplication.MaxItemsPerThrottledOperation;
 
         this.descriptor = SPModelDescriptor.Resolve(typeof(T));
@@ -198,15 +197,6 @@ namespace Codeless.SharePoint.ObjectModel {
         } else {
           this.queryMode = SPModelImplicitQueryMode.None;
         }
-
-        TaxonomySession session = new TaxonomySession(currentWeb.Site);
-        this.termStore = session.DefaultKeywordsTermStore;
-
-        VariationContext variationContext = new VariationContext(currentWeb);
-        this.workingCulture = variationContext.Culture;
-        if (termStore != null) {
-          termStore.WorkingLanguage = variationContext.Culture.LCID;
-        }
       }
     }
 
@@ -221,14 +211,30 @@ namespace Codeless.SharePoint.ObjectModel {
     /// Gets the term store connected with the site that initialized this instance of the <see cref="SPModelManagerBase{T}"/> class.
     /// </summary>
     public TermStore TermStore {
-      get { return CommonHelper.AccessNotNull(termStore, "TermStore"); }
+      get {
+        if (termStore != null) {
+          return termStore;
+        }
+        TaxonomySession session = new TaxonomySession(currentWeb.Site);
+        this.termStore = session.DefaultKeywordsTermStore;
+        if (termStore != null) {
+          termStore.WorkingLanguage = this.Culture.LCID;
+          return termStore;
+        }
+        return CommonHelper.AccessNotNull(termStore, "TermStore");
+      }
     }
 
     /// <summary>
     /// Gets the <see cref="SPObjectCache"/> object. This object cache instance is used in <see cref="ISPListItemAdapter"/> objects created by this manager.
     /// </summary>
     protected internal SPObjectCache ObjectCache {
-      get { return objectCache; }
+      get {
+        if (objectCache == null) {
+          objectCache = new SPObjectCache(this.Site);
+        }
+        return objectCache;
+      }
     }
 
     /// <summary>
@@ -236,6 +242,16 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     protected internal SPModelImplicitQueryMode ImplicitQueryMode {
       get { return queryMode; }
+    }
+
+    internal CultureInfo Culture {
+      get {
+        if (workingCulture == null) {
+          VariationContext variationContext = new VariationContext(currentWeb);
+          this.workingCulture = variationContext.Culture;
+        }
+        return workingCulture;
+      }
     }
 
     internal IEnumerable<SPModelUsage> ContextLists {
@@ -450,14 +466,14 @@ namespace Codeless.SharePoint.ObjectModel {
         }
       }
 
-      SPList targetList = currentLists[0].EnsureList(objectCache).List;
+      SPList targetList = currentLists[0].EnsureList(this.ObjectCache).List;
       if (targetList == null) {
         throw new InvalidOperationException("No target list is specified to create item. User may not have sufficient permission to access the list.");
       }
       if (!exactType.UsedInList(targetList)) {
         currentLists.Clear();
         currentLists.AddRange(exactType.Provision(targetList.ParentWeb, new SPModelListProvisionOptions(targetList)));
-        targetList = currentLists[0].EnsureList(objectCache).List;
+        targetList = currentLists[0].EnsureList(this.ObjectCache).List;
       }
 
       SPContentTypeId contentTypeId = exactType.ContentTypeIds.First();
@@ -487,7 +503,7 @@ namespace Codeless.SharePoint.ObjectModel {
           createdItem[SPBuiltInFieldId.ContentTypeId] = contentTypeId;
           break;
       }
-      return TryCreateModel(new SPListItemAdapter(createdItem, objectCache), false);
+      return TryCreateModel(new SPListItemAdapter(createdItem, this.ObjectCache), false);
     }
 
     /// <summary>
@@ -607,15 +623,15 @@ namespace Codeless.SharePoint.ObjectModel {
     private IEnumerable<ISPListItemAdapter> ExecuteListQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit) {
       IEnumerable<SPListItem> collection = ExecuteListQuery(typeInfo, query, limit, true);
       foreach (SPListItem item in collection) {
-        yield return new SPListItemAdapter(item, objectCache);
+        yield return new SPListItemAdapter(item, this.ObjectCache);
       }
     }
 
     private IEnumerable<ISPListItemAdapter> ExecuteSiteQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit) {
       DataTable dt = ExecuteSiteQuery(typeInfo, query, limit, true);
       foreach (DataRow row in dt.Rows) {
-        DataRowAdapter adapter = new DataRowAdapter(currentWeb.Site, row, objectCache);
-        objectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
+        DataRowAdapter adapter = new DataRowAdapter(currentWeb.Site, row, this.ObjectCache);
+        this.ObjectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
         yield return adapter;
       }
     }
@@ -625,14 +641,14 @@ namespace Codeless.SharePoint.ObjectModel {
       DataTable queryDataTable = new DataTable();
       queryDataTable.Load(queryResultsTable, LoadOption.OverwriteChanges);
       return queryDataTable.Rows.OfType<DataRow>().Select(v => {
-        ISPListItemAdapter adapter = new KeywordQueryResultAdapter(currentWeb.Site, v, objectCache);
-        objectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
+        ISPListItemAdapter adapter = new KeywordQueryResultAdapter(currentWeb.Site, v, this.ObjectCache);
+        this.ObjectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
         return adapter;
       });
     }
 
     private IEnumerable<SPListItem> ExecuteListQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, bool selectProperties) {
-      SPList list = currentLists[0].EnsureList(objectCache).List;
+      SPList list = currentLists[0].EnsureList(this.ObjectCache).List;
       if (list == null || list.ItemCount == 0) {
         return new SPListItem[0];
       }
@@ -670,7 +686,7 @@ namespace Codeless.SharePoint.ObjectModel {
           if (ex.InnerException is COMException && (ex.InnerException.Message.IndexOf("0x80131904") >= 0 || ex.InnerException.Message.IndexOf("0x80020009") >= 0)) {
             try {
               foreach (SPModelUsage v in currentLists) {
-                SPList list = v.EnsureList(objectCache).List;
+                SPList list = v.EnsureList(this.ObjectCache).List;
                 if (list != null) {
                   typeInfo.CheckMissingFields(list);
                 }
@@ -697,7 +713,7 @@ namespace Codeless.SharePoint.ObjectModel {
       }
 
       KeywordQuery keywordQuery = SearchServiceHelper.CreateQuery(currentWeb.Site, query & listScopedQuery, limit, startRow, keywords, inclusion, SearchServiceHelper.GetManagedPropertyNames(currentWeb.Site, typeInfo.RequiredViewFields));
-      keywordQuery.Culture = workingCulture;
+      keywordQuery.Culture = this.Culture;
       OnExecutingKeywordSearch(new SPModelKeywordSearchEventArgs { Query = keywordQuery });
 
       try {
@@ -746,7 +762,18 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     SPObjectCache ISPModelManagerInternal.ObjectCache {
-      get { return objectCache; }
+      get {
+        if (objectCache == null) {
+          objectCache = new SPObjectCache(this.Site);
+        }
+        return objectCache;
+      }
+      set {
+        if (objectCache != null) {
+          throw new InvalidOperationException();
+        }
+        objectCache = value;
+      }
     }
 
     SPModel ISPModelManagerInternal.TryCreateModel(ISPListItemAdapter adapter, bool readOnly) {

@@ -228,6 +228,16 @@ namespace Codeless.SharePoint {
     }
 
     /// <summary>
+    /// Gets or sets object associated with a specified key in the cache.
+    /// </summary>
+    /// <param name="key">A string representing the key associated with a cached object.</param>
+    /// <returns>The cached object associated with the specified key; -or- *null* if the specified key does not exist in the cache.</returns>
+    public object this[string key] {
+      get { return hashtable[key]; }
+      set { hashtable[key] = value; }
+    }
+
+    /// <summary>
     /// Gets a enumerable collection of cached objects of type <typeparamref name="T"/>.
     /// </summary>
     /// <typeparam name="T">Type of cached objects to be enumerated.</typeparam>
@@ -372,6 +382,17 @@ namespace Codeless.SharePoint {
         fieldInternalNames.EnsureKeyValue(field.InternalName, () => new SPFieldLookupKey(Guid.Empty, field.Id));
       }
       return field;
+    }
+
+    /// <summary>
+    /// Gets an <see cref="Microsoft.SharePoint.SPField"/> object representing list column of the specified internal name, under the specified list.
+    /// </summary>
+    /// <param name="webId">Site GUID.</param>
+    /// <param name="listId">List GUID.</param>
+    /// <param name="internalName">Internal name of the list column</param>
+    /// <returns>An <see cref="Microsoft.SharePoint.SPField"/> object in cache. NULL if list column of given internal name does not exist, or specified list does not exist.</returns>
+    public SPField GetField(Guid webId, Guid listId, string internalName) {
+      return GetField(webId, listId, TryGetField(internalName).Id);
     }
 
     /// <summary>

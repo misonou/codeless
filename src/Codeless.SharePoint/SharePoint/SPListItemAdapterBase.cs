@@ -460,9 +460,8 @@ namespace Codeless.SharePoint {
       object value = this[fieldName];
       if (value != null) {
         try {
-          SPField lookupField = GetLookupField(fieldName);
           SPFieldLookupValue u = new SPFieldLookupValue(value.ToString());
-          return GetModel<T>(parentCollection, lookupField.ParentList, u.LookupId);
+          return parentCollection.TryGetCachedModel<T>(this, fieldName, u.LookupId).FirstOrDefault();
         } catch { }
       }
       return default(T);
@@ -481,13 +480,9 @@ namespace Codeless.SharePoint {
       object value = this[fieldName];
       if (value != null) {
         try {
-          SPField lookupField = GetLookupField(fieldName);
           SPFieldLookupValueCollection values = CommonHelper.TryCastOrDefault<SPFieldLookupValueCollection>(value) ?? new SPFieldLookupValueCollection(value.ToString());
-          foreach (SPFieldLookupValue u in values) {
-            T typedItem = GetModel<T>(parentCollection, lookupField.ParentList, u.LookupId);
-            if (typedItem != null) {
-              collection.Add(typedItem);
-            }
+          foreach (T item in parentCollection.TryGetCachedModel<T>(this, fieldName, values.Select(u => u.LookupId).ToArray())) {
+            collection.Add(item);
           }
         } catch { }
       }
@@ -617,11 +612,19 @@ namespace Codeless.SharePoint {
     }
 
     public virtual void SetLookupFieldValue(string fieldName, string value) {
-      this[fieldName] = GetLookupIdByValue(fieldName, value);
+      if (value != null) {
+        this[fieldName] = GetLookupIdByValue(fieldName, value);
+      } else {
+        this[fieldName] = null;
+      }
     }
 
     public virtual void SetUserFieldValue(string fieldName, SPPrincipal user) {
-      this[fieldName] = user.ID;
+      if (user != null) {
+        this[fieldName] = user.ID;
+      } else {
+        this[fieldName] = null;
+      }
     }
 
     public virtual void SetModel<T>(string fieldName, T item) {
@@ -633,23 +636,23 @@ namespace Codeless.SharePoint {
     }
 
     public IList<Term> GetTaxonomyMulti(string fieldName, TermStore termStore) {
-      return CreateNotifyingCollection(fieldName, GetTaxonomyMultiInternal(fieldName, termStore));
+      return CreateNotifyingCollection(fieldName, GetTaxonomyMultiInternal(fieldName, termStore), (s, e) => OnTaxonomyMultiValueChanged(s, fieldName));
     }
 
     public IList<string> GetMultiLookupFieldValue(string fieldName) {
-      return CreateNotifyingCollection(fieldName, GetMultiLookupFieldValueInternal(fieldName));
+      return CreateNotifyingCollection(fieldName, GetMultiLookupFieldValueInternal(fieldName), (s, e) => OnMultiLookupValueChanged(s, fieldName));
     }
 
     public IList<SPPrincipal> GetMultiUserFieldValue(string fieldName) {
-      return CreateNotifyingCollection(fieldName, GetMultiUserFieldValueInternal(fieldName));
+      return CreateNotifyingCollection(fieldName, GetMultiUserFieldValueInternal(fieldName), (s, e) => OnMultiUserValueChanged(s, fieldName));
     }
 
     public IList<T> GetModelCollection<T>(string fieldName, SPModelCollection parentCollection) {
-      return CreateNotifyingCollection(fieldName, GetModelCollectionInternal<T>(fieldName, parentCollection));
+      return CreateNotifyingCollection(fieldName, GetModelCollectionInternal<T>(fieldName, parentCollection), (s, e) => OnModelCollectionChanged(s, fieldName));
     }
 
     public IList<string> GetMultiChoiceFieldValue(string fieldName) {
-      return CreateNotifyingCollection(fieldName, GetMultiChoiceFieldValueInternal(fieldName));
+      return CreateNotifyingCollection(fieldName, GetMultiChoiceFieldValueInternal(fieldName), (s, e) => OnMultiChoiceValueChanged(s, fieldName));
     }
 
     public ReadOnlyCollection<Term> GetTaxonomyMultiReadOnly(string fieldName, TermStore termStore) {
@@ -672,12 +675,12 @@ namespace Codeless.SharePoint {
       return new ReadOnlyCollection<string>(GetMultiChoiceFieldValueInternal(fieldName));
     }
 
-    private IList<T> CreateNotifyingCollection<T>(string fieldName, IList<T> values) {
+    private IList<T> CreateNotifyingCollection<T>(string fieldName, IList<T> values, NotifyCollectionChangedEventHandler handler) {
       if (values is ObservableCollection<T>) {
         return values;
       }
       ObservableCollection<T> collection = new ObservableCollection<T>(values);
-      collection.CollectionChanged += ((sender, e) => OnCollectionChanged(sender, fieldName));
+      collection.CollectionChanged += handler;
       return collection;
     }
 
@@ -694,26 +697,55 @@ namespace Codeless.SharePoint {
       return default(TValue);
     }
 
-    private int? GetLookupIdByValue(string fieldName, object value) {
-      if (value != null) {
-        SPField lookupField = GetLookupField(fieldName);
-        SPQuery query = new SPQuery();
-        query.ViewFields = Caml.ViewFields(SPBuiltInFieldName.ID).ToString();
-        query.Query = Caml.Equals(lookupField.InternalName, CamlParameterBinding.GetValueBinding(this.Site, lookupField, value)).ToString();
-        query.RowLimit = 1;
+    private int GetLookupIdByValue(string fieldName, object value) {
+      SPField lookupField = GetLookupField(fieldName);
+      string cacheKey = String.Concat("LookupValue-", this.ListId, "-", fieldName);
+      Dictionary<string, int> dict = this.ObjectCache[cacheKey] as Dictionary<string, int>;
+      if (this.ObjectCache[cacheKey] == null) {
+        this.ObjectCache[cacheKey] = dict = new Dictionary<string, int>();
+      }
 
-        SPListItemCollection collection = lookupField.ParentList.GetItems(query);
-        if (collection.Count > 0) {
-          return collection[0].ID;
+      ICamlParameterBinding binding = CamlParameterBinding.GetValueBinding(this.Site, lookupField, value);
+      string lookupValue = binding.Bind(CamlExpression.EmptyBindings);
+      int lookupId;
+      if (dict.TryGetValue(lookupValue, out lookupId)) {
+        if (lookupId == 0) {
+          throw new ArgumentOutOfRangeException("value");
+        }
+        return lookupId;
+      }
+
+      if (lookupField.ParentList.ItemCount == 0) {
+        throw new ArgumentOutOfRangeException("value");
+      }
+      if (dict.Count == 0 && lookupField.ParentList.ItemCount < 1000) {
+        foreach (SPListItem item in lookupField.ParentList.GetItems(lookupField.InternalName)) {
+          ICamlParameterBinding b1 = CamlParameterBinding.GetValueBinding(this.Site, lookupField, item[lookupField.Id]);
+          dict[b1.Bind(CamlExpression.EmptyBindings)] = item.ID;
+        }
+        if (dict.TryGetValue(lookupValue, out lookupId)) {
+          return lookupId;
         }
         throw new ArgumentOutOfRangeException("value");
       }
-      return null;
+
+      SPQuery query = new SPQuery();
+      query.ViewFields = Caml.ViewFields(SPBuiltInFieldName.ID).ToString();
+      query.Query = Caml.Equals(lookupField.InternalName, binding).ToString();
+      query.RowLimit = 1;
+
+      SPListItemCollection collection = lookupField.ParentList.GetItems(query);
+      if (collection.Count > 0) {
+        dict[lookupValue] = collection[0].ID;
+        return collection[0].ID;
+      }
+      dict[lookupValue] = 0;
+      throw new ArgumentOutOfRangeException("value");
     }
 
     private SPField GetLookupField(string fieldName) {
       using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
-        SPField field = this.ListItem.Fields.GetFieldByInternalName(fieldName);
+        SPField field = this.ObjectCache.GetField(this.WebId, this.ListId, fieldName);
         SPList lookupList = null;
         string lookupField = SPBuiltInFieldName.Title;
 
@@ -758,64 +790,57 @@ namespace Codeless.SharePoint {
       return this.Site.MakeFullUrl(url);
     }
 
-    private T GetModel<T>(SPModelCollection parentCollection, SPList lookupList, int lookupId) {
-      SPModel item;
-      if (parentCollection.TryGetCachedModel(lookupList, lookupId, out item)) {
-        if (item is T) {
-          return (T)(object)item;
-        }
+    private void OnMultiChoiceValueChanged(object sender, string fieldName) {
+      SPFieldMultiChoiceValue collection = new SPFieldMultiChoiceValue();
+      foreach (string item in (IEnumerable)sender) {
+        collection.Add(item);
       }
-      return default(T);
+      this[fieldName] = collection.ToString();
     }
 
-    private void OnCollectionChanged(object sender, string fieldName) {
-      Type elementType = sender.GetType().GetEnumeratedType();
-      if (elementType == typeof(SPPrincipal)) {
-        SPFieldUserValueCollection collection = new SPFieldUserValueCollection();
-        foreach (SPPrincipal user in (IEnumerable<SPPrincipal>)sender) {
-          collection.Add(new SPFieldUserValue(user.ParentWeb, user.ID, user.Name));
-        }
-        this[fieldName] = collection.ToString();
-      } else if (elementType == typeof(SPListItem)) {
-        SPFieldLookupValueCollection collection = new SPFieldLookupValueCollection();
-        foreach (SPListItem item in (IEnumerable<SPListItem>)sender) {
-          collection.Add(new SPFieldLookupValue(item.ID, item.Title));
-        }
-        this[fieldName] = collection.ToString();
-      } else if (elementType == typeof(Term)) {
-        TaxonomyFieldValueCollection collection = new TaxonomyFieldValueCollection("");
-        foreach (Term term in (IEnumerable<Term>)sender) {
-          TaxonomyFieldValue value = new TaxonomyFieldValue("");
-          value.Label = term.Name;
-          value.TermGuid = term.Id.ToString();
-          value.WssId = term.EnsureWssId(this.Site, fieldName.Equals("TaxKeyword"));
-          collection.Add(value);
-        }
-        this[fieldName] = collection.ToString();
-        SetTaxonomyTextValue(fieldName, (IEnumerable<Term>)sender);
-        TaxonomyField taxonomyField = this.ListItem.Fields.GetFieldByInternalName(fieldName) as TaxonomyField;
-        if (taxonomyField != null) {
-          this[this.ListItem.Fields[taxonomyField.TextField].InternalName] = String.Join("\r\n", ((IEnumerable<Term>)sender).Select(v => v.Id.ToString()).ToArray());
-        }
-      } else if (elementType == typeof(string)) {
-        SPFieldMultiChoiceValue collection = new SPFieldMultiChoiceValue();
-        foreach (string item in (IEnumerable<string>)sender) {
-          collection.Add(item);
-        }
-        this[fieldName] = collection.ToString();
-      } else {
-        SPFieldLookupValueCollection collection = new SPFieldLookupValueCollection();
-        foreach (SPModel item in (IEnumerable)sender) {
-          collection.Add(new SPFieldLookupValue(item.Adapter.ListItemId, item.Adapter.Title));
-        }
-        this[fieldName] = collection.ToString();
+    private void OnMultiUserValueChanged(object sender, string fieldName) {
+      SPFieldUserValueCollection collection = new SPFieldUserValueCollection();
+      foreach (SPPrincipal user in (IEnumerable)sender) {
+        collection.Add(new SPFieldUserValue(user.ParentWeb, user.ID, user.Name));
       }
+      this[fieldName] = collection.ToString();
+    }
+
+    private void OnMultiLookupValueChanged(object sender, string fieldName) {
+      SPFieldLookupValueCollection collection = new SPFieldLookupValueCollection();
+      foreach (string item in (IEnumerable)sender) {
+        collection.Add(new SPFieldLookupValue(GetLookupIdByValue(fieldName, item), item));
+      }
+      this[fieldName] = collection.ToString();
+    }
+
+    private void OnModelCollectionChanged(object sender, string fieldName) {
+      SPFieldLookup field = this.ObjectCache.GetField(this.WebId, this.ListId, fieldName) as SPFieldLookup;
+      SPFieldLookupValueCollection collection = new SPFieldLookupValueCollection();
+      foreach (SPModel item in (IEnumerable)sender) {
+        collection.Add(new SPFieldLookupValue(item.Adapter.ListItemId, item.Adapter.GetString(field.LookupField)));
+      }
+      this[fieldName] = collection.ToString();
+    }
+
+    private void OnTaxonomyMultiValueChanged(object sender, string fieldName) {
+      TaxonomyFieldValueCollection collection = new TaxonomyFieldValueCollection("");
+      foreach (Term term in (IEnumerable)sender) {
+        TaxonomyFieldValue value = new TaxonomyFieldValue("");
+        value.Label = term.Name;
+        value.TermGuid = term.Id.ToString();
+        value.WssId = term.EnsureWssId(this.Site, fieldName.Equals("TaxKeyword"));
+        collection.Add(value);
+      }
+      this[fieldName] = collection.ToString();
+      SetTaxonomyTextValue(fieldName, (IEnumerable<Term>)sender);
     }
 
     private void SetTaxonomyTextValue(string fieldName, IEnumerable<Term> terms) {
-      TaxonomyField taxonomyField = this.ListItem.Fields.GetFieldByInternalName(fieldName) as TaxonomyField;
+      TaxonomyField taxonomyField = this.ObjectCache.GetField(this.WebId, this.ListId, fieldName) as TaxonomyField;
       if (taxonomyField != null) {
-        this[this.ListItem.Fields[taxonomyField.TextField].InternalName] = String.Join("\r\n", terms.Select(v => v.Id.ToString()).ToArray());
+        SPField textField = this.ObjectCache.GetField(this.WebId, this.ListId, taxonomyField.TextField);
+        this[textField.InternalName] = String.Join("\r\n", terms.Select(v => v.Id.ToString()).ToArray());
       }
     }
   }
