@@ -514,6 +514,10 @@ namespace Codeless.SharePoint {
     public override CamlExpressionType Type {
       get { return CamlExpressionType.OrderByFieldRef; }
     }
+    
+    public CamlParameterBindingOrder Order {
+      get { return orderBinding; }
+    }
 
     protected override CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       if (x.Type == this.Type) {
