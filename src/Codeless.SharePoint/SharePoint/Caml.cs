@@ -344,6 +344,22 @@ namespace Codeless.SharePoint {
         return new CamlParameterName(parameterName);
       }
       /// <summary>
+      /// Creates a parameter binding to a boolean string "TRUE" or "FALSE".
+      /// </summary>
+      /// <param name="parameterName">Unique name to identify this parameter when binding values.</param>
+      /// <returns>A parameter binding which can be supplied to expression building methods.</returns>
+      public static CamlParameterBindingBooleanString BooleanString(string parameterName) {
+        return new CamlParameterBindingBooleanString(new CamlParameterName(parameterName));
+      }
+      /// <summary>
+      /// Creates a parameter binding to a boolean value.
+      /// </summary>
+      /// <param name="parameterName">Unique name to identify this parameter when binding values.</param>
+      /// <returns>A parameter binding which can be supplied to expression building methods.</returns>
+      public static ICamlParameterBinding Boolean(string parameterName) {
+        return new CamlParameterBindingBoolean(new CamlParameterName(parameterName));
+      }
+      /// <summary>
       /// Creates a parameter binding to an integer value or a list of integer values.
       /// </summary>
       /// <param name="parameterName">Unique name to identify this parameter when binding values.</param>
@@ -525,6 +541,12 @@ namespace Codeless.SharePoint {
     }
     public static CamlExpression GroupBy(params CamlParameterBindingFieldRef[] fieldName) {
       return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)));
+    }
+    public static CamlExpression GroupBy(string[] fieldName, bool collapse) {
+      return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)), new CamlParameterBindingBooleanString(collapse));
+    }
+    public static CamlExpression GroupBy(CamlParameterBindingFieldRef[] fieldName, CamlParameterBindingBooleanString collapse) {
+      return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)), collapse);
     }
 
     public static CamlExpression ListsScope(SPBaseType baseType) {

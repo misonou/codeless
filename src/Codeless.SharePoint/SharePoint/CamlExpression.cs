@@ -514,7 +514,7 @@ namespace Codeless.SharePoint {
     public override CamlExpressionType Type {
       get { return CamlExpressionType.OrderByFieldRef; }
     }
-    
+
     public CamlParameterBindingOrder Order {
       get { return orderBinding; }
     }
@@ -997,11 +997,14 @@ namespace Codeless.SharePoint {
 
     protected override void WriteXml(XmlWriter writer, Hashtable bindings) {
       writer.WriteStartElement(CollectionElementName);
+      WriteAttributes(writer, bindings);
       foreach (T expression in expressions) {
         WriteXmlStatic(expression, writer, bindings);
       }
       writer.WriteEndElement();
     }
+
+    protected virtual void WriteAttributes(XmlWriter writer, Hashtable bindings) { }
   }
 
   public abstract class CamlFieldRefExpressionList<T> : CamlExpressionList<T>, ICamlFieldRefComponent where T : CamlFieldRefExpression {
@@ -1088,14 +1091,30 @@ namespace Codeless.SharePoint {
   }
 
   public class CamlGroupByExpression : CamlFieldRefExpressionList<CamlGroupByFieldRefExpression>, ICamlQueryComponent<CamlGroupByExpression> {
+    private readonly CamlParameterBindingBooleanString collapse;
+
     internal CamlGroupByExpression(CamlGroupByFieldRefExpression expression)
       : base(expression) { }
 
     internal CamlGroupByExpression(IEnumerable<CamlGroupByFieldRefExpression> list)
       : base(list) { }
 
+    internal CamlGroupByExpression(CamlGroupByFieldRefExpression expression, CamlParameterBindingBooleanString collapse)
+      : base(expression) {
+      this.collapse = collapse;
+    }
+
+    internal CamlGroupByExpression(IEnumerable<CamlGroupByFieldRefExpression> list, CamlParameterBindingBooleanString collapse)
+      : base(list) {
+      this.collapse = collapse;
+    }
+
     public override CamlExpressionType Type {
       get { return CamlExpressionType.GroupBy; }
+    }
+
+    public CamlParameterBindingBooleanString Collapse {
+      get { return collapse; }
     }
 
     protected override string CollectionElementName {
@@ -1110,6 +1129,13 @@ namespace Codeless.SharePoint {
           return new CamlGroupByExpression(ConcatExpressions((CamlGroupByExpression)x, selfPreceding));
       }
       return base.HandleAnd(x, selfPreceding);
+    }
+
+    protected override void WriteAttributes(XmlWriter writer, Hashtable bindings) {
+      base.WriteAttributes(writer, bindings);
+      if (collapse != null) {
+        writer.WriteAttributeString("Collapse", collapse.Bind(bindings));
+      }
     }
 
     CamlGroupByExpression ICamlQueryComponent<CamlGroupByExpression>.Expression {

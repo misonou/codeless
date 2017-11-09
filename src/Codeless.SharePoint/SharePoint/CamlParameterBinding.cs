@@ -392,6 +392,25 @@ namespace Codeless.SharePoint {
       return new CamlParameterBindingOrder(parameterName);
     }
   }
+  
+  public sealed class CamlParameterBindingBooleanString : CamlParameterBinding<bool> {
+    internal CamlParameterBindingBooleanString(bool value)
+      : base(value) { }
+
+    internal CamlParameterBindingBooleanString(CamlParameterName parameterName)
+      : base(parameterName) { }
+
+    internal CamlParameterBindingBooleanString(CamlParameterName parameterName, bool value)
+      : base(parameterName, value) { }
+
+    public override CamlValueType ValueType {
+      get { return CamlValueType.Boolean; }
+    }
+
+    protected override string Format(bool value) {
+      return value ? Caml.BooleanString.True : Caml.BooleanString.False;
+    }
+  }
 
   #region Internal Implementation
   internal class CamlParameterBindingString : CamlParameterBinding<string> {
