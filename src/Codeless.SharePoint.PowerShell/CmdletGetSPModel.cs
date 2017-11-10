@@ -1,5 +1,6 @@
 ﻿using Codeless.SharePoint.ObjectModel;
 using Codeless.SharePoint.ObjectModel.Linq;
+using IQToolkit;
 using Microsoft.Office.Server.Search.Query;
 using System;
 using System.Linq;
@@ -9,7 +10,7 @@ using System.Management.Automation;
 namespace Codeless.SharePoint.PowerShell {
   [Cmdlet(VerbsCommon.Get, "SPModel", DefaultParameterSetName = "Default")]
   public class CmdletGetSPModel : CmdletBaseSPModel {
-    private CamlExpression query;
+    private IQueryable query;
 
     [Parameter(ParameterSetName = "ID", Mandatory = true)]
     public int? ID { get; set; }
@@ -48,17 +49,7 @@ namespace Codeless.SharePoint.PowerShell {
     protected override void ProcessRecord() {
       base.ProcessRecord();
       try {
-        SPModelCollection result;
-        if (this.ParameterSetName == "ID") {
-          result = base.Manager.GetItems(query + Caml.Equals(SPBuiltInFieldName.ID, this.ID.Value), this.Limit.GetValueOrDefault(100));
-        } else if (this.ParameterSetName == "UniqueId") {
-          result = base.Manager.GetItems(Caml.Equals(SPBuiltInFieldName.UniqueId, this.UniqueId.Value), 1u);
-        } else if (this.ParameterSetName == "SearchAny" || this.ParameterSetName == "SearchAll") {
-          result = base.Manager.GetItems(query, this.Limit.GetValueOrDefault(100), this.Search, this.All.IsPresent ? KeywordInclusion.AllKeywords : KeywordInclusion.AnyKeyword);
-        } else {
-          result = base.Manager.GetItems(query, this.Limit.GetValueOrDefault(100));
-        }
-        WriteObject(result, true);
+        WriteObject(query, true);
       } catch (Exception ex) {
         ThrowTerminatingError(ex, ErrorCategory.NotSpecified);
       }
@@ -66,22 +57,31 @@ namespace Codeless.SharePoint.PowerShell {
 
     protected override void OnManagerResolved() {
       base.OnManagerResolved();
-      query = this.GetType().GetMethod("ProcessQuery", true).MakeGenericMethod(this.Manager.Descriptor.ModelType).Invoke< CamlExpression>(this);
+      query = this.GetType().GetMethod("ProcessQuery", true).MakeGenericMethod(this.Manager.Descriptor.ModelType, this.Descriptor.ModelType).Invoke<IQueryable>(this);
     }
 
-    private CamlExpression ProcessQuery<T>() {
-      if (this.Where != null || this.Order != null) {
-        IQueryable<T> queryable = ((SPModelManagerBase<T>)this.Manager).Query();
-        if (this.Where != null) {
-          queryable = queryable.Where(this.Where);
-        }
-        if (this.Order != null) {
-          queryable = queryable.OrderBy(this.Order);
-        }
-        SPModelQueryExpressionTranslateResult result = ((SPModelQueryProvider<T>)queryable.Provider).Translate(queryable.Expression);
-        return result.Expression;
+    private IQueryable ProcessQuery<T, U>() {
+      IQueryable<U> queryable;
+      if (this.ParameterSetName == "SearchAny" || this.ParameterSetName == "SearchAll") {
+        queryable = ((ISPModelManager)this.Manager).Query<U>(this.Search, this.All.IsPresent ? KeywordInclusion.AllKeywords : KeywordInclusion.AnyKeyword);
+      } else {
+        queryable = ((ISPModelManager)this.Manager).Query<U>();
       }
-      return null;
+      if (this.Where != null) {
+        queryable = queryable.Where(this.Where);
+      }
+      if (this.ParameterSetName == "ID") {
+        queryable = queryable.Where(v => ((ISPModelMetaData)v).ID == this.ID.Value);
+      } else if (this.ParameterSetName == "UniqueId") {
+        queryable = queryable.Where(v => ((ISPModelMetaData)v).UniqueId == this.UniqueId.Value);
+      }
+      if (this.Order != null) {
+        queryable = queryable.OrderBy(this.Order);
+      }
+      if (this.Limit.HasValue) {
+        queryable = queryable.Take((int)this.Limit.Value);
+      }
+      return queryable;
     }
   }
 }
