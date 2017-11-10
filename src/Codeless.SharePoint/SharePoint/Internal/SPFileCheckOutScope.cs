@@ -33,7 +33,7 @@ namespace Codeless.SharePoint.Internal {
             if (file.Item.ParentList.EnableMinorVersions) {
               file.Publish(comment);
             }
-            file.Item.EnsureApproved();
+            file.Item.EnsureApproved(comment);
           }
         }
         disposed = true;
