@@ -27,7 +27,7 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="web">Site object.</param>
     public SPModelManager(SPWeb web)
       : base(web) { }
-    
+
     /// <summary>
     /// Initializes an instance of the <see cref="SPModelManager{T}"/> class that queries list items under the specified site and optionally its sub-sites.
     /// </summary>
@@ -334,6 +334,25 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="mode">An value of <see cref="Codeless.SharePoint.ObjectModel.SPModelCommitMode" /> representing how a list item is updated.</param>
     public new void CommitChanges(T item, SPModelCommitMode mode) {
       base.CommitChanges(item, mode);
+    }
+
+    /// <summary>
+    /// Executes specified operation on the file represented by the model object with no comment.
+    /// </summary>
+    /// <param name="item">An item which operation is being performed on.</param>
+    /// <param name="operation">The operation to be performed.</param>
+    public new void ExecuteFileOperation(T item, SPModelFileOperation operation) {
+      base.ExecuteFileOperation(item, operation);
+    }
+
+    /// <summary>
+    /// Executes specified operation on the file represented by the model object with the specified comment.
+    /// </summary>
+    /// <param name="item">An item which operation is being performed on.</param>
+    /// <param name="operation">The operation to be performed.</param>
+    /// <param name="comment">A string that contains a comment about the operation. It is ignored for some oeprations.</param>
+    public new void ExecuteFileOperation(T item, SPModelFileOperation operation, string comment) {
+      base.ExecuteFileOperation(item, operation, comment);
     }
     #endregion
   }
