@@ -148,6 +148,18 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     /// <summary>
+    /// Gets items of the associated content type(s) that satisfy the condition.
+    /// </summary>
+    /// <typeparam name="TItem">Item type.</typeparam>
+    /// <param name="query">CAML query expression.</param>
+    /// <param name="limit">Maximum number of items to be returned.</param>
+    /// <param name="startRow">Number of items to skip from start.</param>
+    /// <returns>A collection containing the returned items.</returns>
+    public new SPModelCollection<TItem> GetItems<TItem>(CamlExpression query, uint limit, uint startRow) {
+      return base.GetItems<TItem>(query, limit, startRow);
+    }
+
+    /// <summary>
     /// Performs a keyword search against the items of the associated content type(s).
     /// </summary>
     /// <typeparam name="TItem">Item type.</typeparam>

@@ -63,14 +63,9 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
       if (useOfficeSearch) {
         int dummy;
         items = manager.GetItems<U>(result.Expression, (uint)result.Limit, (uint)result.Offset, keywords, null, keywordInclusion, out dummy);
-        result.Offset = 0;
       } else {
-        items = manager.GetItems<U>(result.Expression, (uint)(result.Limit + result.Offset));
+        items = manager.GetItems<U>(result.Expression, (uint)result.Limit, (uint)result.Offset);
       }
-      if (result.Offset > 0) {
-        items = items.Skip(result.Offset);
-      }
-
       if (result.SelectExpression != null && result.ExecuteMode != SPModelQueryExecuteMode.Any && result.ExecuteMode != SPModelQueryExecuteMode.All) {
         Delegate selector = result.SelectExpression.Compile();
         return typeof(SPModelQueryProvider<T>).GetMethod("ProjectResultWithSelector", true).MakeGenericMethod(typeof(U), selector.Method.ReturnType).Invoke<object>(null, items, selector, result.ExecuteMode);
