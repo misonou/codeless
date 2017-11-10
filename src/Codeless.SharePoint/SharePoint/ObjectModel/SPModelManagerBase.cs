@@ -335,6 +335,18 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="limit">Maximum number of items to be returned.</param>
     /// <returns>A collection containing the returned items.</returns>
     protected internal SPModelCollection<TItem> GetItems<TItem>(CamlExpression query, uint limit) {
+      return GetItems<TItem>(query, limit, 0);
+    }
+
+    /// <summary>
+    /// Gets items of the associated content type(s) that satisfy the condition.
+    /// </summary>
+    /// <typeparam name="TItem">Item type.</typeparam>
+    /// <param name="query">CAML query expression.</param>
+    /// <param name="limit">Maximum number of items to be returned.</param>
+    /// <param name="startRow">Number of items to skip from start.</param>
+    /// <returns>A collection containing the returned items.</returns>
+    protected internal SPModelCollection<TItem> GetItems<TItem>(CamlExpression query, uint limit, uint startRow) {
       int dummy;
       if (query != Caml.False && queryMode != SPModelImplicitQueryMode.None) {
         SPModelDescriptor typeInfo = SPModelDescriptor.Resolve(typeof(TItem));
@@ -343,13 +355,13 @@ namespace Codeless.SharePoint.ObjectModel {
           IEnumerable<ISPListItemAdapter> queryResultSet = null;
           switch (queryMode) {
             case SPModelImplicitQueryMode.KeywordSearch:
-              queryResultSet = ExecuteKeywordSearchAsAdapter(typeInfo, contentTypedQuery, (int)limit, 0, null, null, KeywordInclusion.AllKeywords, out dummy);
+              queryResultSet = ExecuteKeywordSearchAsAdapter(typeInfo, contentTypedQuery, (int)limit, (int)startRow, null, null, KeywordInclusion.AllKeywords, out dummy);
               break;
             case SPModelImplicitQueryMode.SiteQuery:
-              queryResultSet = ExecuteSiteQueryAsAdapter(typeInfo, contentTypedQuery, limit);
+              queryResultSet = ExecuteSiteQueryAsAdapter(typeInfo, contentTypedQuery, limit, startRow);
               break;
             case SPModelImplicitQueryMode.ListQuery:
-              queryResultSet = ExecuteListQueryAsAdapter(typeInfo, contentTypedQuery, limit);
+              queryResultSet = ExecuteListQueryAsAdapter(typeInfo, contentTypedQuery, limit, startRow);
               break;
           }
           return SPModelCollection<TItem>.Create(this, queryResultSet, false);
@@ -424,7 +436,7 @@ namespace Codeless.SharePoint.ObjectModel {
               DataTable dt = ExecuteSiteQuery(typeInfo, contentTypedQuery, throttlingLimit, false);
               return dt.Rows.Count;
             case SPModelImplicitQueryMode.ListQuery:
-              IEnumerable<SPListItem> collection = ExecuteListQuery(typeInfo, contentTypedQuery, throttlingLimit, false);
+              IEnumerable<SPListItem> collection = ExecuteListQuery(typeInfo, contentTypedQuery, throttlingLimit, 0, false);
               return collection.Count();
           }
         }
@@ -718,17 +730,17 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="e"></param>
     protected virtual void OnExecutingKeywordSearch(SPModelKeywordSearchEventArgs e) { }
 
-    private IEnumerable<ISPListItemAdapter> ExecuteListQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit) {
-      IEnumerable<SPListItem> collection = ExecuteListQuery(typeInfo, query, limit, true);
+    private IEnumerable<ISPListItemAdapter> ExecuteListQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit, uint startRow) {
+      IEnumerable<SPListItem> collection = ExecuteListQuery(typeInfo, query, limit, startRow, true);
       foreach (SPListItem item in collection) {
         yield return new SPListItemAdapter(item, this.ObjectCache);
       }
     }
 
-    private IEnumerable<ISPListItemAdapter> ExecuteSiteQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit) {
+    private IEnumerable<ISPListItemAdapter> ExecuteSiteQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit, uint startRow) {
       DataTable dt = ExecuteSiteQuery(typeInfo, query, limit, true);
-      foreach (DataRow row in dt.Rows) {
-        DataRowAdapter adapter = new DataRowAdapter(currentWeb.Site, row, this.ObjectCache);
+      for (int i = (int)startRow, count = dt.Rows.Count; i < count; i++) {
+        DataRowAdapter adapter = new DataRowAdapter(currentWeb.Site, dt.Rows[i], this.ObjectCache);
         this.ObjectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
         yield return adapter;
       }
@@ -745,7 +757,7 @@ namespace Codeless.SharePoint.ObjectModel {
       });
     }
 
-    private IEnumerable<SPListItem> ExecuteListQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, bool selectProperties) {
+    private IEnumerable<SPListItem> ExecuteListQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, uint startRow, bool selectProperties) {
       SPList list = currentLists[0].EnsureList(this.ObjectCache).List;
       if (list == null || list.ItemCount == 0) {
         return new SPListItem[0];
@@ -759,6 +771,20 @@ namespace Codeless.SharePoint.ObjectModel {
       OnExecutingListQuery(new SPModelListQueryEventArgs { Query = listQuery });
 
       try {
+        if (startRow > 0) {
+          SPQuery skipQuery = new SPQuery();
+          skipQuery.ExpandRecurrence = listQuery.ExpandRecurrence;
+          skipQuery.Query = listQuery.Query;
+          skipQuery.ViewFields = String.Empty;
+          skipQuery.ViewAttributes = listQuery.ViewAttributes;
+          skipQuery.RowLimit = startRow;
+          SPListItemCollection skipResult = list.GetItems(skipQuery);
+          if (skipResult.Count < startRow) {
+            return Enumerable.Empty<SPListItem>();
+          }
+          listQuery.ListItemCollectionPosition = skipResult.ListItemCollectionPosition;
+        }
+
         SPListItemCollection result = list.GetItems(listQuery);
         int count = result.Count;
         return result.OfType<SPListItem>();
@@ -920,6 +946,10 @@ namespace Codeless.SharePoint.ObjectModel {
 
     SPModelCollection ISPModelManager.GetItems(CamlExpression query, uint limit) {
       return this.GetItems<T>(query, limit);
+    }
+
+    SPModelCollection ISPModelManager.GetItems(CamlExpression query, uint limit, uint startRow) {
+      return this.GetItems<T>(query, limit, startRow);
     }
 
     SPModelCollection ISPModelManager.GetItems(CamlExpression query, uint limit, string[] keywords, KeywordInclusion keywordInclusion) {
