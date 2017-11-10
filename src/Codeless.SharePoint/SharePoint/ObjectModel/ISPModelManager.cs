@@ -102,6 +102,12 @@ namespace Codeless.SharePoint.ObjectModel {
     object Create(Type modelType, string filename);
 
     /// <summary>
+    /// Moves the specified item to recycle bin.
+    /// </summary>
+    /// <param name="model">An item to be recycled.</param>
+    void Recycle(object model);
+
+    /// <summary>
     /// Deletes the specified item from a list. 
     /// </summary>
     /// <param name="model">An item to be deleted.</param>

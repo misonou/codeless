@@ -726,6 +726,14 @@ namespace Codeless.SharePoint.ObjectModel {
       }
     }
 
+    private T ValidateModel(object item) {
+      CommonHelper.ConfirmNotNull(item, "item");
+      if (!(item is SPModel) || ((SPModel)item).Manager != this) {
+        throw new ArgumentException("item");
+      }
+      return (T)item;
+    }
+
     private void UpdateItem(SPListItem item, SPModelCommitMode mode) {
       bool systemCheckIn = false;
       if (item.ParentList.ForceCheckout && item.FileSystemObjectType == SPFileSystemObjectType.File && item.File.CheckOutType == SPFile.SPCheckOutType.None) {
@@ -827,12 +835,12 @@ namespace Codeless.SharePoint.ObjectModel {
       return Create(modelType, filename);
     }
 
+    void ISPModelManager.Recycle(object item) {
+      Recycle(ValidateModel(item));
+    }
+
     void ISPModelManager.Delete(object item) {
-      CommonHelper.ConfirmNotNull(item, "item");
-      if (!(item is SPModel) || ((SPModel)item).Manager != this) {
-        throw new ArgumentException("item");
-      }
-      Delete((T)item);
+      Delete(ValidateModel(item));
     }
 
     void ISPModelManager.CommitChanges() {
@@ -840,11 +848,7 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     void ISPModelManager.CommitChanges(object item) {
-      CommonHelper.ConfirmNotNull(item, "item");
-      if (!(item is SPModel) || ((SPModel)item).Manager != this) {
-        throw new ArgumentException("item");
-      }
-      CommitChanges((T)item);
+      CommitChanges(ValidateModel(item));
     }
 
     void ISPModelManager.CommitChanges(SPModelCommitMode mode) {
@@ -852,11 +856,7 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     void ISPModelManager.CommitChanges(object item, SPModelCommitMode mode) {
-      CommonHelper.ConfirmNotNull(item, "item");
-      if (!(item is SPModel) || ((SPModel)item).Manager != this) {
-        throw new ArgumentException("item");
-      }
-      CommitChanges((T)item, mode);
+      CommitChanges(ValidateModel(item), mode);
     }
     #endregion
   }
