@@ -40,6 +40,7 @@ namespace Codeless.SharePoint.ObjectModel {
   }
   #endregion
 
+  #region Enums
   /// <summary>
   /// Represents which API will be used when performing item queries if no search keywords are specified.
   /// </summary>
@@ -85,6 +86,54 @@ namespace Codeless.SharePoint.ObjectModel {
   }
 
   /// <summary>
+  /// Specifies operation to be done on a file in a SharePoint web site.
+  /// </summary>
+  public enum SPModelFileOperation {
+    /// <summary>
+    /// Checks in the file to a document library and increments as a minor version.
+    /// </summary>
+    MinorCheckIn,
+    /// <summary>
+    /// Checks in the file to a document library and increments as a major version.
+    /// </summary>
+    MajorCheckIn,
+    /// <summary>
+    /// Checks in the file to a document library and overwrite the file.
+    /// </summary>
+    OverwriteCheckIn,
+    /// <summary>
+    /// Checks the file out of a document library.
+    /// </summary>
+    CheckOut,
+    /// <summary>
+    /// Undoes the file checkout.
+    /// </summary>
+    UndoCheckOut,
+    /// <summary>
+    /// Submits the file for content approval.
+    /// </summary>
+    Publish,
+    /// <summary>
+    /// Removes the file from content approval.
+    /// </summary>
+    UnPublish,
+    /// <summary>
+    /// Approves the file submitted for content approval.
+    /// </summary>
+    Approve,
+    /// <summary>
+    /// Denies approval for a file that was submitted for content approval.
+    /// </summary>
+    Deny,
+    /// <summary>
+    /// Takes the most current approved or major version of the file offline.
+    /// </summary>
+    TakeOffline
+  }
+  #endregion
+
+  #region EventArgs
+  /// <summary>
   /// Provides data when an ExecutingListQuery event is triggered from <see cref="SPModelManagerBase{T}"/>.
   /// See <see cref="SPModelManagerBase{T}.OnExecutingListQuery"/>.
   /// </summary>
@@ -116,6 +165,7 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     public KeywordQuery Query { get; internal set; }
   }
+  #endregion
 
   /// <summary>
   /// Provides a base class that handles querying, creating, deleting and persisting list items in a SharePoint site collection using model classes.
@@ -564,10 +614,8 @@ namespace Codeless.SharePoint.ObjectModel {
     protected void CommitChanges(SPModelCommitMode mode) {
       List<ISPListItemAdapter> itemsToSaveCopy = new List<ISPListItemAdapter>(itemsToSave);
       foreach (ISPListItemAdapter item in itemsToSaveCopy) {
-        using (item.Web.GetAllowUnsafeUpdatesScope()) {
-          UpdateItem(item.ListItem, mode);
-          itemsToSave.Remove(item);
-        }
+        UpdateItem(item.ListItem, mode);
+        itemsToSave.Remove(item);
       }
     }
 
@@ -578,14 +626,64 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="mode">An value of <see cref="Codeless.SharePoint.ObjectModel.SPModelCommitMode"/> representing how a list item is updated.</param>
     /// <exception cref="System.ArgumentException">Supplied item does not belongs to this manager - item</exception>
     protected void CommitChanges(T item, SPModelCommitMode mode) {
-      CommonHelper.ConfirmNotNull(item, "item");
-      SPModel model = (SPModel)(object)item;
-      if (model.ParentCollection.Manager != this) {
-        throw new ArgumentException("Supplied item does not belongs to this manager", "item");
-      }
-      using (model.Adapter.Web.GetAllowUnsafeUpdatesScope()) {
+      SPModel model = ValidateModel(item, false);
+      if (itemsToSave.Contains(model.Adapter)) {
         UpdateItem(model.Adapter.ListItem, mode);
         itemsToSave.Remove(model.Adapter);
+      }
+    }
+
+    /// <summary>
+    /// Executes specified operation on the file represented by the model object with no comment.
+    /// </summary>
+    /// <param name="item">An item which operation is being performed on.</param>
+    /// <param name="operation">The operation to be performed.</param>
+    protected void ExecuteFileOperation(T item, SPModelFileOperation operation) {
+      ExecuteFileOperation(item, operation, String.Empty);
+    }
+
+    /// <summary>
+    /// Executes specified operation on the file represented by the model object with the specified comment.
+    /// </summary>
+    /// <param name="item">An item which operation is being performed on.</param>
+    /// <param name="operation">The operation to be performed.</param>
+    /// <param name="comment">A string that contains a comment about the operation. It is ignored for some oeprations.</param>
+    protected void ExecuteFileOperation(T item, SPModelFileOperation operation, string comment) {
+      SPModel model = ValidateModel(item, true);
+      SPListItem listItem = model.Adapter.ListItem;
+      using (listItem.Web.GetAllowUnsafeUpdatesScope()) {
+        switch (operation) {
+          case SPModelFileOperation.MajorCheckIn:
+            listItem.File.CheckIn(comment, SPCheckinType.MajorCheckIn);
+            break;
+          case SPModelFileOperation.MinorCheckIn:
+            listItem.File.CheckIn(comment, SPCheckinType.MinorCheckIn);
+            break;
+          case SPModelFileOperation.OverwriteCheckIn:
+            listItem.File.CheckIn(comment, SPCheckinType.OverwriteCheckIn);
+            break;
+          case SPModelFileOperation.CheckOut:
+            listItem.File.CheckOut();
+            break;
+          case SPModelFileOperation.UndoCheckOut:
+            listItem.File.UndoCheckOut();
+            break;
+          case SPModelFileOperation.Publish:
+            listItem.File.Publish(comment);
+            break;
+          case SPModelFileOperation.UnPublish:
+            listItem.File.UnPublish(comment);
+            break;
+          case SPModelFileOperation.Approve:
+            listItem.File.Approve(comment);
+            break;
+          case SPModelFileOperation.Deny:
+            listItem.File.Deny(comment);
+            break;
+          case SPModelFileOperation.TakeOffline:
+            listItem.File.TakeOffline();
+            break;
+        }
       }
     }
 
@@ -726,6 +824,21 @@ namespace Codeless.SharePoint.ObjectModel {
       }
     }
 
+    private SPModel ValidateModel(T item, bool requireFile) {
+      CommonHelper.ConfirmNotNull(item, "item");
+      SPModel model = item as SPModel;
+      if (model == null) {
+        throw new ArgumentException("Supplied item is not an SPModel instance", "item");
+      }
+      if (model.ParentCollection.Manager != this) {
+        throw new ArgumentException("Supplied item does not belongs to this manager", "item");
+      }
+      if (requireFile && !model.Adapter.ContentTypeId.IsChildOf(SPBuiltInContentTypeId.Document)) {
+        throw new ArgumentException("Supplied item is not a file", "item");
+      }
+      return model;
+    }
+
     private T ValidateModel(object item) {
       CommonHelper.ConfirmNotNull(item, "item");
       if (!(item is SPModel) || ((SPModel)item).Manager != this) {
@@ -736,26 +849,28 @@ namespace Codeless.SharePoint.ObjectModel {
 
     private void UpdateItem(SPListItem item, SPModelCommitMode mode) {
       bool systemCheckIn = false;
-      if (item.ParentList.ForceCheckout && item.FileSystemObjectType == SPFileSystemObjectType.File && item.File.CheckOutType == SPFile.SPCheckOutType.None) {
-        item.File.CheckOut();
-        systemCheckIn = true;
-      }
-      switch (mode) {
-        case SPModelCommitMode.Default:
-          item.Update();
-          break;
-        case SPModelCommitMode.OverwriteVersion:
-          item.UpdateOverwriteVersion();
-          break;
-        case SPModelCommitMode.SystemUpdate:
-          item.SystemUpdate();
-          break;
-        case SPModelCommitMode.SystemUpdateOverwriteVersion:
-          item.SystemUpdate(false);
-          break;
-      }
-      if (systemCheckIn) {
-        item.File.CheckIn(String.Empty);
+      using (item.Web.GetAllowUnsafeUpdatesScope()) {
+        if (item.ParentList.ForceCheckout && item.FileSystemObjectType == SPFileSystemObjectType.File && item.File.CheckOutType == SPFile.SPCheckOutType.None) {
+          item.File.CheckOut();
+          systemCheckIn = true;
+        }
+        switch (mode) {
+          case SPModelCommitMode.Default:
+            item.Update();
+            break;
+          case SPModelCommitMode.OverwriteVersion:
+            item.UpdateOverwriteVersion();
+            break;
+          case SPModelCommitMode.SystemUpdate:
+            item.SystemUpdate();
+            break;
+          case SPModelCommitMode.SystemUpdateOverwriteVersion:
+            item.SystemUpdate(false);
+            break;
+        }
+        if (systemCheckIn) {
+          item.File.CheckIn(String.Empty);
+        }
       }
     }
 
