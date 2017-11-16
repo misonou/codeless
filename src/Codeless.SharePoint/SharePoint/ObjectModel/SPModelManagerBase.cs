@@ -738,7 +738,7 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     private IEnumerable<ISPListItemAdapter> ExecuteSiteQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit, uint startRow) {
-      DataTable dt = ExecuteSiteQuery(typeInfo, query, limit, true);
+      DataTable dt = ExecuteSiteQuery(typeInfo, query, limit + startRow, true);
       for (int i = (int)startRow, count = dt.Rows.Count; i < count; i++) {
         DataRowAdapter adapter = new DataRowAdapter(currentWeb.Site, dt.Rows[i], this.ObjectCache);
         this.ObjectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
