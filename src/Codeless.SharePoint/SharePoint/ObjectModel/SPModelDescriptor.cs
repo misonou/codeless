@@ -77,7 +77,7 @@ namespace Codeless.SharePoint.ObjectModel {
     public Guid TargetListId { get; private set; }
   }
 
-  [DebuggerDisplay("{ModelType.FullName}")]
+  [DebuggerDisplay("ModelType = {ModelType.FullName,nq}")]
   internal class SPModelDescriptor {
     private class TypeInheritanceComparer : Comparer<Type> {
       public override int Compare(Type x, Type y) {
@@ -129,6 +129,7 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     private static readonly object syncLock = new object();
+    private static readonly AssemblyName SelfAssemblyName = new AssemblyName(typeof(SPModel).Assembly.FullName);
     private static readonly ConcurrentDictionary<Assembly, object> RegisteredAssembly = new ConcurrentDictionary<Assembly, object>();
     private static readonly ConcurrentDictionary<Type, SPModelDescriptor> TargetTypeDictionary = new ConcurrentDictionary<Type, SPModelDescriptor>();
     private static readonly SortedDictionary<SPContentTypeId, SPModelDescriptor> ContentTypeDictionary = new SortedDictionary<SPContentTypeId, SPModelDescriptor>(ReverseComparer<SPContentTypeId>.Default);
@@ -693,7 +694,7 @@ namespace Codeless.SharePoint.ObjectModel {
       try {
         refAsm = assembly.GetReferencedAssemblies();
       } catch { }
-      if (NeedProcess(assembly) && (assembly == typeof(SPModel).Assembly || refAsm.Any(v => v.FullName == typeof(SPModel).Assembly.FullName))) {
+      if (NeedProcess(assembly) && (assembly == typeof(SPModel).Assembly || refAsm.Any(v => AssemblyName.ReferenceMatchesDefinition(v, SelfAssemblyName)))) {
         bool requireLock = !enteredLock;
         if (requireLock) {
           Monitor.Enter(syncLock);
