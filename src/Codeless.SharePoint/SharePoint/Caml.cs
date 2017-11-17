@@ -296,6 +296,7 @@ namespace Codeless.SharePoint {
       public const string ServerTemplate = "ServerTemplate";
       public const string Hidden = "Hidden";
       public const string ID = "ID";
+      public const string Collapse = "Collapse";
     }
 
     internal enum EmptyExpressionType {
@@ -956,7 +957,7 @@ namespace Codeless.SharePoint {
 
       using (XmlReader reader = new XmlTextReader(new StringReader(value))) {
         while (reader.Read()) {
-        rewind:
+          rewind:
           switch (reader.NodeType) {
             case XmlNodeType.Element:
               switch (reader.LocalName) {
@@ -965,6 +966,10 @@ namespace Codeless.SharePoint {
                   break;
                 case Element.GroupBy:
                   currentState = ParseState.GroupBy;
+                  string collapse = reader.GetAttribute(Attribute.Collapse);
+                  if (collapse != null) {
+                    parsedExpressions.Push(parsedExpressions.Pop() + new CamlGroupByExpression(new CamlGroupByFieldRefExpression[0], new CamlParameterBindingBooleanString(BooleanString.True.Equals(collapse, StringComparison.OrdinalIgnoreCase))));
+                  }
                   break;
                 case Element.ViewFields:
                   currentState = ParseState.ViewFields;
