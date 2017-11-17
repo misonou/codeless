@@ -924,6 +924,10 @@ namespace Codeless.SharePoint.ObjectModel {
       }
     }
 
+    IEnumerable<SPModelUsage> ISPModelManagerInternal.ContextLists {
+      get { return Enumerable.AsEnumerable(currentLists); }
+    }
+
     SPModel ISPModelManagerInternal.TryCreateModel(ISPListItemAdapter adapter, bool readOnly) {
       return CommonHelper.TryCastOrDefault<SPModel>(TryCreateModel(adapter, readOnly));
     }
