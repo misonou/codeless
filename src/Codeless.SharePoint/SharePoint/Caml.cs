@@ -524,6 +524,12 @@ namespace Codeless.SharePoint {
     public static CamlExpression ViewFields(params CamlParameterBindingFieldRef[] fieldName) {
       return new CamlViewFieldsExpression(fieldName.Select(v => new CamlViewFieldsFieldRefExpression(v)));
     }
+    public static CamlExpression ViewFields(IEnumerable<string> fieldName) {
+      return new CamlViewFieldsExpression(fieldName.Select(v => new CamlViewFieldsFieldRefExpression(v)));
+    }
+    public static CamlExpression ViewFields(IEnumerable<CamlParameterBindingFieldRef> fieldName) {
+      return new CamlViewFieldsExpression(fieldName.Select(v => new CamlViewFieldsFieldRefExpression(v)));
+    }
     public static CamlExpression OrderBy(CamlParameterBindingFieldRef fieldName, CamlParameterBindingOrder order) {
       return new CamlOrderByExpression(new CamlOrderByFieldRefExpression(fieldName, order));
     }
@@ -546,6 +552,18 @@ namespace Codeless.SharePoint {
       return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)), new CamlParameterBindingBooleanString(collapse));
     }
     public static CamlExpression GroupBy(CamlParameterBindingFieldRef[] fieldName, CamlParameterBindingBooleanString collapse) {
+      return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)), collapse);
+    }
+    public static CamlExpression GroupBy(IEnumerable<string> fieldName) {
+      return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)));
+    }
+    public static CamlExpression GroupBy(IEnumerable<CamlParameterBindingFieldRef> fieldName) {
+      return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)));
+    }
+    public static CamlExpression GroupBy(IEnumerable<string> fieldName, bool collapse) {
+      return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)), new CamlParameterBindingBooleanString(collapse));
+    }
+    public static CamlExpression GroupBy(IEnumerable<CamlParameterBindingFieldRef> fieldName, CamlParameterBindingBooleanString collapse) {
       return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)), collapse);
     }
 
