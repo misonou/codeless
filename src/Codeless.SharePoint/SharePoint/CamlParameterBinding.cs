@@ -55,6 +55,14 @@ namespace Codeless.SharePoint {
   /// </summary>
   public interface ICamlParameterBinding {
     /// <summary>
+    /// Gets a boolean value indicating whether this instance binds to any given arguments.
+    /// </summary>
+    bool IsParameter { get; }
+    /// <summary>
+    /// Gets the name of this parameter. <see cref="CamlParameterName.NoBinding"/> is returned if this instance does not bind to any given arguments.
+    /// </summary>
+    CamlParameterName ParameterName { get; }
+    /// <summary>
     /// Gets the value type this parameter representing.
     /// </summary>
     CamlValueType ValueType { get; }
@@ -256,7 +264,6 @@ namespace Codeless.SharePoint {
   /// <typeparam name="T"></typeparam>
   public abstract class CamlParameterBinding<T> : ICamlParameterBinding {
     protected readonly List<T> Values = new List<T>();
-    protected readonly CamlParameterName ParameterName;
 
     public CamlParameterBinding(T value)
       : this(CamlParameterName.NoBinding, value) { }
@@ -281,6 +288,13 @@ namespace Codeless.SharePoint {
         throw new ArgumentException("value", "Collection is empty");
       }
     }
+
+
+    public bool IsParameter {
+      get { return ParameterName != CamlParameterName.NoBinding; }
+    }
+
+    public CamlParameterName ParameterName { get; private set; }
 
     public virtual CamlValueType ValueType {
       get { return CamlValueType.Text; }
