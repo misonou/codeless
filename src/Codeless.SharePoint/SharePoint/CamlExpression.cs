@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Xml;
@@ -18,7 +19,10 @@ namespace Codeless.SharePoint {
   /// <summary>
   /// Provides a base class of a range of objects representating different types of CAML expressions.
   /// </summary>
+  [DebuggerDisplay("{GetDebuggerDisplay(),nq}")]
   public abstract class CamlExpression : Caml {
+    private static readonly Hashtable debugBindings = new ReadOnlyHashtable();
+
     private sealed class ReadOnlyHashtable : Hashtable {
       public override void Add(object key, object value) {
         throw new InvalidOperationException();
@@ -213,6 +217,7 @@ namespace Codeless.SharePoint {
       throw new CamlInvalidJoinException(JoinType.Negate, this.Type);
     }
 
+    [Obsolete]
     internal void VisitInternal(CamlVisitor visitor) {
       Visit(visitor);
     }
@@ -221,6 +226,7 @@ namespace Codeless.SharePoint {
     /// When overriden, handles a visitor visit.
     /// </summary>
     /// <param name="visitor"></param>
+    [Obsolete]
     protected abstract void Visit(CamlVisitor visitor);
 
     /// <summary>
@@ -391,6 +397,41 @@ namespace Codeless.SharePoint {
       }
       return sb.Append;
     }
+
+    /// <summary>
+    /// Gets the string representation of the binded value.
+    /// </summary>
+    /// <param name="value">An instance of a parameter in a CAML expression.</param>
+    /// <param name="bindings">A dictionary containing values that are associated to parameter names.</param>
+    /// <returns>A string representation of the binded value; -or- a placeholder string for unbinded parameters.</returns>
+    protected string BindValue(ICamlParameterBinding value, Hashtable bindings) {
+      if (ReferenceEquals(bindings, debugBindings) && value.IsParameter) {
+        return "{" + value.ParameterName + "}";
+      }
+      return value.Bind(bindings);
+    }
+
+    /// <summary>
+    /// Gets an enumerable collection of string representations of the binded values.
+    /// </summary>
+    /// <param name="value">An instance of a parameter in a CAML expression.</param>
+    /// <param name="bindings">A dictionary containing values that are associated to parameter names.</param>
+    /// <returns>An enumerable collection of string representations of the binded values; -or- a placeholder string for unbinded parameters.</returns>
+    protected IEnumerable<string> BindValues(ICamlParameterBinding value, Hashtable bindings) {
+      if (ReferenceEquals(bindings, debugBindings) && value.IsParameter) {
+        return new[] { "{" + value.ParameterName + "}" };
+      }
+      return value.BindCollection(bindings);
+    }
+
+    private string GetDebuggerDisplay() {
+      if (this.Type == CamlExpressionType.Binded) {
+        try {
+          return ToString(false);
+        } catch { }
+      }
+      return ToString(debugBindings, false);
+    }
   }
 
   #region Internal Implementation
@@ -424,7 +465,7 @@ namespace Codeless.SharePoint {
 
     protected override void WriteXml(XmlWriter writer, Hashtable bindings) {
       writer.WriteStartElement(Element.FieldRef);
-      writer.WriteAttributeString(Attribute.Name, FieldName.Bind(bindings));
+      writer.WriteAttributeString(Attribute.Name, BindValue(FieldName, bindings));
       WriteAttributes(writer, bindings);
       writer.WriteEndElement();
     }
@@ -742,7 +783,7 @@ namespace Codeless.SharePoint {
         case CompareOperatorString.Membership:
           writer.WriteStartElement(OperatorString);
           writer.WriteAttributeString("Type", "SPGroup");
-          writer.WriteAttributeString("ID", value.Bind(bindings));
+          writer.WriteAttributeString("ID", BindValue(value, bindings));
           WriteXmlStatic(fieldRef, writer, bindings);
           writer.WriteEndElement();
           return;
@@ -755,13 +796,13 @@ namespace Codeless.SharePoint {
       switch (OperatorString) {
         case CompareOperatorString.In:
           writer.WriteStartElement(Element.Values);
-          foreach (string formattedValue in value.BindCollection(bindings)) {
+          foreach (string formattedValue in BindValues(value, bindings)) {
             WriteValue(writer, formattedValue);
           }
           writer.WriteEndElement();
           break;
         default:
-          WriteValue(writer, value.Bind(bindings));
+          WriteValue(writer, BindValue(value, bindings));
           break;
       }
     }
@@ -781,7 +822,7 @@ namespace Codeless.SharePoint {
     }
 
     protected void WriteEqualityToAnyExtension(XmlWriter writer, Hashtable bindings, string comparisonOperator, string logicalOperator) {
-      string[] formattedValues = value.BindCollection(bindings).ToArray();
+      string[] formattedValues = BindValues(value, bindings).ToArray();
       if (formattedValues.Length > 1) {
         foreach (string formattedValue in formattedValues.Skip(1)) {
           writer.WriteStartElement(logicalOperator);
@@ -1134,7 +1175,7 @@ namespace Codeless.SharePoint {
     protected override void WriteAttributes(XmlWriter writer, Hashtable bindings) {
       base.WriteAttributes(writer, bindings);
       if (collapse != null) {
-        writer.WriteAttributeString("Collapse", collapse.Bind(bindings));
+        writer.WriteAttributeString(Attribute.Collapse, BindValue(collapse, bindings));
       }
     }
 
@@ -1269,7 +1310,7 @@ namespace Codeless.SharePoint {
       writer.WriteStartElement(tagName);
       if (attributes != null) {
         foreach (KeyValuePair<string, ICamlParameterBinding> entry in attributes) {
-          writer.WriteAttributeString(entry.Key, entry.Value.Bind(bindings));
+          writer.WriteAttributeString(entry.Key, BindValue(entry.Value, bindings));
         }
       }
       writer.WriteEndElement();
@@ -1277,6 +1318,14 @@ namespace Codeless.SharePoint {
 
     CamlValueType ICamlParameterBinding.ValueType {
       get { return valueType; }
+    }
+
+    bool ICamlParameterBinding.IsParameter {
+      get { return false; }
+    }
+
+    CamlParameterName ICamlParameterBinding.ParameterName {
+      get { return CamlParameterName.NoBinding; }
     }
 
     string ICamlParameterBinding.Bind(Hashtable bindings) {
