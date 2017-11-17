@@ -23,62 +23,6 @@ namespace Codeless.SharePoint {
       : base(String.Concat("Type bound for ", parameterName, " expected to be ", expectedType.ToString(), ", but given ", actualType.ToString())) { }
   }
 
-  /// <summary>
-  /// Indicates the name of a parameter which its value can be binded after.
-  /// </summary>
-  public struct CamlParameterName {
-    internal static readonly CamlParameterName NoBinding = default(CamlParameterName);
-
-    internal readonly string Value;
-
-    /// <summary>
-    /// Creates an instance of the <see cref="CamlParameterName"/> class.
-    /// </summary>
-    /// <param name="value"></param>
-    public CamlParameterName(string value) {
-      CommonHelper.ConfirmNotNull(value, "value");
-      this.Value = value;
-    }
-
-    /// <summary>
-    /// Implicitly converts the name of a parameter specified by this instance to a string representation.
-    /// </summary>
-    /// <param name="p"></param>
-    /// <returns></returns>
-    public static implicit operator string(CamlParameterName p) {
-      return p.Value;
-    }
-  }
-
-  /// <summary>
-  /// Exposes properties and methods related to a parameter in a CAML expression.
-  /// </summary>
-  public interface ICamlParameterBinding {
-    /// <summary>
-    /// Gets a boolean value indicating whether this instance binds to any given arguments.
-    /// </summary>
-    bool IsParameter { get; }
-    /// <summary>
-    /// Gets the name of this parameter. <see cref="CamlParameterName.NoBinding"/> is returned if this instance does not bind to any given arguments.
-    /// </summary>
-    CamlParameterName ParameterName { get; }
-    /// <summary>
-    /// Gets the value type this parameter representing.
-    /// </summary>
-    CamlValueType ValueType { get; }
-    /// <summary>
-    /// Binds a single value and returns a string representation of the value from a collection of parameter values.
-    /// </summary>
-    /// <param name="bindings"></param>
-    /// <returns></returns>
-    string Bind(Hashtable bindings);
-    /// <summary>
-    /// Bings a list of values and returns a string representation of the values from a collection of parameter values.
-    /// </summary>
-    /// <param name="bindings"></param>
-    /// <returns></returns>
-    IEnumerable<string> BindCollection(Hashtable bindings);
-  }
 
   internal class CamlParameterBinding {
     public static ICamlParameterBinding GetValueBinding(SPSite parentSite, SPField field, object value) {
@@ -406,7 +350,7 @@ namespace Codeless.SharePoint {
       return new CamlParameterBindingOrder(parameterName);
     }
   }
-  
+
   public sealed class CamlParameterBindingBooleanString : CamlParameterBinding<bool> {
     internal CamlParameterBindingBooleanString(bool value)
       : base(value) { }
