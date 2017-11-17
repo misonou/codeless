@@ -174,7 +174,7 @@ namespace Codeless.SharePoint.ObjectModel {
   public abstract class SPModelManagerBase<T> : ISPModelManager, ISPModelManagerInternal {
     private readonly SPWeb currentWeb;
     private readonly SPModelDescriptor descriptor;
-    private readonly List<SPModelUsage> currentLists = new List<SPModelUsage>();
+    private readonly ICollection<SPModelUsage> currentLists = new HashSet<SPModelUsage>(SPModelUsageEqualityComparer.Default);
     private readonly HashSet<ISPListItemAdapter> itemsToSave = new HashSet<ISPListItemAdapter>();
     private readonly SPModelImplicitQueryMode queryMode;
     private readonly uint throttlingLimit;
@@ -231,18 +231,17 @@ namespace Codeless.SharePoint.ObjectModel {
         descriptor.Provision(currentWeb, SPModelProvisionOptions.Asynchronous | SPModelProvisionOptions.SuppressListCreation, SPModelListProvisionOptions.Default);
 
         if (contextLists != null) {
-          currentLists.AddRange(contextLists.Where(v => v != null).SelectMany(descriptor.GetUsages));
+          contextLists.SelectMany(descriptor.GetUsages).ForEach(currentLists.Add);
           explicitListScope = true;
         }
         if (contextLists == null) {
-          currentLists.AddRange(descriptor.GetUsages(currentWeb, currentWebOnly));
+          descriptor.GetUsages(currentWeb, currentWebOnly).ForEach(currentLists.Add);
         }
-        int listCount = currentLists.Select(v => v.ListId).Distinct().Count();
-        if (listCount > 1 && descriptor.BaseType == SPBaseType.UnspecifiedBaseType) {
+        if (currentLists.Count > 1 && descriptor.BaseType == SPBaseType.UnspecifiedBaseType) {
           this.queryMode = SPModelImplicitQueryMode.KeywordSearch;
-        } else if (listCount > 1) {
+        } else if (currentLists.Count > 1) {
           this.queryMode = SPModelImplicitQueryMode.SiteQuery;
-        } else if (listCount == 1) {
+        } else if (currentLists.Count == 1) {
           this.queryMode = SPModelImplicitQueryMode.ListQuery;
         } else {
           this.queryMode = SPModelImplicitQueryMode.None;
@@ -518,24 +517,24 @@ namespace Codeless.SharePoint.ObjectModel {
       if (exactType.ItemType != SPModelItemType.GenericItem && String.IsNullOrEmpty(name)) {
         throw new ArgumentNullException("File or folder name cannot be null.");
       }
-      if (currentLists.Select(v => v.ListId).Distinct().Count() > 1) {
+      if (currentLists.Count > 1) {
         throw new InvalidOperationException("Ambiguous target list found. Try instanstite SPModelManager with SPList constructor to specify target list.");
       }
       if (currentLists.Count == 0) {
-        currentLists.AddRange(exactType.Provision(currentWeb));
+        exactType.Provision(currentWeb).ForEach(currentLists.Add);
         if (currentLists.Count == 0) {
           throw new InvalidOperationException("No target list is specified to create item.");
         }
       }
 
-      SPList targetList = currentLists[0].EnsureList(this.ObjectCache).List;
+      SPList targetList = currentLists.First().EnsureList(this.ObjectCache).List;
       if (targetList == null) {
         throw new InvalidOperationException("No target list is specified to create item. User may not have sufficient permission to access the list.");
       }
       if (!exactType.UsedInList(targetList)) {
         currentLists.Clear();
-        currentLists.AddRange(exactType.Provision(targetList.ParentWeb, new SPModelListProvisionOptions(targetList)));
-        targetList = currentLists[0].EnsureList(this.ObjectCache).List;
+        exactType.Provision(targetList.ParentWeb, new SPModelListProvisionOptions(targetList)).ForEach(currentLists.Add);
+        targetList = currentLists.First().EnsureList(this.ObjectCache).List;
       }
 
       SPContentTypeId contentTypeId = exactType.ContentTypeIds.First();
@@ -758,7 +757,7 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     private IEnumerable<SPListItem> ExecuteListQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, uint startRow, bool selectProperties) {
-      SPList list = currentLists[0].EnsureList(this.ObjectCache).List;
+      SPList list = currentLists.First().EnsureList(this.ObjectCache).List;
       if (list == null || list.ItemCount == 0) {
         return new SPListItem[0];
       }
@@ -797,7 +796,7 @@ namespace Codeless.SharePoint.ObjectModel {
     private DataTable ExecuteSiteQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, bool selectProperties) {
       SPSiteDataQuery siteQuery = new SPSiteDataQuery();
       siteQuery.Webs = Caml.WebsScope.Recursive;
-      siteQuery.Lists = Caml.ListsScope(currentLists.Select(v => v.ListId).Distinct().ToArray()).ToString();
+      siteQuery.Lists = Caml.ListsScope(currentLists.Select(v => v.ListId).ToArray()).ToString();
       siteQuery.ViewFields = (query.GetViewFieldsExpression() + (selectProperties ? (Caml.ViewFields(typeInfo.RequiredViewFields) + Caml.ViewFields(SPModel.RequiredViewFields)) : Caml.Empty)).ToString();
       siteQuery.Query = query.ToString();
       siteQuery.RowLimit = limit;
@@ -1002,6 +1001,20 @@ namespace Codeless.SharePoint.ObjectModel {
 
     void ISPModelManager.CommitChanges(object item, SPModelCommitMode mode) {
       CommitChanges(ValidateModel(item), mode);
+    }
+    #endregion
+
+    #region Helper class
+    private class SPModelUsageEqualityComparer : EqualityComparer<SPModelUsage> {
+      public new static readonly SPModelUsageEqualityComparer Default = new SPModelUsageEqualityComparer();
+
+      public override bool Equals(SPModelUsage x, SPModelUsage y) {
+        return x.ListId == y.ListId;
+      }
+
+      public override int GetHashCode(SPModelUsage obj) {
+        return obj.ListId.GetHashCode();
+      }
     }
     #endregion
   }
