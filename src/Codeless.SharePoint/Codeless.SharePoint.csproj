@@ -131,8 +131,10 @@
     <Compile Include="SharePoint\CamlExpression.cs" />
     <Compile Include="SharePoint\CamlExpressionVisitor.cs" />
     <Compile Include="SharePoint\CamlParameterBinding.cs" />
+    <Compile Include="SharePoint\CamlParameterBindingHashtable.cs" />
     <Compile Include="SharePoint\CamlParameterName.cs" />
     <Compile Include="SharePoint\ICamlParameterBinding.cs" />
+    <Compile Include="SharePoint\ISPObjectContext.cs" />
     <Compile Include="SharePoint\Internal\KnownFields.cs" />
     <Compile Include="SharePoint\Internal\SPChangeQueryExecutor.cs" />
     <Compile Include="SharePoint\ObjectModel\SPModelEventHandler.cs" />
