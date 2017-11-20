@@ -430,7 +430,7 @@ namespace Codeless.SharePoint {
           return ToString(false);
         } catch { }
       }
-      return ToString(debugBindings, false);
+      return ToString(new XmlWriterSettings { Indent = false, OmitXmlDeclaration = true }, debugBindings);
     }
   }
 
@@ -771,6 +771,16 @@ namespace Codeless.SharePoint {
     }
 
     protected override void WriteXml(XmlWriter writer, Hashtable bindings) {
+      if (operatorValue == CamlBinaryOperator.Eq || operatorValue == CamlBinaryOperator.Neq) {
+        try {
+          value.Bind(bindings);
+        } catch (CamlParameterBindingNullException) {
+          writer.WriteStartElement(operatorValue == CamlBinaryOperator.Eq ? CompareOperatorString.IsNull : CompareOperatorString.IsNotNull);
+          WriteXmlStatic(fieldRef, writer, bindings);
+          writer.WriteEndElement();
+          return;
+        }
+      }
       switch (OperatorString) {
         case CompareOperatorString.Includes:
         case CompareOperatorString.BeginsWith:
@@ -1468,6 +1478,7 @@ namespace Codeless.SharePoint {
     }
   }
 
+  [DebuggerDisplay("{GetDebuggerDisplay(),nq}")]
   internal sealed class CamlEmptyExpression : CamlExpression {
     private readonly EmptyExpressionType emptyType;
 
@@ -1528,6 +1539,10 @@ namespace Codeless.SharePoint {
     protected override void Visit(CamlVisitor visitor) { }
 
     protected override void WriteXml(XmlWriter writer, Hashtable bindings) { }
+
+    private string GetDebuggerDisplay() {
+      return "<" + emptyType + " />";
+    }
   }
   #endregion
 }
