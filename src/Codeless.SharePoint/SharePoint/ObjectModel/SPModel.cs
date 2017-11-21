@@ -408,9 +408,6 @@ namespace Codeless.SharePoint.ObjectModel {
       } catch (MemberAccessException) {
         return null;
       }
-      if (adapter.Web.AvailableContentTypes[contentTypeId] == null) {
-        contentTypeId = contentTypeId.Parent;
-      }
       SPModelDescriptor descriptor;
       try {
         descriptor = SPModelDescriptor.Resolve(contentTypeId, adapter.Site);
@@ -689,7 +686,7 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     int ISPModelMetaData.CheckOutUserID {
-      get { 
+      get {
         SPPrincipal p = this.Adapter.GetUserFieldValue(SPBuiltInFieldName.CheckoutUser);
         return p == null ? 0 : p.ID;
       }
