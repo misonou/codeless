@@ -129,6 +129,8 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     private static readonly object syncLock = new object();
+    private static readonly ConstructorInfo SPContentTypeCtor = typeof(SPContentType).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic, null, new[] { typeof(SPContentTypeId) }, null);
+    private static readonly PropertyInfo SPContentTypePropertyWeb = typeof(SPContentType).GetProperty("Web", true);
     private static readonly AssemblyName SelfAssemblyName = new AssemblyName(typeof(SPModel).Assembly.FullName);
     private static readonly ConcurrentDictionary<Assembly, object> RegisteredAssembly = new ConcurrentDictionary<Assembly, object>();
     private static readonly ConcurrentDictionary<Type, SPModelDescriptor> TargetTypeDictionary = new ConcurrentDictionary<Type, SPModelDescriptor>();
@@ -281,17 +283,14 @@ namespace Codeless.SharePoint.ObjectModel {
     public virtual SPModelUsageCollection GetUsages(SPWeb web) {
       CommonHelper.ConfirmNotNull(web, "web");
       List<SPModelUsage> collection = new List<SPModelUsage>();
-      SPContentType contentType = web.AvailableContentTypes[contentTypeAttribute.ContentTypeId];
-      if (contentType != null) {
-        string startUrl = web.ServerRelativeUrl;
-        if (listAttribute.RootWebOnly) {
-          startUrl = web.Site.ServerRelativeUrl;
-        }
-        startUrl = startUrl.TrimEnd('/');
-        foreach (SPContentTypeUsage usage in SPContentTypeUsage.GetUsages(contentType)) {
-          if (usage.IsUrlToList && IsUrlInScope(startUrl, usage.Url)) {
-            collection.Add(SPModelUsage.Create(web.Site, usage));
-          }
+      string startUrl = web.ServerRelativeUrl;
+      if (listAttribute.RootWebOnly) {
+        startUrl = web.Site.ServerRelativeUrl;
+      }
+      startUrl = startUrl.TrimEnd('/');
+      foreach (SPContentTypeUsage usage in GetContentTypeUsages(web, contentTypeAttribute.ContentTypeId)) {
+        if (usage.IsUrlToList && IsUrlInScope(startUrl, usage.Url)) {
+          collection.Add(SPModelUsage.Create(web.Site, usage));
         }
       }
       return new SPModelUsageCollection(web.Site, collection);
@@ -764,6 +763,22 @@ namespace Codeless.SharePoint.ObjectModel {
         return defaultManagerTypeAttribute.DefaultType;
       }
       return typeof(SPModelManager<>).MakeGenericType(targetType);
+    }
+
+    private static IList<SPContentTypeUsage> GetContentTypeUsages(SPWeb web, SPContentTypeId contentTypeId) {
+      try {
+        if (SPContentTypeCtor != null && SPContentTypePropertyWeb != null) {
+          SPContentType ct = (SPContentType)SPContentTypeCtor.Invoke(new object[] { contentTypeId });
+          SPContentTypePropertyWeb.SetValue(ct, web);
+          return SPContentTypeUsage.GetUsages(ct);
+        }
+      } catch {
+        SPContentType ct = web.AvailableContentTypes[contentTypeId];
+        if (ct != null) {
+          return SPContentTypeUsage.GetUsages(ct);
+        }
+      }
+      return new SPContentTypeUsage[0];
     }
   }
 
