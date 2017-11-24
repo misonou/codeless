@@ -264,8 +264,7 @@ namespace Codeless.SharePoint.ObjectModel {
         if (termStore != null) {
           return termStore;
         }
-        TaxonomySession session = new TaxonomySession(currentWeb.Site);
-        this.termStore = session.DefaultKeywordsTermStore;
+        this.termStore = GetTermStoreForContext(currentWeb);
         if (termStore != null) {
           termStore.WorkingLanguage = this.Culture.LCID;
           return termStore;
@@ -728,6 +727,16 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     /// <param name="e"></param>
     protected virtual void OnExecutingKeywordSearch(SPModelKeywordSearchEventArgs e) { }
+
+    /// <summary>
+    /// Returns the default term store connected with the site that initialized this instance of the <see cref="SPModelManagerBase{T}"/> class.
+    /// </summary>
+    /// <param name="web">The site that initialized this instance of the <see cref="SPModelManagerBase{T}"/> class.</param>
+    /// <returns>An instance of the <see cref="TermStore"/> class representing a connected term store.</returns>
+    protected virtual TermStore GetTermStoreForContext(SPWeb web) {
+      TaxonomySession session = new TaxonomySession(web.Site);
+      return session.DefaultKeywordsTermStore;
+    }
 
     private IEnumerable<ISPListItemAdapter> ExecuteListQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit, uint startRow) {
       IEnumerable<SPListItem> collection = ExecuteListQuery(typeInfo, query, limit, startRow, true);
