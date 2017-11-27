@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.DirectoryServices.AccountManagement;
+using System.Security.Principal;
 using System.Threading;
 
 namespace Codeless.SharePoint.Internal {
@@ -16,7 +17,8 @@ namespace Codeless.SharePoint.Internal {
       }
       PrincipalContext pc;
       try {
-        pc = new PrincipalContext(ContextType.Domain);
+        string domainName = WindowsIdentity.GetCurrent().Name.Split('\\')[0];
+        pc = new PrincipalContext(ContextType.Domain, domainName);
       } catch {
         pc = new PrincipalContext(ContextType.Machine);
       }
