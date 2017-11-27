@@ -98,7 +98,12 @@ namespace Codeless.SharePoint {
       }
       T config = null;
       try {
+        // avoid config being cache without adding cache policy to HttpContext.Current.Cache
+        if (HttpContext.Current == null) {
+          return LoadInternal(siteId, out config);
+        }
         return InstanceFactory.GetInstance(siteId, () => {
+          Logger.Info("Site config ({0}) loading from site collection (ID:{1}).", typeof(T).FullName, siteId);
           return LoadInternal(siteId, out config);
         });
       } catch (Exception ex) {
@@ -198,7 +203,10 @@ namespace Codeless.SharePoint {
         if (HttpContext.Current != null) {
           CacheDependency cacheDependency = provider.GetCacheDependency();
           if (cacheDependency != null) {
-            HttpContext.Current.Cache.Add(cacheDependency.GetUniqueID(), new object(), cacheDependency, Cache.NoAbsoluteExpiration, Cache.NoSlidingExpiration, CacheItemPriority.Normal, (k, v, r) => Invalidate(siteId));
+            HttpContext.Current.Cache.Add(cacheDependency.GetUniqueID(), new object(), cacheDependency, Cache.NoAbsoluteExpiration, Cache.NoSlidingExpiration, CacheItemPriority.Normal, (k, v, r) => {
+              Logger.Info("Site config ({0}) flushed due to cache dependency.", typeof(T).FullName);
+              Invalidate(siteId);
+            });
           }
         }
       }

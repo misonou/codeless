@@ -40,6 +40,7 @@ namespace Codeless.SharePoint.ObjectModel {
   }
   #endregion
 
+  #region Enums
   /// <summary>
   /// Represents which API will be used when performing item queries if no search keywords are specified.
   /// </summary>
@@ -85,6 +86,54 @@ namespace Codeless.SharePoint.ObjectModel {
   }
 
   /// <summary>
+  /// Specifies operation to be done on a file in a SharePoint web site.
+  /// </summary>
+  public enum SPModelFileOperation {
+    /// <summary>
+    /// Checks in the file to a document library and increments as a minor version.
+    /// </summary>
+    MinorCheckIn,
+    /// <summary>
+    /// Checks in the file to a document library and increments as a major version.
+    /// </summary>
+    MajorCheckIn,
+    /// <summary>
+    /// Checks in the file to a document library and overwrite the file.
+    /// </summary>
+    OverwriteCheckIn,
+    /// <summary>
+    /// Checks the file out of a document library.
+    /// </summary>
+    CheckOut,
+    /// <summary>
+    /// Undoes the file checkout.
+    /// </summary>
+    UndoCheckOut,
+    /// <summary>
+    /// Submits the file for content approval.
+    /// </summary>
+    Publish,
+    /// <summary>
+    /// Removes the file from content approval.
+    /// </summary>
+    UnPublish,
+    /// <summary>
+    /// Approves the file submitted for content approval.
+    /// </summary>
+    Approve,
+    /// <summary>
+    /// Denies approval for a file that was submitted for content approval.
+    /// </summary>
+    Deny,
+    /// <summary>
+    /// Takes the most current approved or major version of the file offline.
+    /// </summary>
+    TakeOffline
+  }
+  #endregion
+
+  #region EventArgs
+  /// <summary>
   /// Provides data when an ExecutingListQuery event is triggered from <see cref="SPModelManagerBase{T}"/>.
   /// See <see cref="SPModelManagerBase{T}.OnExecutingListQuery"/>.
   /// </summary>
@@ -116,6 +165,7 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     public KeywordQuery Query { get; internal set; }
   }
+  #endregion
 
   /// <summary>
   /// Provides a base class that handles querying, creating, deleting and persisting list items in a SharePoint site collection using model classes.
@@ -124,14 +174,14 @@ namespace Codeless.SharePoint.ObjectModel {
   public abstract class SPModelManagerBase<T> : ISPModelManager, ISPModelManagerInternal {
     private readonly SPWeb currentWeb;
     private readonly SPModelDescriptor descriptor;
-    private readonly SPObjectCache objectCache;
-    private readonly List<SPModelUsage> currentLists = new List<SPModelUsage>();
-    private readonly TermStore termStore;
-    private readonly CultureInfo workingCulture;
+    private readonly ICollection<SPModelUsage> currentLists = new HashSet<SPModelUsage>(SPModelUsageEqualityComparer.Default);
     private readonly HashSet<ISPListItemAdapter> itemsToSave = new HashSet<ISPListItemAdapter>();
     private readonly SPModelImplicitQueryMode queryMode;
     private readonly uint throttlingLimit;
     private readonly bool explicitListScope;
+    private SPObjectCache objectCache;
+    private TermStore termStore;
+    private CultureInfo workingCulture;
 
     /// <summary>
     /// Initializes an instance of the <see cref="SPModelManagerBase{T}"/> class that queries list items under the specified site collection and its sub-sites.
@@ -175,37 +225,26 @@ namespace Codeless.SharePoint.ObjectModel {
 
       using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
         this.currentWeb = currentWeb;
-        this.objectCache = new SPObjectCache(currentWeb.Site);
         this.throttlingLimit = currentWeb.Site.WebApplication.MaxItemsPerThrottledOperation;
 
         this.descriptor = SPModelDescriptor.Resolve(typeof(T));
         descriptor.Provision(currentWeb, SPModelProvisionOptions.Asynchronous | SPModelProvisionOptions.SuppressListCreation, SPModelListProvisionOptions.Default);
 
         if (contextLists != null) {
-          currentLists.AddRange(contextLists.Where(v => v != null).SelectMany(descriptor.GetUsages));
+          contextLists.SelectMany(descriptor.GetUsages).ForEach(currentLists.Add);
           explicitListScope = true;
         }
         if (contextLists == null) {
-          currentLists.AddRange(descriptor.GetUsages(currentWeb, currentWebOnly));
+          descriptor.GetUsages(currentWeb, currentWebOnly).ForEach(currentLists.Add);
         }
-        int listCount = currentLists.Select(v => v.ListId).Distinct().Count();
-        if (listCount > 1 && descriptor.BaseType == SPBaseType.UnspecifiedBaseType) {
+        if (currentLists.Count > 1 && descriptor.BaseType == SPBaseType.UnspecifiedBaseType) {
           this.queryMode = SPModelImplicitQueryMode.KeywordSearch;
-        } else if (listCount > 1) {
+        } else if (currentLists.Count > 1) {
           this.queryMode = SPModelImplicitQueryMode.SiteQuery;
-        } else if (listCount == 1) {
+        } else if (currentLists.Count == 1) {
           this.queryMode = SPModelImplicitQueryMode.ListQuery;
         } else {
           this.queryMode = SPModelImplicitQueryMode.None;
-        }
-
-        TaxonomySession session = new TaxonomySession(currentWeb.Site);
-        this.termStore = session.DefaultKeywordsTermStore;
-
-        VariationContext variationContext = new VariationContext(currentWeb);
-        this.workingCulture = variationContext.Culture;
-        if (termStore != null) {
-          termStore.WorkingLanguage = variationContext.Culture.LCID;
         }
       }
     }
@@ -221,14 +260,30 @@ namespace Codeless.SharePoint.ObjectModel {
     /// Gets the term store connected with the site that initialized this instance of the <see cref="SPModelManagerBase{T}"/> class.
     /// </summary>
     public TermStore TermStore {
-      get { return CommonHelper.AccessNotNull(termStore, "TermStore"); }
+      get {
+        if (termStore != null) {
+          return termStore;
+        }
+        TaxonomySession session = new TaxonomySession(currentWeb.Site);
+        this.termStore = session.DefaultKeywordsTermStore;
+        if (termStore != null) {
+          termStore.WorkingLanguage = this.Culture.LCID;
+          return termStore;
+        }
+        return CommonHelper.AccessNotNull(termStore, "TermStore");
+      }
     }
 
     /// <summary>
     /// Gets the <see cref="SPObjectCache"/> object. This object cache instance is used in <see cref="ISPListItemAdapter"/> objects created by this manager.
     /// </summary>
     protected internal SPObjectCache ObjectCache {
-      get { return objectCache; }
+      get {
+        if (objectCache == null) {
+          objectCache = new SPObjectCache(this.Site);
+        }
+        return objectCache;
+      }
     }
 
     /// <summary>
@@ -236,6 +291,16 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     protected internal SPModelImplicitQueryMode ImplicitQueryMode {
       get { return queryMode; }
+    }
+
+    internal CultureInfo Culture {
+      get {
+        if (workingCulture == null) {
+          VariationContext variationContext = new VariationContext(currentWeb);
+          this.workingCulture = variationContext.Culture;
+        }
+        return workingCulture;
+      }
     }
 
     internal IEnumerable<SPModelUsage> ContextLists {
@@ -269,6 +334,18 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="limit">Maximum number of items to be returned.</param>
     /// <returns>A collection containing the returned items.</returns>
     protected internal SPModelCollection<TItem> GetItems<TItem>(CamlExpression query, uint limit) {
+      return GetItems<TItem>(query, limit, 0);
+    }
+
+    /// <summary>
+    /// Gets items of the associated content type(s) that satisfy the condition.
+    /// </summary>
+    /// <typeparam name="TItem">Item type.</typeparam>
+    /// <param name="query">CAML query expression.</param>
+    /// <param name="limit">Maximum number of items to be returned.</param>
+    /// <param name="startRow">Number of items to skip from start.</param>
+    /// <returns>A collection containing the returned items.</returns>
+    protected internal SPModelCollection<TItem> GetItems<TItem>(CamlExpression query, uint limit, uint startRow) {
       int dummy;
       if (query != Caml.False && queryMode != SPModelImplicitQueryMode.None) {
         SPModelDescriptor typeInfo = SPModelDescriptor.Resolve(typeof(TItem));
@@ -277,13 +354,13 @@ namespace Codeless.SharePoint.ObjectModel {
           IEnumerable<ISPListItemAdapter> queryResultSet = null;
           switch (queryMode) {
             case SPModelImplicitQueryMode.KeywordSearch:
-              queryResultSet = ExecuteKeywordSearchAsAdapter(typeInfo, contentTypedQuery, (int)limit, 0, null, null, KeywordInclusion.AllKeywords, out dummy);
+              queryResultSet = ExecuteKeywordSearchAsAdapter(typeInfo, contentTypedQuery, (int)limit, (int)startRow, null, null, KeywordInclusion.AllKeywords, out dummy);
               break;
             case SPModelImplicitQueryMode.SiteQuery:
-              queryResultSet = ExecuteSiteQueryAsAdapter(typeInfo, contentTypedQuery, limit);
+              queryResultSet = ExecuteSiteQueryAsAdapter(typeInfo, contentTypedQuery, limit, startRow);
               break;
             case SPModelImplicitQueryMode.ListQuery:
-              queryResultSet = ExecuteListQueryAsAdapter(typeInfo, contentTypedQuery, limit);
+              queryResultSet = ExecuteListQueryAsAdapter(typeInfo, contentTypedQuery, limit, startRow);
               break;
           }
           return SPModelCollection<TItem>.Create(this, queryResultSet, false);
@@ -358,7 +435,7 @@ namespace Codeless.SharePoint.ObjectModel {
               DataTable dt = ExecuteSiteQuery(typeInfo, contentTypedQuery, throttlingLimit, false);
               return dt.Rows.Count;
             case SPModelImplicitQueryMode.ListQuery:
-              IEnumerable<SPListItem> collection = ExecuteListQuery(typeInfo, contentTypedQuery, throttlingLimit, false);
+              IEnumerable<SPListItem> collection = ExecuteListQuery(typeInfo, contentTypedQuery, throttlingLimit, 0, false);
               return collection.Count();
           }
         }
@@ -440,24 +517,24 @@ namespace Codeless.SharePoint.ObjectModel {
       if (exactType.ItemType != SPModelItemType.GenericItem && String.IsNullOrEmpty(name)) {
         throw new ArgumentNullException("File or folder name cannot be null.");
       }
-      if (currentLists.Select(v => v.ListId).Distinct().Count() > 1) {
+      if (currentLists.Count > 1) {
         throw new InvalidOperationException("Ambiguous target list found. Try instanstite SPModelManager with SPList constructor to specify target list.");
       }
       if (currentLists.Count == 0) {
-        currentLists.AddRange(exactType.Provision(currentWeb));
+        exactType.Provision(currentWeb).ForEach(currentLists.Add);
         if (currentLists.Count == 0) {
           throw new InvalidOperationException("No target list is specified to create item.");
         }
       }
 
-      SPList targetList = currentLists[0].EnsureList(currentWeb.Site).List;
+      SPList targetList = currentLists.First().EnsureList(this.ObjectCache).List;
       if (targetList == null) {
         throw new InvalidOperationException("No target list is specified to create item. User may not have sufficient permission to access the list.");
       }
       if (!exactType.UsedInList(targetList)) {
         currentLists.Clear();
-        currentLists.AddRange(exactType.Provision(targetList.ParentWeb, new SPModelListProvisionOptions(targetList)));
-        targetList = currentLists[0].EnsureList(currentWeb.Site).List;
+        exactType.Provision(targetList.ParentWeb, new SPModelListProvisionOptions(targetList)).ForEach(currentLists.Add);
+        targetList = currentLists.First().EnsureList(this.ObjectCache).List;
       }
 
       SPContentTypeId contentTypeId = exactType.ContentTypeIds.First();
@@ -487,7 +564,7 @@ namespace Codeless.SharePoint.ObjectModel {
           createdItem[SPBuiltInFieldId.ContentTypeId] = contentTypeId;
           break;
       }
-      return TryCreateModel(new SPListItemAdapter(createdItem, objectCache), false);
+      return TryCreateModel(new SPListItemAdapter(createdItem, this.ObjectCache), false);
     }
 
     /// <summary>
@@ -548,10 +625,8 @@ namespace Codeless.SharePoint.ObjectModel {
     protected void CommitChanges(SPModelCommitMode mode) {
       List<ISPListItemAdapter> itemsToSaveCopy = new List<ISPListItemAdapter>(itemsToSave);
       foreach (ISPListItemAdapter item in itemsToSaveCopy) {
-        using (item.Web.GetAllowUnsafeUpdatesScope()) {
-          UpdateItem(item.ListItem, mode);
-          itemsToSave.Remove(item);
-        }
+        UpdateItem(item.ListItem, mode);
+        itemsToSave.Remove(item);
       }
     }
 
@@ -562,14 +637,64 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="mode">An value of <see cref="Codeless.SharePoint.ObjectModel.SPModelCommitMode"/> representing how a list item is updated.</param>
     /// <exception cref="System.ArgumentException">Supplied item does not belongs to this manager - item</exception>
     protected void CommitChanges(T item, SPModelCommitMode mode) {
-      CommonHelper.ConfirmNotNull(item, "item");
-      SPModel model = (SPModel)(object)item;
-      if (model.ParentCollection.Manager != this) {
-        throw new ArgumentException("Supplied item does not belongs to this manager", "item");
-      }
-      using (model.Adapter.Web.GetAllowUnsafeUpdatesScope()) {
+      SPModel model = ValidateModel(item, false);
+      if (itemsToSave.Contains(model.Adapter)) {
         UpdateItem(model.Adapter.ListItem, mode);
         itemsToSave.Remove(model.Adapter);
+      }
+    }
+
+    /// <summary>
+    /// Executes specified operation on the file represented by the model object with no comment.
+    /// </summary>
+    /// <param name="item">An item which operation is being performed on.</param>
+    /// <param name="operation">The operation to be performed.</param>
+    protected void ExecuteFileOperation(T item, SPModelFileOperation operation) {
+      ExecuteFileOperation(item, operation, String.Empty);
+    }
+
+    /// <summary>
+    /// Executes specified operation on the file represented by the model object with the specified comment.
+    /// </summary>
+    /// <param name="item">An item which operation is being performed on.</param>
+    /// <param name="operation">The operation to be performed.</param>
+    /// <param name="comment">A string that contains a comment about the operation. It is ignored for some oeprations.</param>
+    protected void ExecuteFileOperation(T item, SPModelFileOperation operation, string comment) {
+      SPModel model = ValidateModel(item, true);
+      SPListItem listItem = model.Adapter.ListItem;
+      using (listItem.Web.GetAllowUnsafeUpdatesScope()) {
+        switch (operation) {
+          case SPModelFileOperation.MajorCheckIn:
+            listItem.File.CheckIn(comment, SPCheckinType.MajorCheckIn);
+            break;
+          case SPModelFileOperation.MinorCheckIn:
+            listItem.File.CheckIn(comment, SPCheckinType.MinorCheckIn);
+            break;
+          case SPModelFileOperation.OverwriteCheckIn:
+            listItem.File.CheckIn(comment, SPCheckinType.OverwriteCheckIn);
+            break;
+          case SPModelFileOperation.CheckOut:
+            listItem.File.CheckOut();
+            break;
+          case SPModelFileOperation.UndoCheckOut:
+            listItem.File.UndoCheckOut();
+            break;
+          case SPModelFileOperation.Publish:
+            listItem.File.Publish(comment);
+            break;
+          case SPModelFileOperation.UnPublish:
+            listItem.File.UnPublish(comment);
+            break;
+          case SPModelFileOperation.Approve:
+            listItem.File.Approve(comment);
+            break;
+          case SPModelFileOperation.Deny:
+            listItem.File.Deny(comment);
+            break;
+          case SPModelFileOperation.TakeOffline:
+            listItem.File.TakeOffline();
+            break;
+        }
       }
     }
 
@@ -604,18 +729,18 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="e"></param>
     protected virtual void OnExecutingKeywordSearch(SPModelKeywordSearchEventArgs e) { }
 
-    private IEnumerable<ISPListItemAdapter> ExecuteListQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit) {
-      IEnumerable<SPListItem> collection = ExecuteListQuery(typeInfo, query, limit, true);
+    private IEnumerable<ISPListItemAdapter> ExecuteListQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit, uint startRow) {
+      IEnumerable<SPListItem> collection = ExecuteListQuery(typeInfo, query, limit, startRow, true);
       foreach (SPListItem item in collection) {
-        yield return new SPListItemAdapter(item, objectCache);
+        yield return new SPListItemAdapter(item, this.ObjectCache);
       }
     }
 
-    private IEnumerable<ISPListItemAdapter> ExecuteSiteQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit) {
-      DataTable dt = ExecuteSiteQuery(typeInfo, query, limit, true);
-      foreach (DataRow row in dt.Rows) {
-        DataRowAdapter adapter = new DataRowAdapter(currentWeb.Site, row, objectCache);
-        objectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
+    private IEnumerable<ISPListItemAdapter> ExecuteSiteQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit, uint startRow) {
+      DataTable dt = ExecuteSiteQuery(typeInfo, query, limit + startRow, true);
+      for (int i = (int)startRow, count = dt.Rows.Count; i < count; i++) {
+        DataRowAdapter adapter = new DataRowAdapter(currentWeb.Site, dt.Rows[i], this.ObjectCache);
+        this.ObjectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
         yield return adapter;
       }
     }
@@ -625,14 +750,14 @@ namespace Codeless.SharePoint.ObjectModel {
       DataTable queryDataTable = new DataTable();
       queryDataTable.Load(queryResultsTable, LoadOption.OverwriteChanges);
       return queryDataTable.Rows.OfType<DataRow>().Select(v => {
-        ISPListItemAdapter adapter = new KeywordQueryResultAdapter(currentWeb.Site, v, objectCache);
-        objectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
+        ISPListItemAdapter adapter = new KeywordQueryResultAdapter(currentWeb.Site, v, this.ObjectCache);
+        this.ObjectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
         return adapter;
       });
     }
 
-    private IEnumerable<SPListItem> ExecuteListQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, bool selectProperties) {
-      SPList list = currentLists[0].EnsureList(currentWeb.Site).List;
+    private IEnumerable<SPListItem> ExecuteListQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, uint startRow, bool selectProperties) {
+      SPList list = currentLists.First().EnsureList(this.ObjectCache).List;
       if (list == null || list.ItemCount == 0) {
         return new SPListItem[0];
       }
@@ -645,6 +770,20 @@ namespace Codeless.SharePoint.ObjectModel {
       OnExecutingListQuery(new SPModelListQueryEventArgs { Query = listQuery });
 
       try {
+        if (startRow > 0) {
+          SPQuery skipQuery = new SPQuery();
+          skipQuery.ExpandRecurrence = listQuery.ExpandRecurrence;
+          skipQuery.Query = listQuery.Query;
+          skipQuery.ViewFields = String.Empty;
+          skipQuery.ViewAttributes = listQuery.ViewAttributes;
+          skipQuery.RowLimit = startRow;
+          SPListItemCollection skipResult = list.GetItems(skipQuery);
+          if (skipResult.Count < startRow) {
+            return Enumerable.Empty<SPListItem>();
+          }
+          listQuery.ListItemCollectionPosition = skipResult.ListItemCollectionPosition;
+        }
+
         SPListItemCollection result = list.GetItems(listQuery);
         int count = result.Count;
         return result.OfType<SPListItem>();
@@ -657,7 +796,7 @@ namespace Codeless.SharePoint.ObjectModel {
     private DataTable ExecuteSiteQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, bool selectProperties) {
       SPSiteDataQuery siteQuery = new SPSiteDataQuery();
       siteQuery.Webs = Caml.WebsScope.Recursive;
-      siteQuery.Lists = Caml.ListsScope(currentLists.Select(v => v.ListId).Distinct().ToArray()).ToString();
+      siteQuery.Lists = Caml.ListsScope(currentLists.Select(v => v.ListId).ToArray()).ToString();
       siteQuery.ViewFields = (query.GetViewFieldsExpression() + (selectProperties ? (Caml.ViewFields(typeInfo.RequiredViewFields) + Caml.ViewFields(SPModel.RequiredViewFields)) : Caml.Empty)).ToString();
       siteQuery.Query = query.ToString();
       siteQuery.RowLimit = limit;
@@ -670,7 +809,7 @@ namespace Codeless.SharePoint.ObjectModel {
           if (ex.InnerException is COMException && (ex.InnerException.Message.IndexOf("0x80131904") >= 0 || ex.InnerException.Message.IndexOf("0x80020009") >= 0)) {
             try {
               foreach (SPModelUsage v in currentLists) {
-                SPList list = v.EnsureList(currentWeb.Site).List;
+                SPList list = v.EnsureList(this.ObjectCache).List;
                 if (list != null) {
                   typeInfo.CheckMissingFields(list);
                 }
@@ -697,7 +836,7 @@ namespace Codeless.SharePoint.ObjectModel {
       }
 
       KeywordQuery keywordQuery = SearchServiceHelper.CreateQuery(currentWeb.Site, query & listScopedQuery, limit, startRow, keywords, inclusion, SearchServiceHelper.GetManagedPropertyNames(currentWeb.Site, typeInfo.RequiredViewFields));
-      keywordQuery.Culture = workingCulture;
+      keywordQuery.Culture = this.Culture;
       OnExecutingKeywordSearch(new SPModelKeywordSearchEventArgs { Query = keywordQuery });
 
       try {
@@ -710,28 +849,53 @@ namespace Codeless.SharePoint.ObjectModel {
       }
     }
 
+    private SPModel ValidateModel(T item, bool requireFile) {
+      CommonHelper.ConfirmNotNull(item, "item");
+      SPModel model = item as SPModel;
+      if (model == null) {
+        throw new ArgumentException("Supplied item is not an SPModel instance", "item");
+      }
+      if (model.ParentCollection.Manager != this) {
+        throw new ArgumentException("Supplied item does not belongs to this manager", "item");
+      }
+      if (requireFile && !model.Adapter.ContentTypeId.IsChildOf(SPBuiltInContentTypeId.Document)) {
+        throw new ArgumentException("Supplied item is not a file", "item");
+      }
+      return model;
+    }
+
+    private T ValidateModel(object item) {
+      CommonHelper.ConfirmNotNull(item, "item");
+      if (!(item is SPModel) || ((SPModel)item).Manager != this) {
+        throw new ArgumentException("item");
+      }
+      return (T)item;
+    }
+
     private void UpdateItem(SPListItem item, SPModelCommitMode mode) {
       bool systemCheckIn = false;
-      if (item.ParentList.ForceCheckout && item.FileSystemObjectType == SPFileSystemObjectType.File && item.File.CheckOutType == SPFile.SPCheckOutType.None) {
-        item.File.CheckOut();
-        systemCheckIn = true;
-      }
-      switch (mode) {
-        case SPModelCommitMode.Default:
-          item.Update();
-          break;
-        case SPModelCommitMode.OverwriteVersion:
-          item.UpdateOverwriteVersion();
-          break;
-        case SPModelCommitMode.SystemUpdate:
-          item.SystemUpdate();
-          break;
-        case SPModelCommitMode.SystemUpdateOverwriteVersion:
-          item.SystemUpdate(false);
-          break;
-      }
-      if (systemCheckIn) {
-        item.File.CheckIn(String.Empty);
+      using (item.Web.GetAllowUnsafeUpdatesScope()) {
+        if (item.ParentList.ForceCheckout && item.FileSystemObjectType == SPFileSystemObjectType.File && item.File.CheckOutType == SPFile.SPCheckOutType.None) {
+          item.File.CheckOut();
+          systemCheckIn = true;
+        }
+        switch (mode) {
+          case SPModelCommitMode.Default:
+            item.Update();
+            break;
+          case SPModelCommitMode.OverwriteVersion:
+            item.UpdateOverwriteVersion();
+            break;
+          case SPModelCommitMode.SystemUpdate:
+            item.SystemUpdate();
+            break;
+          case SPModelCommitMode.SystemUpdateOverwriteVersion:
+            item.SystemUpdate(false);
+            break;
+        }
+        if (systemCheckIn) {
+          item.File.CheckIn(String.Empty);
+        }
       }
     }
 
@@ -746,7 +910,22 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     SPObjectCache ISPModelManagerInternal.ObjectCache {
-      get { return objectCache; }
+      get {
+        if (objectCache == null) {
+          objectCache = new SPObjectCache(this.Site);
+        }
+        return objectCache;
+      }
+      set {
+        if (objectCache != null) {
+          throw new InvalidOperationException();
+        }
+        objectCache = value;
+      }
+    }
+
+    IEnumerable<SPModelUsage> ISPModelManagerInternal.ContextLists {
+      get { return Enumerable.AsEnumerable(currentLists); }
     }
 
     SPModel ISPModelManagerInternal.TryCreateModel(ISPListItemAdapter adapter, bool readOnly) {
@@ -770,6 +949,10 @@ namespace Codeless.SharePoint.ObjectModel {
 
     SPModelCollection ISPModelManager.GetItems(CamlExpression query, uint limit) {
       return this.GetItems<T>(query, limit);
+    }
+
+    SPModelCollection ISPModelManager.GetItems(CamlExpression query, uint limit, uint startRow) {
+      return this.GetItems<T>(query, limit, startRow);
     }
 
     SPModelCollection ISPModelManager.GetItems(CamlExpression query, uint limit, string[] keywords, KeywordInclusion keywordInclusion) {
@@ -800,12 +983,12 @@ namespace Codeless.SharePoint.ObjectModel {
       return Create(modelType, filename);
     }
 
+    void ISPModelManager.Recycle(object item) {
+      Recycle(ValidateModel(item));
+    }
+
     void ISPModelManager.Delete(object item) {
-      CommonHelper.ConfirmNotNull(item, "item");
-      if (!(item is SPModel) || ((SPModel)item).Manager != this) {
-        throw new ArgumentException("item");
-      }
-      Delete((T)item);
+      Delete(ValidateModel(item));
     }
 
     void ISPModelManager.CommitChanges() {
@@ -813,11 +996,7 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     void ISPModelManager.CommitChanges(object item) {
-      CommonHelper.ConfirmNotNull(item, "item");
-      if (!(item is SPModel) || ((SPModel)item).Manager != this) {
-        throw new ArgumentException("item");
-      }
-      CommitChanges((T)item);
+      CommitChanges(ValidateModel(item));
     }
 
     void ISPModelManager.CommitChanges(SPModelCommitMode mode) {
@@ -825,11 +1004,21 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     void ISPModelManager.CommitChanges(object item, SPModelCommitMode mode) {
-      CommonHelper.ConfirmNotNull(item, "item");
-      if (!(item is SPModel) || ((SPModel)item).Manager != this) {
-        throw new ArgumentException("item");
+      CommitChanges(ValidateModel(item), mode);
+    }
+    #endregion
+
+    #region Helper class
+    private class SPModelUsageEqualityComparer : EqualityComparer<SPModelUsage> {
+      public new static readonly SPModelUsageEqualityComparer Default = new SPModelUsageEqualityComparer();
+
+      public override bool Equals(SPModelUsage x, SPModelUsage y) {
+        return x.ListId == y.ListId;
       }
-      CommitChanges((T)item, mode);
+
+      public override int GetHashCode(SPModelUsage obj) {
+        return obj.ListId.GetHashCode();
+      }
     }
     #endregion
   }

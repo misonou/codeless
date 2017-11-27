@@ -120,6 +120,10 @@ namespace Codeless.SharePoint.ObjectModel {
     public string DefaultViewQuery { get; set; }
 
     /// <summary>
+    /// Gets or sets whether the list is hidden.
+    /// </summary>
+    public SPOption Hidden { get; set; }
+    /// <summary>
     /// Gets or sets whether attachment is enabled.
     /// </summary>
     public SPOption EnableAttachments { get; set; }

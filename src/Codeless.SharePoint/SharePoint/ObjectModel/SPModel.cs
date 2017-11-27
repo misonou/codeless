@@ -203,7 +203,7 @@ namespace Codeless.SharePoint.ObjectModel {
           return;
       }
     }
-    
+
     public static void Watch<T>(SPSite site, EventHandler<SPChangeMonitorEventArgs> listener) {
       CommonHelper.ConfirmNotNull(listener, "listener");
       SPModelMonitor<T>.GetMonitor(site).ObjectChanged += listener;
@@ -346,6 +346,22 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     /// <summary>
+    /// Gets the default manager instantiated with the specified site and an existing SharePoint object cache.
+    /// Actual type of the created manager can be set through <see cref="SPModelManagerDefaultTypeAttribute"/> on the model type.
+    /// If there is no <see cref="SPModelManagerDefaultTypeAttribute"/> specified, an <see cref="SPModelManager{T}"/> object is instantiated with <paramref name="type"/>.
+    /// </summary>
+    /// <param name="type">Model type.</param>
+    /// <param name="contextWeb">A site object.</param>
+    /// <param name="cache">An instance of SharePoint object cache.</param>
+    /// <returns>A manager object.</returns>
+    public static ISPModelManager GetDefaultManager(Type type, SPWeb contextWeb, SPObjectCache cache) {
+      SPModelDescriptor descriptor = SPModelDescriptor.Resolve(type);
+      ISPModelManagerInternal manager = descriptor.CreateManager(contextWeb);
+      manager.ObjectCache = cache;
+      return manager;
+    }
+
+    /// <summary>
     /// Gets all lists under the specified site and all its descendant sites which contains the content type associated with the model type.
     /// </summary>
     /// <param name="type">Model type.</param>
@@ -391,9 +407,6 @@ namespace Codeless.SharePoint.ObjectModel {
         contentTypeId = adapter.ContentTypeId;
       } catch (MemberAccessException) {
         return null;
-      }
-      if (adapter.Web.AvailableContentTypes[contentTypeId] == null) {
-        contentTypeId = contentTypeId.Parent;
       }
       SPModelDescriptor descriptor;
       try {
@@ -673,7 +686,7 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     int ISPModelMetaData.CheckOutUserID {
-      get { 
+      get {
         SPPrincipal p = this.Adapter.GetUserFieldValue(SPBuiltInFieldName.CheckoutUser);
         return p == null ? 0 : p.ID;
       }

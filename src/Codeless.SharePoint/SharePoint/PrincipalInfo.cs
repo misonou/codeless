@@ -174,21 +174,24 @@ namespace Codeless.SharePoint {
     /// <returns>A enumerable object containing resolved email addresses.</returns>
     public static IEnumerable<string> ResolveEmailAddresses(SPPrincipal member) {
       CommonHelper.ConfirmNotNull(member, "member");
-      IDisposable implicitScope = null;
-      try {
-        PrincipalContextScope.Current.GetType();
-      } catch (MemberAccessException) {
-        implicitScope = CreatePrincipalContextScope();
-      }
-      try {
-        foreach (PrincipalInfo info in PrincipalInfo.Resolve(member, true)) {
-          if (info.IsResolved && !CommonHelper.IsNullOrWhiteSpace(info.EmailAddress)) {
-            yield return info.EmailAddress;
-          }
+      using (HostingEnvironment.Impersonate()) {
+        IDisposable implicitScope = null;
+        try {
+          PrincipalContextScope.Current.GetType();
+        } catch (MemberAccessException) {
+          implicitScope = CreatePrincipalContextScope();
         }
-      } finally {
-        if (implicitScope != null) {
-          implicitScope.Dispose();
+        try {
+          PrincipalResolver resolver = new PrincipalResolver(true);
+          foreach (PrincipalInfo info in resolver.Resolve(member, implicitScope)) {
+            if (info.IsResolved && !CommonHelper.IsNullOrWhiteSpace(info.EmailAddress)) {
+              yield return info.EmailAddress;
+            }
+          }
+        } finally {
+          if (implicitScope != null) {
+            implicitScope.Dispose();
+          }
         }
       }
     }
@@ -202,23 +205,26 @@ namespace Codeless.SharePoint {
     /// <returns>A enumerable object containing resolved email addresses.</returns>
     public static IEnumerable<string> ResolveEmailAddresses(IEnumerable<SPPrincipal> members) {
       CommonHelper.ConfirmNotNull(members, "members");
-      IDisposable implicitScope = null;
-      try {
-        PrincipalContextScope.Current.GetType();
-      } catch (MemberAccessException) {
-        implicitScope = CreatePrincipalContextScope();
-      }
-      try {
-        foreach (SPPrincipal member in members) {
-          foreach (PrincipalInfo info in PrincipalInfo.Resolve(member, true)) {
-            if (info.IsResolved && !CommonHelper.IsNullOrWhiteSpace(info.EmailAddress)) {
-              yield return info.EmailAddress;
+      using (HostingEnvironment.Impersonate()) {
+        IDisposable implicitScope = null;
+        try {
+          PrincipalContextScope.Current.GetType();
+        } catch (MemberAccessException) {
+          implicitScope = CreatePrincipalContextScope();
+        }
+        try {
+          PrincipalResolver resolver = new PrincipalResolver(true);
+          foreach (SPPrincipal member in members) {
+            foreach (PrincipalInfo info in resolver.Resolve(member, implicitScope)) {
+              if (info.IsResolved && !CommonHelper.IsNullOrWhiteSpace(info.EmailAddress)) {
+                yield return info.EmailAddress;
+              }
             }
           }
-        }
-      } finally {
-        if (implicitScope != null) {
-          implicitScope.Dispose();
+        } finally {
+          if (implicitScope != null) {
+            implicitScope.Dispose();
+          }
         }
       }
     }

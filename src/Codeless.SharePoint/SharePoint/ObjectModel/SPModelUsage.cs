@@ -31,22 +31,20 @@ namespace Codeless.SharePoint.ObjectModel {
     public Guid ListId { get; private set; }
     public SPList List { get; private set; }
 
-    public SPModelUsage EnsureList(SPSite site) {
-      CommonHelper.ConfirmNotNull(site, "site");
+    public SPModelUsage EnsureList(SPObjectCache objectCache) {
+      CommonHelper.ConfirmNotNull(objectCache, "objectCache");
       if (this.List != null || this.ListId == Guid.Empty) {
-        return this;
-      }
-      SPWeb web = site.TryGetWebForCurrentUser(this.WebId);
-      if (web == null) {
         return this;
       }
       try {
         using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
-          return new SPModelUsage(web.Lists[this.ListId], this.ContentTypeId, true);
+          SPList list = objectCache.GetList(this.WebId, this.ListId);
+          if (list != null) {
+            return new SPModelUsage(list, this.ContentTypeId, true);
+          }
         }
-      } catch (Exception) {
-        return this;
-      }
+      } catch { }
+      return this;
     }
 
     public SPModelUsage GetWithoutList() {
@@ -126,7 +124,8 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     public IList<SPList> GetListCollection() {
-      return this.Distinct(ListIdComparer.Default).Select(v => v.EnsureList(parentSite).List).Where(v => v != null).ToArray();
+      SPObjectCache objectCache = new SPObjectCache(parentSite);
+      return this.Distinct(ListIdComparer.Default).Select(v => v.EnsureList(objectCache).List).Where(v => v != null).ToArray();
     }
 
     private class ListIdComparer : IEqualityComparer<SPModelUsage> {
