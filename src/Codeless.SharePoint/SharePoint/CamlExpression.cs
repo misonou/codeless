@@ -773,7 +773,7 @@ namespace Codeless.SharePoint {
     protected override void WriteXml(XmlWriter writer, Hashtable bindings) {
       if (operatorValue == CamlBinaryOperator.Eq || operatorValue == CamlBinaryOperator.Neq) {
         try {
-          value.Bind(bindings);
+          BindValue(value, bindings);
         } catch (CamlParameterBindingNullException) {
           writer.WriteStartElement(operatorValue == CamlBinaryOperator.Eq ? CompareOperatorString.IsNull : CompareOperatorString.IsNotNull);
           WriteXmlStatic(fieldRef, writer, bindings);
