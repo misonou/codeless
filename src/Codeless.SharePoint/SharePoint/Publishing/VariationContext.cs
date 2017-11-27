@@ -2,6 +2,7 @@
 using Microsoft.SharePoint.Publishing;
 using System;
 using System.Globalization;
+using System.Web;
 
 namespace Codeless.SharePoint.Publishing {
   /// <summary>
@@ -75,28 +76,44 @@ namespace Codeless.SharePoint.Publishing {
     public CultureInfo Culture { get; private set; }
 
     private void InitializeObject(SPWeb web) {
-      if (PublishingWeb.IsPublishingWeb(web)) {
-        PublishingWeb currentWeb = PublishingWeb.GetPublishingWeb(web);
-        VariationLabel currentLabel = GetVariationLabel(currentWeb);
-        if (currentLabel != null) {
-          this.IsVariationWeb = true;
-          this.IsSource = currentLabel.IsSource;
-          this.TopWebServerRelativeUrl = new Uri(currentLabel.TopWebUrl).AbsolutePath;
-          this.VariationLabel = currentLabel.Title;
-          this.PagesListName = currentWeb.PagesListName;
-          int lcid;
-          if (Int32.TryParse(currentLabel.Locale, out lcid)) {
-            this.Culture = CultureInfo.GetCultureInfo(lcid);
-          } else {
-            this.Culture = CultureInfo.GetCultureInfo(currentLabel.Language);
-          }
+      SPSite cachedSuperUserSite = null;
+      if (HttpContext.Current != null) {
+        cachedSuperUserSite = HttpContext.Current.Items["SuperUserSite"] as SPSite;
+        if (cachedSuperUserSite != null && cachedSuperUserSite.ID != web.Site.ID) {
+          HttpContext.Current.Items["SuperUserSite"] = null;
         }
       }
-      if (!this.IsVariationWeb) {
-        this.TopWebServerRelativeUrl = web.Site.ServerRelativeUrl;
-        this.VariationLabel = String.Empty;
-        this.PagesListName = "Pages";
-        this.Culture = web.UICulture;
+      try {
+        if (PublishingWeb.IsPublishingWeb(web)) {
+          PublishingWeb currentWeb = PublishingWeb.GetPublishingWeb(web);
+          VariationLabel currentLabel = GetVariationLabel(currentWeb);
+          if (currentLabel != null) {
+            this.IsVariationWeb = true;
+            this.IsSource = currentLabel.IsSource;
+            this.TopWebServerRelativeUrl = new Uri(currentLabel.TopWebUrl).AbsolutePath;
+            this.VariationLabel = currentLabel.Title;
+            this.PagesListName = currentWeb.PagesListName;
+            int lcid;
+            if (Int32.TryParse(currentLabel.Locale, out lcid)) {
+              this.Culture = CultureInfo.GetCultureInfo(lcid);
+            } else {
+              this.Culture = CultureInfo.GetCultureInfo(currentLabel.Language);
+            }
+          }
+        }
+        if (!this.IsVariationWeb) {
+          this.TopWebServerRelativeUrl = web.Site.ServerRelativeUrl;
+          this.VariationLabel = String.Empty;
+          this.PagesListName = "Pages";
+          this.Culture = web.UICulture;
+        }
+      } finally {
+        // avoid messing up calls to publishing web API in the same HTTP request (FileNotFoundException)
+        // where SuperUserSite should be reserved for current site collection
+        // https://sharepoint.stackexchange.com/questions/83242
+        if (HttpContext.Current != null && (cachedSuperUserSite == null || cachedSuperUserSite.ID != web.Site.ID)) {
+          HttpContext.Current.Items["SuperUserSite"] = cachedSuperUserSite;
+        }
       }
     }
 

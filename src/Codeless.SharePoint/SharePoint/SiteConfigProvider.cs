@@ -45,8 +45,9 @@ namespace Codeless.SharePoint {
     }
 
     CacheDependency ISiteConfigProvider.GetCacheDependency() {
+      ISPModelManagerInternal manager = this.manager;
       foreach (SPModelUsage usage in manager.ContextLists) {
-        SPList list = usage.EnsureList(manager.Site).List;
+        SPList list = usage.EnsureList(manager.ObjectCache).List;
         if (list != null) {
           return new SPListCacheDependency(list);
         }

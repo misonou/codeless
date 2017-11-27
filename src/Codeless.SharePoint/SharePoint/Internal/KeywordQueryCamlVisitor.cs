@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Text;
 
 namespace Codeless.SharePoint.Internal {
-  internal class KeywordQueryCamlVisitor : CamlVisitor {
+  internal class KeywordQueryCamlVisitor : CamlExpressionVisitor {
     private readonly StringBuilder queryBuilder = new StringBuilder();
     private readonly IReadOnlyDictionary<string, string> managedPropertyDictionary;
     private readonly KeywordQuery query;
@@ -49,67 +49,92 @@ namespace Codeless.SharePoint.Internal {
       this.managedPropertyDictionary = SearchServiceHelper.GetManagedPropertyNames(query.Site);
     }
 
-    protected internal override void VisitViewFieldsFieldRefExpression(CamlParameterBindingFieldRef fieldName) {
-      query.SelectProperties.Add(GetPropertyName(fieldName));
+    public new void Visit(CamlExpression expression) {
+      base.Visit(expression);
+    }
+    
+    protected override CamlExpression VisitViewFieldsFieldRefExpression(CamlViewFieldsFieldRefExpression expression) {
+      query.SelectProperties.Add(GetPropertyName(expression.FieldName));
+      return base.VisitViewFieldsFieldRefExpression(expression);
     }
 
-    protected internal override void VisitOrderByFieldRefExpression(CamlParameterBindingFieldRef fieldName, CamlParameterBindingOrder orderBinding) {
-      string orderDirection = orderBinding.Bind(bindings);
+    protected override CamlExpression VisitOrderByFieldRefExpression(CamlOrderByFieldRefExpression expression) {
+      string orderDirection = expression.Order.Bind(bindings);
       if (orderDirection == Caml.BooleanString.True) {
-        query.SortList.Add(GetPropertyName(fieldName), SortDirection.Ascending);
+        query.SortList.Add(GetPropertyName(expression.FieldName), SortDirection.Ascending);
       } else {
-        query.SortList.Add(GetPropertyName(fieldName), SortDirection.Descending);
+        query.SortList.Add(GetPropertyName(expression.FieldName), SortDirection.Descending);
       }
+      return base.VisitOrderByFieldRefExpression(expression);
     }
 
-    protected internal override void VisitGroupByFieldRefExpression(CamlParameterBindingFieldRef fieldName) {
+    protected override CamlExpression VisitGroupByFieldRefExpression(CamlGroupByFieldRefExpression expression) {
       throw new NotSupportedException("Unsupported GroupBy expression");
     }
 
-    protected internal override void VisitWhereUnaryComparisonExpression(CamlUnaryOperator operatorValue, CamlParameterBindingFieldRef fieldName) {
-      throw new NotSupportedException(String.Format("Unsupported {0} unary operator", operatorValue));
+    protected override CamlExpression VisitWhereUnaryComparisonExpression(CamlWhereUnaryComparisonExpression expression) {
+      throw new NotSupportedException(String.Format("Unsupported {0} unary operator", expression.Operator));
     }
 
-    protected internal override void VisitWhereBinaryComparisonExpression(CamlBinaryOperator operatorValue, CamlParameterBindingFieldRef fieldName, ICamlParameterBinding value, bool? includeTimeValue) {
+    protected override CamlExpression VisitWhereBinaryComparisonExpression(CamlWhereBinaryComparisonExpression expression) {
       using (new WhereExpressionScope(this)) {
-        queryBuilder.Append(GetPropertyName(fieldName));
-        queryBuilder.Append(GetKqlOperator(operatorValue));
-        queryBuilder.Append("\"");
-        queryBuilder.Append(value.Bind(bindings));
-        if (operatorValue == CamlBinaryOperator.BeginsWith) {
-          queryBuilder.Append("*");
+        string propertyName = GetPropertyName(expression.FieldName);
+        if (expression.Operator == CamlBinaryOperator.In) {
+          bool appendOr = false;
+          queryBuilder.Append("(");
+          foreach (string value in expression.Value.BindCollection(bindings)) {
+            if (appendOr) {
+              queryBuilder.Append(" OR ");
+            }
+            queryBuilder.Append(propertyName);
+            queryBuilder.Append("=\"");
+            queryBuilder.Append(value);
+            queryBuilder.Append("\"");
+            appendOr = true;
+          }
+          queryBuilder.Append(")");
+        } else {
+          queryBuilder.Append(GetPropertyName(expression.FieldName));
+          queryBuilder.Append(GetKqlOperator(expression.Operator));
+          queryBuilder.Append("\"");
+          queryBuilder.Append(expression.Value.Bind(bindings));
+          if (expression.Operator == CamlBinaryOperator.BeginsWith) {
+            queryBuilder.Append("*");
+          }
+          queryBuilder.Append("\"");
         }
-        queryBuilder.Append("\"");
       }
+      return base.VisitWhereBinaryComparisonExpression(expression);
     }
 
-    protected internal override void VisitWhereLogicalExpression(CamlLogicalOperator operatorValue, CamlExpression leftExpression, CamlExpression rightExpression) {
+    protected override CamlExpression VisitWhereLogicalExpression(CamlWhereLogicalExpression expression) {
       CamlLogicalOperator previousOperator = currentOperater;
-      using (new WhereExpressionScope(this, operatorValue)) {
-        if (operatorValue == CamlLogicalOperator.Not) {
+      using (new WhereExpressionScope(this, expression.Operator)) {
+        if (expression.Operator == CamlLogicalOperator.Not) {
           queryBuilder.Append(" -");
-          Visit(leftExpression);
+          Visit(expression.Left);
         } else {
-          if (previousOperator != operatorValue) {
+          if (previousOperator != expression.Operator) {
             queryBuilder.Append("(");
           }
-          Visit(leftExpression);
-          if (operatorValue == CamlLogicalOperator.Or) {
+          Visit(expression.Left);
+          if (expression.Operator == CamlLogicalOperator.Or) {
             queryBuilder.Append(" OR ");
           } else {
             queryBuilder.Append(" ");
           }
-          Visit(rightExpression);
-          if (previousOperator != operatorValue) {
+          Visit(expression.Right);
+          if (previousOperator != expression.Operator) {
             queryBuilder.Append(")");
           }
         }
       }
+      return expression;
     }
 
-    protected internal override void VisitWhereExpression(CamlExpression expression) {
+    protected override CamlExpression VisitWhereExpression(CamlWhereExpression expression) {
       using (new WhereExpressionScope(this)) {
-        Visit(expression);
+        return base.VisitWhereExpression(expression);
       }
     }
 
