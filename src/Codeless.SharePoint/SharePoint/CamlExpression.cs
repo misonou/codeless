@@ -1175,9 +1175,9 @@ namespace Codeless.SharePoint {
     protected override CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       switch (x.Type) {
         case CamlExpressionType.GroupByFieldRef:
-          return new CamlGroupByExpression(ConcatExpressions((CamlGroupByFieldRefExpression)x, selfPreceding));
+          return new CamlGroupByExpression(ConcatExpressions((CamlGroupByFieldRefExpression)x, selfPreceding), collapse);
         case CamlExpressionType.GroupBy:
-          return new CamlGroupByExpression(ConcatExpressions((CamlGroupByExpression)x, selfPreceding));
+          return new CamlGroupByExpression(ConcatExpressions((CamlGroupByExpression)x, selfPreceding), collapse);
       }
       return base.HandleAnd(x, selfPreceding);
     }

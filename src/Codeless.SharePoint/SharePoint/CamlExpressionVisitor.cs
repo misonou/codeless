@@ -235,7 +235,7 @@ namespace Codeless.SharePoint {
         IEnumerable<CamlFieldRefExpression> fields = dst.OfType<ICamlFieldRefComponent>().SelectMany(v => v.EnumerateFieldRefExpression());
         switch (expression.Type) {
           case CamlExpressionType.GroupBy:
-            return new CamlGroupByExpression(fields.OfType<CamlGroupByFieldRefExpression>());
+            return new CamlGroupByExpression(fields.OfType<CamlGroupByFieldRefExpression>(), ((CamlGroupByExpression)(object)expression).Collapse);
           case CamlExpressionType.OrderBy:
             return new CamlOrderByExpression(fields.OfType<CamlOrderByFieldRefExpression>());
           case CamlExpressionType.ViewFields:
