@@ -27,6 +27,7 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
 
     public SPModelQueryExpressionTranslateResult Translate(Expression expression) {
       string[] allowedFields = null;
+      ISPModelManagerInternal manager = this.manager;
       if (!useOfficeSearch && manager.ImplicitQueryMode == SPModelImplicitQueryMode.ListQuery) {
         SPList targetList = manager.ContextLists.First().EnsureList(manager.ObjectCache).List;
         if (targetList != null) {
