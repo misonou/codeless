@@ -683,8 +683,18 @@ namespace Codeless.SharePoint {
     /// </summary>
     /// <param name="item">A list item.</param>
     public static void EnsureApproved(this SPListItem item) {
+      EnsureApproved(item, String.Empty);
+    }
+
+    /// <summary>
+    /// Ensures the specified list item are approved. If the list item is under list folders, all parent folders are also approved.
+    /// </summary>
+    /// <param name="item">A list item.</param>
+    /// <param name="comment">Comment message.</param>
+    public static void EnsureApproved(this SPListItem item, string comment) {
       if (item.ModerationInformation != null && item.ModerationInformation.Status != SPModerationStatusType.Approved) {
         item.ModerationInformation.Status = SPModerationStatusType.Approved;
+        item.ModerationInformation.Comment = comment;
         item.Update();
       }
       SPFolder folder;
@@ -694,7 +704,7 @@ namespace Codeless.SharePoint {
         folder = item.File.ParentFolder;
       }
       if (folder != null && folder.ParentListId != Guid.Empty && folder.Item != null) {
-        folder.Item.EnsureApproved();
+        folder.Item.EnsureApproved(comment);
       }
     }
 
@@ -703,8 +713,17 @@ namespace Codeless.SharePoint {
     /// </summary>
     /// <param name="folder">An <see cref="SPFolder"/> object.</param>
     public static void EnsureApproved(this SPFolder folder) {
+      EnsureApproved(folder, String.Empty);
+    }
+
+    /// <summary>
+    /// Ensures the specified folder and all parent folders are approved.
+    /// </summary>
+    /// <param name="folder">An <see cref="SPFolder"/> object.</param>
+    /// <param name="comment">Comment message.</param>
+    public static void EnsureApproved(this SPFolder folder, string comment) {
       if (folder.Item != null) {
-        folder.Item.EnsureApproved();
+        folder.Item.EnsureApproved(comment);
       }
     }
 

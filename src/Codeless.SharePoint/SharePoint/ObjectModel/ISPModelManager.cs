@@ -40,6 +40,15 @@ namespace Codeless.SharePoint.ObjectModel {
     SPModelCollection GetItems(CamlExpression query, uint limit);
 
     /// <summary>
+    /// Gets items of the associated content type(s) that satisfy the condition.
+    /// </summary>
+    /// <param name="query">CAML query expression.</param>
+    /// <param name="limit">Maximum number of items to be returned.</param>
+    /// <param name="startRow">Number of items to skip from start.</param>
+    /// <returns>A collection containing the returned items.</returns>
+    SPModelCollection GetItems(CamlExpression query, uint limit, uint startRow);
+
+    /// <summary>
     /// Performs a keyword search against the items of the associated content type(s).
     /// </summary>
     /// <param name="query">CAML query expression.</param>
@@ -100,6 +109,12 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="filename">File or folder name.</param>
     /// <returns>An item of the specified content type.</returns>
     object Create(Type modelType, string filename);
+
+    /// <summary>
+    /// Moves the specified item to recycle bin.
+    /// </summary>
+    /// <param name="model">An item to be recycled.</param>
+    void Recycle(object model);
 
     /// <summary>
     /// Deletes the specified item from a list. 

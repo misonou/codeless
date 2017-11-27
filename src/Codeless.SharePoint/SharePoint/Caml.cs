@@ -296,6 +296,7 @@ namespace Codeless.SharePoint {
       public const string ServerTemplate = "ServerTemplate";
       public const string Hidden = "Hidden";
       public const string ID = "ID";
+      public const string Collapse = "Collapse";
     }
 
     internal enum EmptyExpressionType {
@@ -342,6 +343,22 @@ namespace Codeless.SharePoint {
       /// <returns>A parameter binding which can be supplied to expression building methods.</returns>
       public static CamlParameterBindingOrder Order(string parameterName) {
         return new CamlParameterName(parameterName);
+      }
+      /// <summary>
+      /// Creates a parameter binding to a boolean string "TRUE" or "FALSE".
+      /// </summary>
+      /// <param name="parameterName">Unique name to identify this parameter when binding values.</param>
+      /// <returns>A parameter binding which can be supplied to expression building methods.</returns>
+      public static CamlParameterBindingBooleanString BooleanString(string parameterName) {
+        return new CamlParameterBindingBooleanString(new CamlParameterName(parameterName));
+      }
+      /// <summary>
+      /// Creates a parameter binding to a boolean value.
+      /// </summary>
+      /// <param name="parameterName">Unique name to identify this parameter when binding values.</param>
+      /// <returns>A parameter binding which can be supplied to expression building methods.</returns>
+      public static ICamlParameterBinding Boolean(string parameterName) {
+        return new CamlParameterBindingBoolean(new CamlParameterName(parameterName));
       }
       /// <summary>
       /// Creates a parameter binding to an integer value or a list of integer values.
@@ -508,6 +525,12 @@ namespace Codeless.SharePoint {
     public static CamlExpression ViewFields(params CamlParameterBindingFieldRef[] fieldName) {
       return new CamlViewFieldsExpression(fieldName.Select(v => new CamlViewFieldsFieldRefExpression(v)));
     }
+    public static CamlExpression ViewFields(IEnumerable<string> fieldName) {
+      return new CamlViewFieldsExpression(fieldName.Select(v => new CamlViewFieldsFieldRefExpression(v)));
+    }
+    public static CamlExpression ViewFields(IEnumerable<CamlParameterBindingFieldRef> fieldName) {
+      return new CamlViewFieldsExpression(fieldName.Select(v => new CamlViewFieldsFieldRefExpression(v)));
+    }
     public static CamlExpression OrderBy(CamlParameterBindingFieldRef fieldName, CamlParameterBindingOrder order) {
       return new CamlOrderByExpression(new CamlOrderByFieldRefExpression(fieldName, order));
     }
@@ -525,6 +548,24 @@ namespace Codeless.SharePoint {
     }
     public static CamlExpression GroupBy(params CamlParameterBindingFieldRef[] fieldName) {
       return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)));
+    }
+    public static CamlExpression GroupBy(string[] fieldName, bool collapse) {
+      return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)), new CamlParameterBindingBooleanString(collapse));
+    }
+    public static CamlExpression GroupBy(CamlParameterBindingFieldRef[] fieldName, CamlParameterBindingBooleanString collapse) {
+      return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)), collapse);
+    }
+    public static CamlExpression GroupBy(IEnumerable<string> fieldName) {
+      return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)));
+    }
+    public static CamlExpression GroupBy(IEnumerable<CamlParameterBindingFieldRef> fieldName) {
+      return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)));
+    }
+    public static CamlExpression GroupBy(IEnumerable<string> fieldName, bool collapse) {
+      return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)), new CamlParameterBindingBooleanString(collapse));
+    }
+    public static CamlExpression GroupBy(IEnumerable<CamlParameterBindingFieldRef> fieldName, CamlParameterBindingBooleanString collapse) {
+      return new CamlGroupByExpression(fieldName.Select(v => new CamlGroupByFieldRefExpression(v)), collapse);
     }
 
     public static CamlExpression ListsScope(SPBaseType baseType) {
@@ -916,7 +957,7 @@ namespace Codeless.SharePoint {
 
       using (XmlReader reader = new XmlTextReader(new StringReader(value))) {
         while (reader.Read()) {
-        rewind:
+          rewind:
           switch (reader.NodeType) {
             case XmlNodeType.Element:
               switch (reader.LocalName) {
@@ -925,6 +966,10 @@ namespace Codeless.SharePoint {
                   break;
                 case Element.GroupBy:
                   currentState = ParseState.GroupBy;
+                  string collapse = reader.GetAttribute(Attribute.Collapse);
+                  if (collapse != null) {
+                    parsedExpressions.Push(parsedExpressions.Pop() + new CamlGroupByExpression(new CamlGroupByFieldRefExpression[0], new CamlParameterBindingBooleanString(BooleanString.True.Equals(collapse, StringComparison.OrdinalIgnoreCase))));
+                  }
                   break;
                 case Element.ViewFields:
                   currentState = ParseState.ViewFields;
