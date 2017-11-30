@@ -22,6 +22,7 @@ namespace Codeless.SharePoint {
   [DebuggerDisplay("{GetDebuggerDisplay(),nq}")]
   public abstract class CamlExpression : Caml {
     private static readonly Hashtable debugBindings = new ReadOnlyHashtable();
+    private static readonly CamlExpression emptyViewFields = new CamlViewFieldsExpression(new CamlViewFieldsFieldRefExpression[0]);
 
     private sealed class ReadOnlyHashtable : Hashtable {
       public override void Add(object key, object value) {
@@ -188,7 +189,7 @@ namespace Codeless.SharePoint {
         }
         return new CamlViewFieldsExpression(fieldRefs.Select(CamlFieldRefExpression.ConvertToViewFieldsFieldRefExpression));
       }
-      return null;
+      return emptyViewFields;
     }
 
     /// <summary>
@@ -1530,10 +1531,6 @@ namespace Codeless.SharePoint {
 
     protected override string ToString(XmlWriterSettings settings, Hashtable bindings) {
       return String.Empty;
-    }
-
-    public override CamlExpression GetViewFieldsExpression() {
-      return this;
     }
 
     protected override void Visit(CamlVisitor visitor) { }
