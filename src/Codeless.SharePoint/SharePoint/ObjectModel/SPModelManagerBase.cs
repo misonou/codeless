@@ -175,7 +175,7 @@ namespace Codeless.SharePoint.ObjectModel {
     private readonly SPWeb currentWeb;
     private readonly SPModelDescriptor descriptor;
     private readonly ICollection<SPModelUsage> currentLists = new HashSet<SPModelUsage>(SPModelUsageEqualityComparer.Default);
-    private readonly HashSet<ISPListItemAdapter> itemsToSave = new HashSet<ISPListItemAdapter>();
+    private readonly HashSet<SPModel> itemsToSave = new HashSet<SPModel>();
     private readonly SPModelImplicitQueryMode queryMode;
     private readonly uint throttlingLimit;
     private readonly bool explicitListScope;
@@ -622,9 +622,9 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     /// <param name="mode">An value of <see cref="Codeless.SharePoint.ObjectModel.SPModelCommitMode"/> representing how a list item is updated.</param>
     protected void CommitChanges(SPModelCommitMode mode) {
-      List<ISPListItemAdapter> itemsToSaveCopy = new List<ISPListItemAdapter>(itemsToSave);
-      foreach (ISPListItemAdapter item in itemsToSaveCopy) {
-        UpdateItem(item.ListItem, mode);
+      List<SPModel> itemsToSaveCopy = new List<SPModel>(itemsToSave);
+      foreach (SPModel item in itemsToSaveCopy) {
+        UpdateItem(item.Adapter.ListItem, mode);
         itemsToSave.Remove(item);
       }
     }
@@ -637,9 +637,9 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <exception cref="System.ArgumentException">Supplied item does not belongs to this manager - item</exception>
     protected void CommitChanges(T item, SPModelCommitMode mode) {
       SPModel model = ValidateModel(item, false);
-      if (itemsToSave.Contains(model.Adapter)) {
+      if (itemsToSave.Contains(model)) {
         UpdateItem(model.Adapter.ListItem, mode);
-        itemsToSave.Remove(model.Adapter);
+        itemsToSave.Remove(model);
       }
     }
 
@@ -941,7 +941,7 @@ namespace Codeless.SharePoint.ObjectModel {
       return CommonHelper.TryCastOrDefault<SPModel>(TryCreateModel(adapter, readOnly));
     }
 
-    void ISPModelManagerInternal.SaveOnCommit(ISPListItemAdapter item) {
+    void ISPModelManagerInternal.SaveOnCommit(SPModel item) {
       CommonHelper.ConfirmNotNull(item, "item");
       itemsToSave.Add(item);
     }

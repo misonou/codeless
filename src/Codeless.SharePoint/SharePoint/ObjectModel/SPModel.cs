@@ -445,7 +445,7 @@ namespace Codeless.SharePoint.ObjectModel {
       try {
         calledByInternal = true;
         SPModel item = (SPModel)exactType.ModelInstanceType.CreateInstance();
-        item.Adapter = Intercept.ThroughProxy(adapter, new TransparentProxyInterceptor(), new[] { new SPListItemAdapterInterceptionBehavior(adapter, parentCollection) });
+        item.Adapter = Intercept.ThroughProxy(adapter, new TransparentProxyInterceptor(), new[] { new SPListItemAdapterInterceptionBehavior(item, adapter, parentCollection) });
         item.ParentCollection = parentCollection;
         return item;
       } finally {
