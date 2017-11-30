@@ -9,14 +9,17 @@ using System.Reflection;
 namespace Codeless.SharePoint.ObjectModel {
   internal class SPListItemAdapterInterceptionBehavior : IInterceptionBehavior {
     private readonly SPModelCollection parentCollection;
+    private readonly SPModel item;
     private readonly ISPListItemAdapter adapter;
     private readonly Dictionary<string, object> typedValues = new Dictionary<string, object>();
 
-    public SPListItemAdapterInterceptionBehavior(ISPListItemAdapter adapter, SPModelCollection parentCollection) {
+    public SPListItemAdapterInterceptionBehavior(SPModel item, ISPListItemAdapter adapter, SPModelCollection parentCollection) {
+      CommonHelper.ConfirmNotNull(item, "item");
       CommonHelper.ConfirmNotNull(adapter, "adapter");
       CommonHelper.ConfirmNotNull(parentCollection, "parentCollection");
       this.parentCollection = parentCollection;
       this.adapter = adapter;
+      this.item = item;
     }
 
     public bool WillExecute {
@@ -48,7 +51,7 @@ namespace Codeless.SharePoint.ObjectModel {
                 return input.CreateExceptionMethodReturn(ex);
               }
             } else {
-              ((INotifyCollectionChanged)result.ReturnValue).CollectionChanged += ((sender, e) => parentCollection.Manager.SaveOnCommit(adapter));
+              ((INotifyCollectionChanged)result.ReturnValue).CollectionChanged += ((sender, e) => parentCollection.Manager.SaveOnCommit(item));
             }
           }
           typedValues[cacheKey] = result.ReturnValue;
@@ -63,7 +66,7 @@ namespace Codeless.SharePoint.ObjectModel {
         if (result.Exception == null) {
           string fieldName = (string)input.Arguments[0];
           typedValues[fieldName] = input.Arguments[1];
-          parentCollection.Manager.SaveOnCommit(adapter);
+          parentCollection.Manager.SaveOnCommit(item);
         }
         return result;
       }

@@ -7,6 +7,6 @@ namespace Codeless.SharePoint.ObjectModel {
     IEnumerable<SPModelUsage> ContextLists { get; }
 
     SPModel TryCreateModel(ISPListItemAdapter item, bool readOnly);
-    void SaveOnCommit(ISPListItemAdapter item);
+    void SaveOnCommit(SPModel item);
   }
 }
