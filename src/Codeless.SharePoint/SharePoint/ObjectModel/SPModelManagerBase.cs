@@ -176,9 +176,10 @@ namespace Codeless.SharePoint.ObjectModel {
     private readonly SPModelDescriptor descriptor;
     private readonly ICollection<SPModelUsage> currentLists = new HashSet<SPModelUsage>(SPModelUsageEqualityComparer.Default);
     private readonly HashSet<SPModel> itemsToSave = new HashSet<SPModel>();
-    private readonly SPModelImplicitQueryMode queryMode;
     private readonly uint throttlingLimit;
     private readonly bool explicitListScope;
+    private readonly bool currentWebOnly;
+    private bool contextInitialized;
     private SPObjectCache objectCache;
     private TermStore termStore;
     private CultureInfo workingCulture;
@@ -225,6 +226,7 @@ namespace Codeless.SharePoint.ObjectModel {
 
       using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
         this.currentWeb = currentWeb;
+        this.currentWebOnly = currentWebOnly;
         this.throttlingLimit = currentWeb.Site.WebApplication.MaxItemsPerThrottledOperation;
 
         this.descriptor = SPModelDescriptor.Resolve(typeof(T));
@@ -233,18 +235,7 @@ namespace Codeless.SharePoint.ObjectModel {
         if (contextLists != null) {
           contextLists.SelectMany(descriptor.GetUsages).ForEach(currentLists.Add);
           explicitListScope = true;
-        }
-        if (contextLists == null) {
-          descriptor.GetUsages(currentWeb, currentWebOnly).ForEach(currentLists.Add);
-        }
-        if (currentLists.Count > 1 && descriptor.BaseType == SPBaseType.UnspecifiedBaseType) {
-          this.queryMode = SPModelImplicitQueryMode.KeywordSearch;
-        } else if (currentLists.Count > 1) {
-          this.queryMode = SPModelImplicitQueryMode.SiteQuery;
-        } else if (currentLists.Count == 1) {
-          this.queryMode = SPModelImplicitQueryMode.ListQuery;
-        } else {
-          this.queryMode = SPModelImplicitQueryMode.None;
+          contextInitialized = true;
         }
       }
     }
@@ -276,7 +267,7 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <summary>
     /// Gets the <see cref="SPObjectCache"/> object. This object cache instance is used in <see cref="ISPListItemAdapter"/> objects created by this manager.
     /// </summary>
-    protected internal SPObjectCache ObjectCache {
+    protected SPObjectCache ObjectCache {
       get {
         if (objectCache == null) {
           objectCache = new SPObjectCache(this.Site);
@@ -288,11 +279,25 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <summary>
     /// Gets the query mode when calling overloads of <see cref="GetItems{TItem}()"/> or <see cref="GetItems{GetCount}()"/> which does not perform keyword search explicitly.
     /// </summary>
-    protected internal SPModelImplicitQueryMode ImplicitQueryMode {
-      get { return queryMode; }
+    protected SPModelImplicitQueryMode ImplicitQueryMode {
+      get {
+        EnsureContextInitialized();
+        if (currentLists.Count > 1 && descriptor.BaseType == SPBaseType.UnspecifiedBaseType) {
+          return SPModelImplicitQueryMode.KeywordSearch;
+        } else if (currentLists.Count > 1) {
+          return SPModelImplicitQueryMode.SiteQuery;
+        } else if (currentLists.Count == 1) {
+          return SPModelImplicitQueryMode.ListQuery;
+        } else {
+          return SPModelImplicitQueryMode.None;
+        }
+      }
     }
 
-    internal CultureInfo Culture {
+    /// <summary>
+    /// Gets the working culture of this manager.
+    /// </summary>
+    protected CultureInfo Culture {
       get {
         if (workingCulture == null) {
           VariationContext variationContext = new VariationContext(currentWeb);
@@ -300,10 +305,6 @@ namespace Codeless.SharePoint.ObjectModel {
         }
         return workingCulture;
       }
-    }
-
-    internal IEnumerable<SPModelUsage> ContextLists {
-      get { return Enumerable.AsEnumerable(currentLists); }
     }
 
     /// <summary>
@@ -346,12 +347,12 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <returns>A collection containing the returned items.</returns>
     protected internal SPModelCollection<TItem> GetItems<TItem>(CamlExpression query, uint limit, uint startRow) {
       int dummy;
-      if (query != Caml.False && queryMode != SPModelImplicitQueryMode.None) {
+      if (query != Caml.False && this.ImplicitQueryMode != SPModelImplicitQueryMode.None) {
         SPModelDescriptor typeInfo = SPModelDescriptor.Resolve(typeof(TItem));
         if (descriptor.Contains(typeInfo)) {
           CamlExpression contentTypedQuery = query + typeInfo.GetContentTypeExpression(descriptor);
           IEnumerable<ISPListItemAdapter> queryResultSet = null;
-          switch (queryMode) {
+          switch (this.ImplicitQueryMode) {
             case SPModelImplicitQueryMode.KeywordSearch:
               queryResultSet = ExecuteKeywordSearchAsAdapter(typeInfo, contentTypedQuery, (int)limit, (int)startRow, null, null, KeywordInclusion.AllKeywords, out dummy);
               break;
@@ -423,11 +424,11 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="query">CAML query expression.</param>with the associated content type(s)
     /// <returns>Number of items.</returns>
     protected internal int GetCount<TItem>(CamlExpression query) {
-      if (query != Caml.False && queryMode != SPModelImplicitQueryMode.None) {
+      if (query != Caml.False && this.ImplicitQueryMode != SPModelImplicitQueryMode.None) {
         SPModelDescriptor typeInfo = SPModelDescriptor.Resolve(typeof(TItem));
         if (descriptor.Contains(typeInfo)) {
           CamlExpression contentTypedQuery = query + typeInfo.GetContentTypeExpression(descriptor);
-          switch (queryMode) {
+          switch (this.ImplicitQueryMode) {
             case SPModelImplicitQueryMode.KeywordSearch:
               return GetCount<TItem>(query, null, KeywordInclusion.AllKeywords);
             case SPModelImplicitQueryMode.SiteQuery:
@@ -516,6 +517,8 @@ namespace Codeless.SharePoint.ObjectModel {
       if (exactType.ItemType != SPModelItemType.GenericItem && String.IsNullOrEmpty(name)) {
         throw new ArgumentNullException("File or folder name cannot be null.");
       }
+
+      EnsureContextInitialized();
       if (currentLists.Count > 1) {
         throw new InvalidOperationException("Ambiguous target list found. Try instanstite SPModelManager with SPList constructor to specify target list.");
       }
@@ -858,6 +861,16 @@ namespace Codeless.SharePoint.ObjectModel {
       }
     }
 
+    private void EnsureContextInitialized() {
+      if (!contextInitialized) {
+        descriptor.GetUsages(currentWeb, currentWebOnly).ForEach(currentLists.Add);
+        contextInitialized = true;
+        if (this.ImplicitQueryMode == SPModelImplicitQueryMode.ListQuery && currentLists.First().EnsureList(this.ObjectCache).List == null) {
+          currentLists.Clear();
+        }
+      }
+    }
+
     private SPModel ValidateModel(T item, bool requireFile) {
       CommonHelper.ConfirmNotNull(item, "item");
       SPModel model = item as SPModel;
@@ -934,11 +947,18 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     IEnumerable<SPModelUsage> ISPModelManagerInternal.ContextLists {
-      get { return Enumerable.AsEnumerable(currentLists); }
+      get {
+        EnsureContextInitialized();
+        return Enumerable.AsEnumerable(currentLists);
+      }
+    }
+
+    SPModelImplicitQueryMode ISPModelManagerInternal.ImplicitQueryMode {
+      get { return this.ImplicitQueryMode; }
     }
 
     SPModel ISPModelManagerInternal.TryCreateModel(ISPListItemAdapter adapter, bool readOnly) {
-      return CommonHelper.TryCastOrDefault<SPModel>(TryCreateModel(adapter, readOnly));
+      return TryCreateModel(adapter, readOnly) as SPModel;
     }
 
     void ISPModelManagerInternal.SaveOnCommit(SPModel item) {

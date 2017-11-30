@@ -773,7 +773,7 @@ namespace Codeless.SharePoint {
     protected override void WriteXml(XmlWriter writer, Hashtable bindings) {
       if (operatorValue == CamlBinaryOperator.Eq || operatorValue == CamlBinaryOperator.Neq) {
         try {
-          value.Bind(bindings);
+          BindValue(value, bindings);
         } catch (CamlParameterBindingNullException) {
           writer.WriteStartElement(operatorValue == CamlBinaryOperator.Eq ? CompareOperatorString.IsNull : CompareOperatorString.IsNotNull);
           WriteXmlStatic(fieldRef, writer, bindings);
@@ -1175,9 +1175,9 @@ namespace Codeless.SharePoint {
     protected override CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       switch (x.Type) {
         case CamlExpressionType.GroupByFieldRef:
-          return new CamlGroupByExpression(ConcatExpressions((CamlGroupByFieldRefExpression)x, selfPreceding));
+          return new CamlGroupByExpression(ConcatExpressions((CamlGroupByFieldRefExpression)x, selfPreceding), collapse);
         case CamlExpressionType.GroupBy:
-          return new CamlGroupByExpression(ConcatExpressions((CamlGroupByExpression)x, selfPreceding));
+          return new CamlGroupByExpression(ConcatExpressions((CamlGroupByExpression)x, selfPreceding), collapse);
       }
       return base.HandleAnd(x, selfPreceding);
     }
