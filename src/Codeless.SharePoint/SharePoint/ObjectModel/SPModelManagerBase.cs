@@ -863,7 +863,9 @@ namespace Codeless.SharePoint.ObjectModel {
 
     private void EnsureContextInitialized() {
       if (!contextInitialized) {
-        descriptor.GetUsages(currentWeb, currentWebOnly).ForEach(currentLists.Add);
+        if (currentWeb.DoesUserHavePermissions(SPBasePermissions.Open)) { 
+          descriptor.GetUsages(currentWeb, currentWebOnly).ForEach(currentLists.Add);
+        }
         contextInitialized = true;
         if (this.ImplicitQueryMode == SPModelImplicitQueryMode.ListQuery && currentLists.First().EnsureList(this.ObjectCache).List == null) {
           currentLists.Clear();
