@@ -5,78 +5,109 @@ using Microsoft.SharePoint.Taxonomy;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
+using System.Text;
 
 namespace Codeless.SharePoint.ObjectModel.Linq {
-  internal enum SPModelQueryExecuteMode {
-    Select,
-    First,
-    FirstOrDefault,
-    ElementAt,
-    ElementAtOrDefault,
-    Single,
-    SingleOrDefault,
-    Count,
-    Any,
-    All
-  }
-
-  internal class SPModelQueryExpressionTranslateResult {
-    public Type ModelType { get; set; }
-    public CamlExpression Expression { get; set; }
-    public LambdaExpression SelectExpression { get; set; }
-    public int Offset { get; set; }
-    public int Limit { get; set; }
-    public SPModelQueryExecuteMode ExecuteMode { get; set; }
-  }
-
   internal class SPModelQueryExpressionVisitor : IQToolkit.ExpressionVisitor {
-    private readonly Stack<SPModelQueryExpressionScope> stack = new Stack<SPModelQueryExpressionScope>();
-    private readonly SPModelQueryExpressionTranslateResult result = new SPModelQueryExpressionTranslateResult();
-    private readonly string[] allowedFields;
-    private readonly ISPModelManagerInternal manager;
+    private static readonly ParameterExpression pArr = Expression.Parameter(typeof(object[]), "args");
+    private static readonly ParameterExpression pRes = Expression.Parameter(typeof(IEnumerable), "result");
 
-    public SPModelQueryExpressionVisitor(ISPModelManagerInternal manager, string[] allowedFields) {
-      CommonHelper.ConfirmNotNull(manager, "manager");
+    private readonly SPModelQueryBuilder builder = new SPModelQueryBuilder();
+    private readonly ISPModelManagerInternal manager;
+    private readonly ReadOnlyCollection<ParameterExpression> parameters;
+    private SPModelQueryExpressionScope currentScope;
+    private ParameterExpression lambdaParam;
+    private bool invariantExpression;
+    private int exprTypes;
+
+    private SPModelQueryExpressionVisitor(ISPModelManagerInternal manager, ReadOnlyCollection<ParameterExpression> parameters) {
       this.manager = manager;
-      this.allowedFields = allowedFields;
-      this.result.Limit = (int)manager.Site.WebApplication.MaxItemsPerThrottledOperation;
+      this.parameters = parameters;
+      this.currentScope = new SPModelQueryExpressionScope(this);
     }
 
     public ISPModelManagerInternal Manager {
       get { return manager; }
     }
 
-    public bool IsFieldAllowed(string fieldName) {
-      return allowedFields == null || Array.IndexOf(allowedFields, fieldName) >= 0;
+    public static SPModelQueryBuilder Translate(ParameterizedExpression expression, ISPModelManagerInternal manager) {
+      CommonHelper.ConfirmNotNull(manager, "manager");
+      CommonHelper.ConfirmNotNull(expression, "expression");
+      SPModelQueryExpressionVisitor visitor = new SPModelQueryExpressionVisitor(manager, expression.Parameters);
+      visitor.Visit(expression);
+      return visitor.builder;
     }
 
-    public SPModelQueryExpressionTranslateResult Translate(Expression expression) {
-      CommonHelper.ConfirmNotNull(expression, "expression");
-      SPModelQueryExpressionScope currentScope = new SPModelQueryExpressionScope(this);
-      stack.Push(currentScope);
+    protected void Visit(ParameterizedExpression expression) {
+      base.VisitLambda(Expression.Lambda(expression.Expression, expression.Parameters.ToArray()));
+      builder.Expression = this.currentScope.Expression;
+      if (builder.SelectExpression != null) {
+        builder.SelectExpression = Expression.Lambda<SPModelParameterizedQuery.ResultEvaluator>(EnsureReturnObject(builder.SelectExpression), pRes, pArr);
+      }
+    }
 
-      Expression evaledExpression = PartialEvaluator.Eval(expression, CanBeEvaluatedLocally);
-      Visit(evaledExpression);
-      result.Expression = currentScope.Expression;
-      return result;
+    protected override Expression Visit(Expression expression) {
+      // extract expression that is invariant to the query to compile parameter evaluators later on
+      // directly mentioned invariant parameters are skipped because compilation is unncessary
+      if (expression != null && !invariantExpression && expression.NodeType != ExpressionType.Parameter && lambdaParam != null && !ContainsOrEquals(expression, lambdaParam)) {
+        invariantExpression = true;
+
+        Expression result = base.Visit(expression);
+        Expression body = EnsureReturnObject(result);
+        currentScope.ParameterName = "c" + builder.ParameterEvaluators.Count;
+        builder.ParameterEvaluators.Add(currentScope.ParameterName, Expression.Lambda<SPModelParameterizedQuery.ParameterEvaluator>(body, pArr).Compile());
+        invariantExpression = false;
+        return result;
+      }
+      return base.Visit(expression);
+    }
+
+    protected override Expression VisitConstant(ConstantExpression expression) {
+      // there should be no constant
+      throw new InvalidOperationException();
+    }
+
+    protected override Expression VisitParameter(ParameterExpression expression) {
+      if (builder.SelectExpression != null && expression == lambdaParam) {
+        // if the first parameter of selector expression is mentioned without distinguishable field access
+        // all content type columns should be selected
+        builder.SelectAllProperties = true;
+      }
+      if (parameters.Contains(expression)) {
+        currentScope.ParameterName = expression.Name;
+        if (invariantExpression) {
+          return Expression.Convert(Expression.ArrayIndex(pArr, Expression.Constant(parameters.IndexOf(expression))), expression.Type);
+        }
+      }
+      return expression;
+    }
+
+    protected override Expression VisitLambda(LambdaExpression expression) {
+      return invariantExpression ? expression : base.VisitLambda(expression);
     }
 
     protected override Expression VisitBinary(BinaryExpression expression) {
-      SPModelQueryExpressionScope currentScope = stack.Peek();
+      if (invariantExpression || builder.SelectExpression != null) {
+        return base.VisitBinary(expression);
+      }
+      SPModelQueryExpressionScope currentScope = this.currentScope;
       SPModelQueryExpressionScope childScope = new SPModelQueryExpressionScope(this);
       SPModelQueryExpressionScope childScopeTwo = null;
-      stack.Push(childScope);
+      this.currentScope = childScope;
 
-      Visit(expression.Left);
       if (expression.NodeType == ExpressionType.AndAlso || expression.NodeType == ExpressionType.OrElse) {
-        stack.Pop();
         childScopeTwo = new SPModelQueryExpressionScope(this);
-        stack.Push(childScopeTwo);
+        VisitConditionalBranch(expression.Left);
+        this.currentScope = childScopeTwo;
+        VisitConditionalBranch(expression.Right);
+      } else {
+        Visit(expression.Left);
+        Visit(expression.Right);
       }
-      Visit(expression.Right);
-
       switch (expression.NodeType) {
         case ExpressionType.AndAlso:
           currentScope.Expression = childScope.Expression & childScopeTwo.Expression;
@@ -85,18 +116,10 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
           currentScope.Expression = childScope.Expression | childScopeTwo.Expression;
           break;
         case ExpressionType.Equal:
-          if (childScope.Value == null) {
-            currentScope.Expression = childScope.GetExpression(s => HandleNullExpression(s, false));
-          } else {
-            currentScope.Expression = childScope.GetExpression((SPModelQueryExpressionScope.ExpressionGenerator)Caml.Equals);
-          }
+          currentScope.Expression = childScope.GetExpression(s => HandleEqualityComparison(s, CamlBinaryOperator.Eq));
           break;
         case ExpressionType.NotEqual:
-          if (childScope.Value == null) {
-            currentScope.Expression = childScope.GetExpression(s => HandleNullExpression(s, true));
-          } else {
-            currentScope.Expression = childScope.GetExpression(Caml.NotEquals);
-          }
+          currentScope.Expression = childScope.GetExpression(s => HandleEqualityComparison(s, CamlBinaryOperator.Neq));
           break;
         case ExpressionType.LessThan:
           currentScope.Expression = childScope.GetExpression(Caml.LessThan);
@@ -111,14 +134,16 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
           currentScope.Expression = childScope.GetExpression(Caml.GreaterThanOrEqual);
           break;
         default:
-          throw new NotSupportedException(String.Format("The binary operator '{0}' is not supported", expression.NodeType));
+          throw new NotSupportedException(String.Format("Binary operator '{0}' is not supported", expression.NodeType));
       }
-      stack.Pop();
+      this.currentScope = currentScope;
       return expression;
     }
 
     protected override Expression VisitTypeIs(TypeBinaryExpression expression) {
-      SPModelQueryExpressionScope currentScope = stack.Peek();
+      if (invariantExpression || builder.SelectExpression != null) {
+        return base.VisitTypeIs(expression);
+      }
       try {
         SPModelDescriptor descriptor = SPModelDescriptor.Resolve(expression.TypeOperand);
         currentScope.Expression = descriptor.GetContentTypeExpression(manager.Descriptor);
@@ -129,9 +154,12 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
     }
 
     protected override Expression VisitUnary(UnaryExpression expression) {
-      SPModelQueryExpressionScope currentScope = stack.Peek();
+      if (invariantExpression || builder.SelectExpression != null) {
+        return base.VisitUnary(expression);
+      }
+      SPModelQueryExpressionScope currentScope = this.currentScope;
       SPModelQueryExpressionScope childScope = new SPModelQueryExpressionScope(this);
-      stack.Push(childScope);
+      this.currentScope = childScope;
 
       Visit(expression.Operand);
       switch (expression.NodeType) {
@@ -144,56 +172,46 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
           childScope.CopyTo(currentScope);
           break;
         default:
-          throw new NotSupportedException(String.Format("The unary operator '{0}' is not supported", expression.NodeType));
+          throw new NotSupportedException(String.Format("Unary operator '{0}' is not supported", expression.NodeType));
       }
-      stack.Pop();
+      this.currentScope = currentScope;
       return expression;
     }
 
     protected override Expression VisitConditional(ConditionalExpression expression) {
-      if (expression.Test.NodeType == ExpressionType.Constant) {
-        if (true.Equals(((ConstantExpression)expression.Test).Value)) {
-          Visit(expression.IfTrue);
-        } else {
-          Visit(expression.IfFalse);
-        }
-      } else {
-        SPModelQueryExpressionScope currentScope = stack.Peek();
-        SPModelQueryExpressionScope childScope = new SPModelQueryExpressionScope(this);
-        CamlExpression condition, trueExpression, falseExpression;
-        stack.Push(childScope);
-
-        Visit(expression.Test);
-        condition = childScope.Expression;
-
-        childScope.Reset();
-        Visit(expression.IfTrue);
-        trueExpression = childScope.Expression;
-
-        childScope.Reset();
-        Visit(expression.IfFalse);
-        falseExpression = childScope.Expression;
-
-        currentScope.Expression = ((condition & trueExpression) | ((~condition) & falseExpression));
-        stack.Pop();
+      if (invariantExpression || builder.SelectExpression != null) {
+        return base.VisitConditional(expression);
       }
-      return expression;
-    }
+      SPModelQueryExpressionScope currentScope = this.currentScope;
+      SPModelQueryExpressionScope childScope = new SPModelQueryExpressionScope(this);
+      CamlExpression condition, trueExpression, falseExpression;
+      this.currentScope = childScope;
 
-    protected override Expression VisitConstant(ConstantExpression expression) {
-      IQueryable q = CommonHelper.TryCastOrDefault<IQueryable>(expression.Value);
-      if (q != null) {
-        if (q.Expression.NodeType == ExpressionType.Call) {
-          Visit(q.Expression);
-        }
-      } else {
-        stack.Peek().Value = expression.Value;
-      }
+      VisitConditionalBranch(expression.Test);
+      condition = childScope.Expression;
+
+      childScope.Reset();
+      Visit(expression.IfTrue);
+      trueExpression = childScope.Expression;
+
+      childScope.Reset();
+      Visit(expression.IfFalse);
+      falseExpression = childScope.Expression;
+
+      currentScope.Expression = ((condition & trueExpression) | ((~condition) & falseExpression));
+      this.currentScope = currentScope;
       return expression;
     }
 
     protected override Expression VisitMemberAccess(MemberExpression expression) {
-      SPModelQueryExpressionScope currentScope = stack.Peek();
+      if (invariantExpression) {
+        return base.VisitMemberAccess(expression);
+      }
+      currentScope.MemberType = expression.Type;
+      currentScope.Member = expression.Member;
+      currentScope.Field = default(SPModelQueryFieldInfo);
+      currentScope.FieldAssociations = null;
+
       switch (expression.Expression.NodeType) {
         case ExpressionType.Parameter:
         case ExpressionType.MemberAccess:
@@ -220,7 +238,7 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
                 currentScope.Field = SPModelQueryFieldInfo.CheckOutUserID;
                 break;
               default:
-                throw new NotSupportedException(String.Format("The member '{0}' is not supported", expression.Member.Name));
+                throw new NotSupportedException(String.Format("Member '{0}' is not supported", GetMemberFullName(expression.Member)));
             }
           } else if (expression.Member.DeclaringType == typeof(TaxonomyItem) || expression.Member.DeclaringType == typeof(SPPrincipal)) {
             switch (expression.Member.Name) {
@@ -229,195 +247,372 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
                 Visit(expression.Expression);
                 break;
               default:
-                throw new NotSupportedException(String.Format("The member '{0}' is not supported", expression.Member.Name));
+                throw new NotSupportedException(String.Format("Member '{0}' is not supported", GetMemberFullName(expression.Member)));
             }
           } else {
-            currentScope.MemberType = expression.Type;
-            currentScope.Member = expression.Member;
             currentScope.FieldAssociations = SPModelFieldAssociationCollection.GetByMember(expression.Member);
+            foreach (SPFieldAttribute field in currentScope.FieldAssociations.Fields) {
+              if (field.TypeAsString == "TaxonomyFieldType" || field.TypeAsString == "TaxonomyFieldTypeMulti") {
+                builder.TaxonomyFields.Add(field.ListFieldInternalName);
+              }
+            }
           }
           break;
         default:
-          throw new NotSupportedException(String.Format("The member '{0}' is not supported", expression.Member.Name));
+          throw new NotSupportedException(String.Format("Member '{0}' is not supported", GetMemberFullName(expression.Member)));
+      }
+      if (builder.SelectExpression != null) {
+        if (currentScope.Field.FieldRef != null) {
+          builder.AddSelectProperty(currentScope.Field.FieldRef);
+        } else if (currentScope.FieldAssociations.Queryable && expression.Member.MemberType == MemberTypes.Property && ((PropertyInfo)expression.Member).GetGetMethod().IsAbstract) {
+          builder.AddSelectProperty(currentScope.FieldAssociations.Fields.First().ListFieldInternalName);
+        } else {
+          builder.SelectAllProperties = true;
+        }
       }
       return expression;
     }
 
     protected override Expression VisitMethodCall(MethodCallExpression expression) {
-      SPModelQueryExpressionScope currentScope = stack.Peek();
-      SPModelQueryExpressionScope childScope = new SPModelQueryExpressionScope(this);
-      stack.Push(childScope);
+      if (invariantExpression) {
+        return base.VisitMethodCall(expression);
+      }
+      bool sameQueryable = expression.Method.DeclaringType == typeof(Queryable) && ContainsOrEquals(expression.Arguments[0], parameters[0]);
+      if (builder.SelectExpression != null && !sameQueryable) {
+        return base.VisitMethodCall(expression);
+      }
 
-      if (expression.Method.DeclaringType == typeof(Queryable)) {
-        Visit(expression.Arguments[0]);
-        currentScope.Expression = childScope.Expression;
-        childScope.Reset();
+      SPModelQueryExpressionScope currentScope = this.currentScope;
+      try {
+        SPModelQueryExpressionScope childScope = new SPModelQueryExpressionScope(this);
+        this.currentScope = childScope;
 
-        switch (expression.Method.Name) {
-          case "Where":
-            if (expression.Arguments.Count == 3) {
-              throw new NotSupportedException(String.Format("The method '{0}' with element's index used in the logic is not supported", expression.Method.Name));
-            }
-            Visit(expression.Arguments[1]);
-            currentScope.Expression += childScope.Expression;
-            break;
-          case "Union":
-            if (expression.Arguments.Count == 3) {
-              throw new NotSupportedException(String.Format("The method '{0}' with element's index used in the logic is not supported", expression.Method.Name));
-            }
-            Visit(expression.Arguments[1]);
-            currentScope.Expression |= childScope.Expression;
-            break;
-          case "Count":
-            result.ExecuteMode = Enum<SPModelQueryExecuteMode>.Parse(expression.Method.Name);
-            if (expression.Arguments.Count > 1) {
-              Visit(expression.Arguments[1]);
-              currentScope.Expression += childScope.Expression;
-            }
-            break;
-          case "All":
-          case "Any":
-          case "FirstOrDefault":
-          case "First":
-          case "SingleOrDefault":
-          case "Single":
-          case "ElementAtOrDefault":
-          case "ElementAt":
-            result.ExecuteMode = Enum<SPModelQueryExecuteMode>.Parse(expression.Method.Name);
-            if (result.ExecuteMode == SPModelQueryExecuteMode.ElementAt || result.ExecuteMode == SPModelQueryExecuteMode.ElementAtOrDefault) {
-              result.Limit += Math.Max(0, Convert.ToInt32(((ConstantExpression)expression.Arguments[1]).Value));
-            } else if (result.ExecuteMode == SPModelQueryExecuteMode.Single || result.ExecuteMode == SPModelQueryExecuteMode.SingleOrDefault) {
-              result.Limit = 2;
-            } else {
-              result.Limit = 1;
-            }
-            if (expression.Arguments.Count > 1) {
-              Visit(expression.Arguments[1]);
-              currentScope.Expression += childScope.Expression;
-            }
-            break;
-          case "Take":
-            result.Limit = Math.Max(0, Convert.ToInt32(((ConstantExpression)expression.Arguments[1]).Value));
-            break;
-          case "Skip":
-            result.Offset = Math.Max(0, Convert.ToInt32(((ConstantExpression)expression.Arguments[1]).Value));
-            break;
-          case "OrderBy":
-          case "ThenBy":
-            if (expression.Arguments.Count == 3) {
-              throw new NotSupportedException(String.Format("The method '{0}' with specified comparer is not supported", expression.Method.Name));
-            }
-            Visit(expression.Arguments[1]);
-            currentScope.Expression += childScope.GetExpression(s => Caml.OrderByAscending(s.FieldRef), true);
-            break;
-          case "OrderByDescending":
-          case "ThenByDescending":
-            if (expression.Arguments.Count == 3) {
-              throw new NotSupportedException(String.Format("The method '{0}' with specified comparer is not supported", expression.Method.Name));
-            }
-            Visit(expression.Arguments[1]);
-            currentScope.Expression += childScope.GetExpression(s => Caml.OrderByDescending(s.FieldRef), true);
-            break;
-          case "Select":
-            result.SelectExpression = (LambdaExpression)StripQuotes(expression.Arguments[1]);
-            break;
-          case "OfType":
-            result.ModelType = expression.Method.GetGenericArguments()[0];
-            break;
-          default:
-            throw new NotSupportedException(String.Format("The method '{0}' is not supported", expression.Method.Name));
+        if (sameQueryable) {
+          ValidateQueryableMethodCall(expression);
+
+          ParameterExpression currentLambdaParam = lambdaParam;
+          Visit(expression.Arguments[0]);
+          currentScope.Expression = childScope.Expression;
+          childScope.Reset();
+
+          currentScope.Expression += GetExpressionFromQueryableMethod(expression);
+          lambdaParam = currentLambdaParam;
+          return expression;
         }
-      } else if (expression.Method.DeclaringType == typeof(Enumerable)) {
-        switch (expression.Method.Name) {
-          case "Contains":
+        if (expression.Method.DeclaringType == typeof(Enumerable) || expression.Method.DeclaringType.IsOf(typeof(ICollection<>))) {
+          currentScope.Expression = GetExpressionFromEnumerableMethod(expression);
+          return expression;
+        }
+        if (expression.Method.DeclaringType == typeof(string)) {
+          currentScope.Expression = GetExpressionFromStringMethod(expression);
+          return expression;
+        }
+        if (expression.Method.Name == "Equals" && expression.Arguments.Count == 1) {
+          Visit(expression.Object);
+          Visit(expression.Arguments[0]);
+          currentScope.Expression = childScope.GetExpression((SPModelQueryExpressionScope.ExpressionGenerator)Caml.Equals);
+          return expression;
+        }
+        throw ThrowMethodNotSupported(expression.Method);
+      } finally {
+        this.currentScope = currentScope;
+      }
+    }
+
+    private CamlExpression GetExpressionFromQueryableMethod(MethodCallExpression expression) {
+      int argCount = expression.Arguments.Count;
+      if (argCount > 1) {
+        LambdaExpression lamdba = StripQuotes(expression.Arguments[1]) as LambdaExpression;
+        if (lamdba != null) {
+          lambdaParam = lamdba.Parameters[0];
+        }
+      }
+
+      switch (expression.Method.Name) {
+        case "Count":
+        case "Any":
+        case "FirstOrDefault":
+        case "First":
+        case "SingleOrDefault":
+        case "Single":
+          if (argCount == 2) {
+            Visit(expression.Arguments[1]);
+          }
+          builder.ExecuteMode = Enum<SPModelQueryExecuteMode>.Parse(expression.Method.Name);
+          AppendSelectExpression(expression, builder.ExecuteMode.ToString(), true);
+          return currentScope.Expression;
+
+        case "All":
+          Visit(expression.Arguments[1]);
+          builder.ExecuteMode = SPModelQueryExecuteMode.Any;
+          AppendSelectExpression(expression, builder.ExecuteMode.ToString(), true);
+          return ~currentScope.Expression;
+
+        case "ElementAtOrDefault":
+        case "ElementAt":
+          Visit(expression.Arguments[1]);
+          builder.Parameters[SPModelParameterizedQuery.PIndexOffset] = currentScope.ParameterName;
+          builder.ExecuteMode = expression.Method.Name == "ElementAt" ? SPModelQueryExecuteMode.First : SPModelQueryExecuteMode.FirstOrDefault;
+          AppendSelectExpression(expression, builder.ExecuteMode.ToString(), true, Expression.Constant(0));
+          return Caml.Empty;
+
+        case "Aggregate":
+        case "Average":
+        case "Max":
+        case "Min":
+        case "Sum":
+        case "Select":
+        case "SelectMany":
+          AppendSelectExpression(expression);
+          return Caml.Empty;
+
+        case "Take":
+          Visit(expression.Arguments[1]);
+          builder.Parameters[SPModelParameterizedQuery.PIndexLimit] = currentScope.ParameterName;
+          return Caml.Empty;
+
+        case "Skip":
+          Visit(expression.Arguments[1]);
+          builder.Parameters[SPModelParameterizedQuery.PIndexOffset] = currentScope.ParameterName;
+          return Caml.Empty;
+
+        case "OrderBy":
+        case "ThenBy":
+        case "OrderByDescending":
+        case "ThenByDescending":
+          CamlOrder dir = expression.Method.Name.Contains("Descending") ? CamlOrder.Descending : CamlOrder.Ascending;
+          Visit(expression.Arguments[1]);
+          return this.currentScope.GetExpression(s => Caml.OrderBy(s.FieldRef, dir), true);
+
+        case "Where":
+          Visit(expression.Arguments[1]);
+          return currentScope.Expression;
+
+        case "OfType":
+          if (builder.SelectExpression != null) {
+            AppendSelectExpression(expression);
+          } else {
+            if (builder.ModelType == null) {
+              builder.ContentTypeIds.AddRange(manager.Descriptor.ContentTypeIds);
+            }
+            builder.ModelType = expression.Method.GetGenericArguments()[0];
+            SPModelDescriptor descriptor;
+            try {
+              descriptor = SPModelDescriptor.Resolve(builder.ModelType);
+            } catch (ArgumentException) {
+              throw new NotSupportedException("'OfType' constraint must be used with valid model type or interface type");
+            }
+            builder.ContentTypeIds.RemoveAll(v => !descriptor.ContentTypeIds.Contains(v));
+          }
+          return Caml.Empty;
+      }
+      throw ThrowMethodNotSupported(expression.Method);
+    }
+
+    private void ValidateQueryableMethodCall(MethodCallExpression expression) {
+      const int Type_Predicate = 1;
+      const int Type_Skip = 2;
+      const int Type_Take = 4;
+      const int Type_Projection = 8;
+      const int Type_Aggregate = 16;
+
+      switch (expression.Method.Name) {
+        case "OfType":
+          return;
+
+        case "Count":
+        case "Any":
+        case "FirstOrDefault":
+        case "First":
+        case "SingleOrDefault":
+        case "Single":
+        case "All":
+        case "ElementAtOrDefault":
+        case "ElementAt":
+        case "Aggregate":
+        case "Average":
+        case "Max":
+        case "Min":
+        case "Sum":
+          exprTypes |= Type_Aggregate;
+          return;
+
+        case "OrderBy":
+        case "ThenBy":
+        case "OrderByDescending":
+        case "ThenByDescending":
+        case "Where":
+          if (expression.Arguments.Count == 3) {
+            throw ThrowMethodNotSupported(expression.Method);
+          }
+          exprTypes |= Type_Predicate;
+          return;
+
+        case "Skip":
+          if ((exprTypes & Type_Predicate) != 0) {
+            throw new NotSupportedException("'Where' or 'OrderBy' constraint after 'Skip' constraint is not supported");
+          }
+          if ((exprTypes & Type_Skip) != 0) {
+            throw new NotSupportedException("Multiple 'Skip' constraints is not supported");
+          }
+          exprTypes |= Type_Skip;
+          return;
+
+        case "Take":
+          if ((exprTypes & Type_Predicate) != 0) {
+            throw new NotSupportedException("'Where' or 'OrderBy' constraint after 'Take' constraint is not supported");
+          }
+          if ((exprTypes & Type_Skip) != 0) {
+            throw new NotSupportedException("'Skip' constraint after 'Take' constraint is not supported");
+          }
+          if ((exprTypes & Type_Take) != 0) {
+            throw new NotSupportedException("Multiple 'Take' constraints is not supported");
+          }
+          exprTypes |= Type_Take;
+          return;
+
+        case "Select":
+        case "SelectMany":
+          if ((exprTypes & Type_Predicate) != 0) {
+            throw new NotSupportedException("'Where' or 'OrderBy' constraint after result projection is not supported");
+          }
+          if ((exprTypes & Type_Skip) != 0) {
+            throw new NotSupportedException("'Skip' constraint after result projection is not supported");
+          }
+          if ((exprTypes & Type_Take) != 0) {
+            throw new NotSupportedException("'Take' constraint after result projection is not supported");
+          }
+          if ((exprTypes & Type_Projection) != 0) {
+            throw new NotSupportedException("Multiple result projections is not supported");
+          }
+          exprTypes |= Type_Projection;
+          return;
+      }
+      throw ThrowMethodNotSupported(expression.Method);
+    }
+
+    private CamlExpression GetExpressionFromStringMethod(MethodCallExpression expression) {
+      Visit(expression.Object);
+      switch (expression.Method.Name) {
+        case "StartsWith":
+          Visit(expression.Arguments[0]);
+          return currentScope.GetExpression(Caml.BeginsWith);
+      }
+      throw ThrowMethodNotSupported(expression.Method);
+    }
+
+    private CamlExpression GetExpressionFromEnumerableMethod(MethodCallExpression expression) {
+      switch (expression.Method.Name) {
+        case "Contains":
+          Expression argument;
+          if (expression.Method.IsStatic) {
             if (expression.Arguments.Count == 3) {
-              throw new NotSupportedException(String.Format("The method '{0}' with specified comparer is not supported", expression.Method.Name));
+              throw ThrowMethodNotSupported(expression.Method);
             }
             Visit(expression.Arguments[0]);
-            Visit(expression.Arguments[1]);
-            if (childScope.Value is IEnumerable) {
-              if (((IEnumerable)childScope.Value).OfType<object>().Any()) {
-                currentScope.Expression = childScope.GetExpression(Caml.EqualsAny);
-              } else {
-                currentScope.Expression = CamlExpression.False;
-              }
-            } else {
-              currentScope.Expression = childScope.GetExpression(Caml.Includes);
-            }
-            break;
-          default:
-            throw new NotSupportedException(String.Format("The method '{0}' is not supported", expression.Method.Name));
-        }
-      } else if (expression.Method.DeclaringType == typeof(String)) {
-        Visit(expression.Object);
-        switch (expression.Method.Name) {
-          case "StartsWith":
-            Visit(expression.Arguments[0]);
-            currentScope.Expression = childScope.GetExpression(s => Caml.BeginsWith(s.FieldRef, (childScope.Value ?? String.Empty).ToString()));
-            break;
-          default:
-            throw new NotSupportedException(String.Format("The method '{0}' is not supported", expression.Method.Name));
-        }
-      } else if (expression.Method.DeclaringType.IsOf(typeof(ICollection<>))) {
-        switch (expression.Method.Name) {
-          case "Contains":
+            argument = expression.Arguments[1];
+          } else {
             Visit(expression.Object);
-            Visit(expression.Arguments[0]);
-            if (childScope.Value is IEnumerable) {
-              if (((IEnumerable)childScope.Value).OfType<object>().Any()) {
-                currentScope.Expression = childScope.GetExpression(Caml.EqualsAny);
-              } else {
-                currentScope.Expression = CamlExpression.False;
-              }
-            } else {
-              currentScope.Expression = childScope.GetExpression(Caml.Includes);
-            }
-            break;
-          default:
-            throw new NotSupportedException(String.Format("The method '{0}' is not supported", expression.Method.Name));
+            argument = expression.Arguments[0];
+          }
+          Visit(argument);
+          if (ContainsOrEquals(argument, lambdaParam)) {
+            return currentScope.GetExpression(Caml.EqualsAny);
+          } else {
+            return currentScope.GetExpression(Caml.Includes);
+          }
+      }
+      throw ThrowMethodNotSupported(expression.Method);
+    }
+
+    private Expression VisitConditionalBranch(Expression expression) {
+      Expression result = Visit(expression);
+      if (currentScope.Expression == null && expression.NodeType == ExpressionType.Parameter && expression.Type == typeof(bool)) {
+        currentScope.Expression = new CamlLateBoundEmptyExpression(Caml.Parameter.BooleanString(currentScope.ParameterName));
+      }
+      return result;
+    }
+
+    private void AppendSelectExpression(MethodCallExpression expression) {
+      AppendSelectExpression(expression, expression.Method.Name, false);
+    }
+
+    private void AppendSelectExpression(MethodCallExpression expression, string methodName, bool replaceArgs, params Expression[] newArgs) {
+      Expression[] args = new Expression[replaceArgs ? newArgs.Length + 1 : expression.Arguments.Count];
+
+      if (builder.SelectExpression == null) {
+        // return type of ISPModelManagerBase.GetItems is always IEnumerable<T>
+        // where T is the manager's descriptor model type
+        builder.SelectExpression = Expression.Convert(pRes, typeof(IEnumerable<>).MakeGenericType(manager.Descriptor.ModelType));
+        if (builder.ModelType != null) {
+          builder.SelectExpression = Expression.Call(typeof(Enumerable), "OfType", new[] { builder.ModelType }, builder.SelectExpression);
         }
-      } else if (expression.Method.Name == "Equals" && expression.Arguments.Count == 1) {
-        Visit(expression.Object);
-        Visit(expression.Arguments[0]);
-        currentScope.Expression = childScope.GetExpression((SPModelQueryExpressionScope.ExpressionGenerator)Caml.Equals);
+      }
+      args[0] = builder.SelectExpression;
+
+      if (replaceArgs) {
+        Array.Copy(newArgs, 0, args, 1, newArgs.Length);
       } else {
-        throw new NotSupportedException(String.Format("The method '{0}' is not supported", expression.Method.Name));
-      }
-      stack.Pop();
-      return expression;
-    }
-
-    private CamlExpression HandleNullExpression(SPModelQueryFieldInfo field, bool negate) {
-      CamlExpression expression = Caml.IsNull(field.FieldRef);
-      if (field.FieldTypeAsString == "TaxonomyFieldType" || field.FieldTypeAsString == "TaxonomyFieldTypeMulti") {
-        SPList taxonomyHiddenList = SPExtensionHelper.GetTaxonomyHiddenList(manager.Site);
-        foreach (SPListItem item in taxonomyHiddenList.GetItems("IdForTerm")) {
-          if (manager.TermStore.GetTerm(new Guid((string)item["IdForTerm"])) == null) {
-            expression |= Caml.LookupIdEquals(field.FieldRef, item.ID);
+        for (int i = 1, count = expression.Arguments.Count; i < count; i++) {
+          if (expression.Arguments[i].Type.IsOf(typeof(Expression<>))) {
+            args[i] = Visit(StripQuotes(expression.Arguments[i]));
+          } else {
+            args[i] = Visit(expression.Arguments[i]);
           }
         }
       }
-      if (negate) {
-        return ~expression;
+      MethodInfo method = typeof(Enumerable).GetMethod(methodName, false, args.Select(v => v.Type).ToArray());
+      if (method == null) {
+        throw ThrowMethodNotSupported(expression.Method);
+      }
+      builder.SelectExpression = Expression.Call(method, args);
+    }
+
+    private CamlExpression HandleEqualityComparison(SPModelQueryFieldInfo s, CamlBinaryOperator op) {
+      ICamlParameterBinding value = currentScope.GetValueBinding(s);
+      CamlExpression expression = new CamlWhereBinaryComparisonExpression(op, s.FieldRef, value);
+      if (currentScope.MemberType.IsValueType || currentScope.MemberType == typeof(string)) {
+        string defaultValue = value.Bind(new Hashtable { { currentScope.ParameterName, currentScope.MemberType.IsValueType ? currentScope.MemberType.GetDefaultValue() : "" } });
+        CamlExpression lateBoundCond = new CamlLateBoundDefaultValueAsNullExpression(s.FieldRef, value, defaultValue);
+        return op == CamlBinaryOperator.Eq ? expression | lateBoundCond : expression & ~lateBoundCond;
       }
       return expression;
     }
 
-    private bool CanBeEvaluatedLocally(Expression expression) {
-      if (expression.NodeType == ExpressionType.Parameter) {
-        return false;
+    private static Expression EnsureReturnObject(Expression expression) {
+      if (expression.Type == typeof(object)) {
+        return expression;
       }
-      if (expression.NodeType == ExpressionType.Call) {
-        MethodCallExpression methodCallExpression = (MethodCallExpression)expression;
-        Expression thisObjectExpression = methodCallExpression.Arguments.FirstOrDefault();
-        if (methodCallExpression.Method.DeclaringType == typeof(Queryable) && thisObjectExpression != null && thisObjectExpression.NodeType == ExpressionType.Constant) {
-          object thisObject = ((ConstantExpression)thisObjectExpression).Value;
-          if (thisObject != null && thisObject.GetType().IsOf(typeof(SPModelQuery<>))) {
-            return false;
-          }
+      return Expression.Convert(expression, typeof(object));
+    }
+
+    private static Exception ThrowMethodNotSupported(MethodInfo method) {
+      throw new NotSupportedException(String.Format("Method '{0}' is not supported", GetMethodFullName(method)));
+    }
+
+    private static string GetMethodFullName(MethodInfo method) {
+      StringBuilder sb = new StringBuilder();
+      sb.Append(method.DeclaringType.FullName);
+      sb.Append(".");
+      sb.Append(method.Name);
+      sb.Append("(");
+      Type[] paramTypes = method.GetParameterTypes();
+      for (int i = 0; i < paramTypes.Length; i++) {
+        if (i > 0) {
+          sb.Append(", ");
         }
+        sb.Append(paramTypes[i].ToString());
       }
-      return true;
+      sb.Append(")");
+      return sb.ToString();
+    }
+
+    private static string GetMemberFullName(MemberInfo member) {
+      return String.Concat(member.DeclaringType.FullName, ".", member.Name);
+    }
+
+    private static bool ContainsOrEquals(Expression expression, Expression searchFor) {
+      return expression == searchFor || TypedSubtreeFinder.Find(expression, searchFor.Type) == searchFor;
     }
 
     private static Expression StripQuotes(Expression expression) {

@@ -1,4 +1,5 @@
-﻿using Codeless.SharePoint.Internal;
+﻿using System.Reflection;
+using Codeless.SharePoint.Internal;
 using Microsoft.SharePoint;
 
 namespace Codeless.SharePoint.ObjectModel.Linq {
@@ -7,6 +8,7 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
     public SPFieldType FieldType { get; private set; }
     public string FieldTypeAsString { get; private set; }
     public bool IncludeTimeValue { get; private set; }
+    public PropertyInfo QueryProperty { get; private set; }
 
     public static readonly SPModelQueryFieldInfo ID = new SPModelQueryFieldInfo {
       FieldRef = SPBuiltInFieldName.ID,
@@ -50,6 +52,7 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
       CommonHelper.AccessNotNull(association.Attribute, "Attribute");
 
       FieldRef = association.Attribute.ListFieldInternalName;
+      QueryProperty = association.QueryProperty;
       if (association.Attribute is SPBuiltInFieldAttribute) {
         SPFieldType fieldType;
         if (KnownFields.FieldTypeDictionary.TryGetValue(association.Attribute.InternalName, out fieldType)) {
