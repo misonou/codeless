@@ -2041,6 +2041,11 @@
             Gets the query mode when calling overloads of <see cref="M:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1.GetItems``1"/> or <see cref="M:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1.GetItems``1"/> which does not perform keyword search explicitly.
             </summary>
         </member>
+        <member name="P:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1.Culture">
+            <summary>
+            Gets the working culture of this manager.
+            </summary>
+        </member>
         <member name="M:Codeless.SharePoint.ObjectModel.SPModelManagerBase`1.GetItems``1">
             <summary>
             Gets items of the associated content type(s).

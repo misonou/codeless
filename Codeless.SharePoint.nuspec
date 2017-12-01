@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
     <metadata>
         <id>Codeless.SharePoint</id>
-        <version>14.0.381.1</version>
+        <version>14.0.382.0</version>
         <authors>misonou</authors>
         <projectUrl>https://github.com/misonou/codeless</projectUrl>
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
