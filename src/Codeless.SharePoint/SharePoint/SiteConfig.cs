@@ -96,19 +96,19 @@ namespace Codeless.SharePoint {
       if (forceRefresh) {
         InstanceFactory.Destroy(siteId);
       }
-      T config = null;
       try {
         // avoid config being cache without adding cache policy to HttpContext.Current.Cache
         if (HttpContext.Current == null) {
-          return LoadInternal(siteId, out config);
+          T config;
+          if (((IDictionary<Guid, T>)InstanceFactory).TryGetValue(siteId, out config)) {
+            return config;
+          }
+          return LoadInternal(siteId);
         }
-        return InstanceFactory.GetInstance(siteId, () => {
-          Logger.Info("Site config ({0}) loading from site collection (ID:{1}).", typeof(T).FullName, siteId);
-          return LoadInternal(siteId, out config);
-        });
+        return InstanceFactory.GetInstance(siteId, LoadInternal);
       } catch (Exception ex) {
         Logger.Error(ex);
-        return config ?? new T();
+        return new T();
       }
     }
 
@@ -138,8 +138,8 @@ namespace Codeless.SharePoint {
       Invalidate(siteId);
     }
 
-    private static T LoadInternal(Guid siteId, out T config) {
-      config = new T();
+    private static T LoadInternal(Guid siteId) {
+      T config = new T();
       config.siteId = siteId;
       using (SPSite elevatedSite = new SPSite(siteId, SPUserToken.SystemAccount)) {
         SiteConfigProviderAttribute attribute = typeof(T).GetCustomAttribute<SiteConfigProviderAttribute>(false);

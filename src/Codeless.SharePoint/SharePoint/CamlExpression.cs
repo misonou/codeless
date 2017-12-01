@@ -22,6 +22,7 @@ namespace Codeless.SharePoint {
   [DebuggerDisplay("{GetDebuggerDisplay(),nq}")]
   public abstract class CamlExpression : Caml {
     private static readonly Hashtable debugBindings = new ReadOnlyHashtable();
+    private static readonly CamlExpression emptyViewFields = new CamlViewFieldsExpression(new CamlViewFieldsFieldRefExpression[0]);
 
     private sealed class ReadOnlyHashtable : Hashtable {
       public override void Add(object key, object value) {
@@ -188,7 +189,7 @@ namespace Codeless.SharePoint {
         }
         return new CamlViewFieldsExpression(fieldRefs.Select(CamlFieldRefExpression.ConvertToViewFieldsFieldRefExpression));
       }
-      return null;
+      return emptyViewFields;
     }
 
     /// <summary>
@@ -773,7 +774,7 @@ namespace Codeless.SharePoint {
     protected override void WriteXml(XmlWriter writer, Hashtable bindings) {
       if (operatorValue == CamlBinaryOperator.Eq || operatorValue == CamlBinaryOperator.Neq) {
         try {
-          value.Bind(bindings);
+          BindValue(value, bindings);
         } catch (CamlParameterBindingNullException) {
           writer.WriteStartElement(operatorValue == CamlBinaryOperator.Eq ? CompareOperatorString.IsNull : CompareOperatorString.IsNotNull);
           WriteXmlStatic(fieldRef, writer, bindings);
@@ -1175,9 +1176,9 @@ namespace Codeless.SharePoint {
     protected override CamlExpression HandleAnd(CamlExpression x, bool selfPreceding) {
       switch (x.Type) {
         case CamlExpressionType.GroupByFieldRef:
-          return new CamlGroupByExpression(ConcatExpressions((CamlGroupByFieldRefExpression)x, selfPreceding));
+          return new CamlGroupByExpression(ConcatExpressions((CamlGroupByFieldRefExpression)x, selfPreceding), collapse);
         case CamlExpressionType.GroupBy:
-          return new CamlGroupByExpression(ConcatExpressions((CamlGroupByExpression)x, selfPreceding));
+          return new CamlGroupByExpression(ConcatExpressions((CamlGroupByExpression)x, selfPreceding), collapse);
       }
       return base.HandleAnd(x, selfPreceding);
     }
@@ -1530,10 +1531,6 @@ namespace Codeless.SharePoint {
 
     protected override string ToString(XmlWriterSettings settings, Hashtable bindings) {
       return String.Empty;
-    }
-
-    public override CamlExpression GetViewFieldsExpression() {
-      return this;
     }
 
     protected override void Visit(CamlVisitor visitor) { }
