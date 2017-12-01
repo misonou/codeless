@@ -11,7 +11,7 @@
     <customAssembly location="Microsoft.Practices.Unity.Interception.dll" deploymentTarget="GlobalAssemblyCache" sourcePath="..\packages\Unity.Interception.2.1.505.0\lib\NET35\Microsoft.Practices.Unity.Interception.dll" />
     <projectOutputAssembly location="Codeless.SharePoint.PowerShell.dll" deploymentTarget="GlobalAssemblyCache" projectPath="..\Codeless.SharePoint.PowerShell\Codeless.SharePoint.PowerShell.csproj" />
     <projectOutputAssembly location="Codeless.SharePoint.dll" deploymentTarget="GlobalAssemblyCache" projectPath="..\Codeless.SharePoint\Codeless.SharePoint.csproj" />
-    <customAssembly location="Codeless.dll" deploymentTarget="GlobalAssemblyCache" sourcePath="..\packages\Codeless.Core.1.1.371.0\lib\net45\Codeless.dll" />
+    <customAssembly location="Codeless.dll" deploymentTarget="GlobalAssemblyCache" sourcePath="..\packages\Codeless.Core.1.1.373.0\lib\net45\Codeless.dll" />
     <customAssembly location="IQToolkit.dll" deploymentTarget="GlobalAssemblyCache" sourcePath="..\..\lib\net45\IQToolkit.dll" />
   </assemblies>
   <features>
