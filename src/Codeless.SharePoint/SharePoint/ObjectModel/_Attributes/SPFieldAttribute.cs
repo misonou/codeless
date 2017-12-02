@@ -72,6 +72,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a SharePoint column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   [AttributeUsage(AttributeTargets.Property | AttributeTargets.Method, AllowMultiple = true)]
   [DebuggerDisplay("{InternalName}")]
   public abstract class SPFieldAttribute : Attribute, IEquatable<SPFieldAttribute> {
@@ -298,6 +299,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents an existing column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class SPBuiltInFieldAttribute : SPFieldAttribute {
     /// <summary>
     /// Initializes a new instance of the <see cref="SPBuiltInFieldAttribute"/> class with the specified internal name.
@@ -342,6 +344,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents an integer column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class SPIntegerFieldAttribute : SPFieldAttribute {
     /// <summary>
     /// Initializes a new instance of the <see cref="SPIntegerFieldAttribute"/> class with the specified internal name.
@@ -374,6 +377,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a text column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class SPTextFieldAttribute : SPFieldAttribute {
     /// <summary>
     /// Initializes a new instance of the <see cref="SPTextFieldAttribute"/> class with the specified internal name.
@@ -386,6 +390,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a multiline text column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class SPNoteFieldAttribute : SPFieldAttribute {
     /// <summary>
     /// Initializes a new instance of the <see cref="SPNoteFieldAttribute"/> class with the specified internal name.
@@ -421,6 +426,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a Date and Time column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class SPDateTimeFieldAttribute : SPFieldAttribute {
     /// <summary>
     /// Initializes a new instance of the <see cref="SPDateTimeFieldAttribute"/> class with the specified internal name.
@@ -442,6 +448,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a choice column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class SPChoiceFieldAttribute : SPFieldAttribute {
     private readonly StringCollection choices = new StringCollection();
     private readonly Type enumType;
@@ -486,6 +493,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a multiple choice column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class SPMultiChoiceFieldAttribute : SPFieldAttribute {
     private readonly StringCollection choices;
 
@@ -535,6 +543,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a calculated column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class SPCalculatedFieldAttribute : SPFieldAttribute {
     /// <summary>
     /// Initializes a new instance of the <see cref="SPCalculatedFieldAttribute"/> class with the specified internal name, result type and formula.
@@ -577,6 +586,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a lookup column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class SPLookupFieldAttribute : SPFieldAttribute, IAllowMultipleValue {
     private SPOption allowMultipleValues;
 
@@ -626,6 +636,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a Yes/No column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class SPBooleanFieldAttribute : SPFieldAttribute {
     /// <summary>
     /// Initializes a new instance of the <see cref="SPBooleanFieldAttribute"/> class with the specified internal name.
@@ -646,6 +657,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a number column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class SPNumberFieldAttribute : SPFieldAttribute {
     /// <summary>
     /// Initializes a new instance of the <see cref="SPNumberFieldAttribute"/> class with the specified internal name.
@@ -678,6 +690,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a currency column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class SPCurrencyFieldAttribute : SPFieldAttribute {
     /// <summary>
     /// Initializes a new instance of the <see cref="SPCurrencyFieldAttribute"/> class with the specified internal name.
@@ -699,6 +712,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a URL column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class SPUrlFieldAttribute : SPFieldAttribute {
     /// <summary>
     /// Initializes a new instance of the <see cref="SPUrlFieldAttribute"/> class with the specified internal name.
@@ -716,6 +730,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a people column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class SPUserFieldAttribute : SPFieldAttribute, IAllowMultipleValue {
     private SPOption allowMultipleValues;
 
@@ -759,6 +774,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a GUID column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class SPGuidFieldAttribute : SPFieldAttribute {
     /// <summary>
     /// Initializes a new instance of the <see cref="SPGuidFieldAttribute"/> class with the specified internal name.
@@ -771,6 +787,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a managed metadata column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class TaxonomyFieldAttribute : SPFieldAttribute, IAllowMultipleValue {
     private SPOption allowMultipleValues;
 
@@ -829,6 +846,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents an HTML column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class PublishingHtmlFieldAttribute : SPFieldAttribute {
     /// <summary>
     /// Initializes a new instance of the <see cref="PublishingHtmlFieldAttribute"/> class with the specified internal name.
@@ -857,6 +875,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents a publishing image column that is referenced by an SPModel class.
   /// </summary>
+  [Serializable]
   public class PublishingImageFieldAttribute : SPFieldAttribute {
     /// <summary>
     /// Initializes a new instance of the <see cref="PublishingImageFieldAttribute"/> class with the specified internal name.

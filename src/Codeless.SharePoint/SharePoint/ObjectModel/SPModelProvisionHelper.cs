@@ -436,6 +436,29 @@ namespace Codeless.SharePoint.ObjectModel {
       return viewUpdated;
     }
 
+    public string GetContentTypeChecksum(SPContentType contentType) {
+      const string namespaceUri = "http://sharepoint.codeless.org/ct";
+      string xml = contentType.XmlDocuments[namespaceUri];
+      if (xml == null) {
+        return null;
+      }
+      XmlDocument doc = new XmlDocument();
+      doc.LoadXml(xml);
+      XmlNodeList elm = doc.GetElementsByTagName("CheckSum");
+      return elm[0].FirstChild.Value;
+    }
+
+    public void SaveContentTypeChecksum(SPContentType contentType, string checksum) {
+      const string namespaceUri = "http://sharepoint.codeless.org/ct";
+      if (contentType.XmlDocuments[namespaceUri] != null) {
+        contentType.XmlDocuments.Delete(namespaceUri);
+      }
+      XmlDocument doc = new XmlDocument();
+      doc.LoadXml("<Root xmlns=\"" + namespaceUri + "\"><CheckSum>" + checksum + "</CheckSum></Root>");
+      contentType.XmlDocuments.Add(doc);
+      contentType.Update();
+    }
+
     public void Dispose() {
       this.TargetSite.Dispose();
     }

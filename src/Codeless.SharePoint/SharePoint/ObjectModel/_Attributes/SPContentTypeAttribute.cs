@@ -6,6 +6,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Declares the attributed class to represent a content type.
   /// </summary>
+  [Serializable]
   [AttributeUsage(AttributeTargets.Class)]
   [DebuggerDisplay("{Name}, ID = {contentTypeId}")]
   public sealed class SPContentTypeAttribute : Attribute {
