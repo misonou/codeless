@@ -230,7 +230,7 @@ namespace Codeless.SharePoint.ObjectModel {
         this.throttlingLimit = currentWeb.Site.WebApplication.MaxItemsPerThrottledOperation;
 
         this.descriptor = SPModelDescriptor.Resolve(typeof(T));
-        descriptor.Provision(currentWeb, SPModelProvisionOptions.Asynchronous | SPModelProvisionOptions.SuppressListCreation, SPModelListProvisionOptions.Default);
+        descriptor.Provision(currentWeb, SPModelProvisionOptions.Asynchronous | SPModelProvisionOptions.SuppressListCreation | SPModelProvisionOptions.MismatchChecksumCTOnly, SPModelListProvisionOptions.Default);
 
         if (contextLists != null) {
           contextLists.SelectMany(descriptor.GetUsages).ForEach(currentLists.Add);

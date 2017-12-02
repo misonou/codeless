@@ -57,6 +57,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents the definition of a list to be created during provisioning.
   /// </summary>
+  [Serializable]
   [AttributeUsage(AttributeTargets.Class)]
   [DebuggerDisplay("{Url}")]
   public class SPListAttribute : Attribute {
