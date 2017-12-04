@@ -281,24 +281,6 @@ namespace Codeless.SharePoint.ObjectModel {
           if (eventArgs.TargetModified) {
             contentType.Update();
           }
-          // TODO: feature temporarily off because of possible save conflicts
-          // if (contentType.ParentList != null) {
-          //   SPFolder rootFolder = contentType.ParentList.RootFolder;
-          //   List<SPContentType> visibleContentTypes = new List<SPContentType>(rootFolder.ContentTypeOrder);
-          //   if (definition.HiddenInList) {
-          //     if (visibleContentTypes.Contains(contentType, SPContentTypeEqualityComparer.Default)) {
-          //       visibleContentTypes.Remove(contentType);
-          //       rootFolder.UniqueContentTypeOrder = visibleContentTypes;
-          //       rootFolder.Update();
-          //     }
-          //   } else {
-          //     if (!visibleContentTypes.Contains(contentType, SPContentTypeEqualityComparer.Default)) {
-          //       visibleContentTypes.Add(contentType);
-          //       rootFolder.UniqueContentTypeOrder = visibleContentTypes;
-          //       rootFolder.Update();
-          //     }
-          //   }
-          // }
         }
         eventReceiver.OnContentTypeProvisioned(eventArgs);
       }
@@ -346,17 +328,19 @@ namespace Codeless.SharePoint.ObjectModel {
               }
             }
 
-            if (!cachedList.ContainsContentType(contentTypeDefinition.ContentTypeId)) {
+            SPContentType listContentType = cachedList.ContentTypes.OfType<SPContentType>().FirstOrDefault(v => v.Id.Parent == contentTypeDefinition.ContentTypeId);
+            if (listContentType == null) {
               SPContentType siteContentType = objectCache.GetContentType(contentTypeDefinition.ContentTypeId);
               try {
                 using (cachedList.ParentWeb.GetAllowUnsafeUpdatesScope()) {
-                  SPContentType listContentType = cachedList.ContentTypes.Add(siteContentType);
+                  listContentType = cachedList.ContentTypes.Add(siteContentType);
                   UpdateContentType(listContentType, contentTypeDefinition, contentTypeFields);
                 }
               } catch (SPException ex) {
                 throw new SPModelProvisionException(String.Format("Unable to add content type '{0}' to list '{1}' because there is another content type with the same display name", contentTypeDefinition.Name, list.RootFolder.Url), ex);
               }
             }
+            objectCache.AddContentType(listContentType);
 
             try {
               SPFieldIndex index = cachedList.FieldIndexes[SPBuiltInFieldId.ContentTypeId];
@@ -373,16 +357,30 @@ namespace Codeless.SharePoint.ObjectModel {
               cachedList.ContentTypes.Delete(id);
             }
             eventArgs.TargetModified |= CopyProperties(definition, cachedList);
-          }
-          using (cachedList.ParentWeb.GetAllowUnsafeUpdatesScope()) {
-            foreach (SPField field in listFieldsToUpdate) {
-              field.Update();
+
+            using (cachedList.ParentWeb.GetAllowUnsafeUpdatesScope()) {
+              foreach (SPField field in listFieldsToUpdate) {
+                field.Update();
+              }
+              if (eventArgs.TargetModified) {
+                cachedList.Update();
+              }
+
+              SPFolder rootFolder = cachedList.RootFolder;
+              List<SPContentType> visibleContentTypes = new List<SPContentType>(rootFolder.ContentTypeOrder);
+              int index = visibleContentTypes.FindIndex(v => v.Id == listContentType.Id);
+              if (contentTypeDefinition.HiddenInList ^ (index < 0)) {
+                if (contentTypeDefinition.HiddenInList) {
+                  visibleContentTypes.RemoveAt(index);
+                } else {
+                  visibleContentTypes.Add(listContentType);
+                }
+                rootFolder.UniqueContentTypeOrder = visibleContentTypes;
+                rootFolder.Update();
+              }
             }
-            if (eventArgs.TargetModified) {
-              cachedList.Update();
-            }
+            eventReceiver.OnListProvisioned(eventArgs);
           }
-          eventReceiver.OnListProvisioned(eventArgs);
 
           string[] includedFields = contentTypeFields.Where(v => v.ShowInListView == SPOption.True).OrderBy(v => v.ColumnOrder).Select(v => v.ListFieldInternalName).ToArray();
           string[] excludedFields = contentTypeFields.Where(v => v.ShowInListView == SPOption.False).Concat(hiddenFields).Select(v => v.ListFieldInternalName).ToArray();
@@ -595,10 +593,17 @@ namespace Codeless.SharePoint.ObjectModel {
       return listLookupField;
     }
 
-    private static string[] MergeFieldOrder(SPContentType contentType, ICollection<SPFieldAttribute> fieldDefinitions, bool listContentType) {
+    private string[] MergeFieldOrder(SPContentType contentType, ICollection<SPFieldAttribute> fieldDefinitions, bool listContentType) {
       string[] thisOrder = fieldDefinitions.OrderBy(v => v.ColumnOrder).Select(v => listContentType ? v.ListFieldInternalName : v.InternalName).ToArray();
-      string[] parentOrder = contentType.Parent.FieldLinks.OfType<SPFieldLink>().Select(v => listContentType ? v.Name : contentType.ParentWeb.AvailableFields[v.Id].InternalName).Except(thisOrder).ToArray();
-      return parentOrder.Concat(thisOrder).ToArray();
+      List<string> parentOrder = new List<string>();
+      foreach (SPFieldLink field in contentType.Parent.FieldLinks) {
+        string fieldName = listContentType ? field.Name : objectCache.GetField(field.Id).InternalName;
+        if (!thisOrder.Contains(fieldName)) {
+          parentOrder.Add(fieldName);
+        }
+      }
+      parentOrder.AddRange(thisOrder);
+      return parentOrder.ToArray();
     }
 
     private static void AddToQuickLaunch(SPList list) {
@@ -627,18 +632,6 @@ namespace Codeless.SharePoint.ObjectModel {
           collection.EnsureEventReceiver(t, typeof(SPModelEventReceiver), SPEventReceiverSynchronization.Synchronous);
           collection.EnsureEventReceiver(t, typeof(SPModelAsyncEventReceiver), SPEventReceiverSynchronization.Asynchronous);
         }
-      }
-    }
-
-    private class SPContentTypeEqualityComparer : EqualityComparer<SPContentType> {
-      public static readonly SPContentTypeEqualityComparer Default = new SPContentTypeEqualityComparer();
-
-      public override bool Equals(SPContentType x, SPContentType y) {
-        return x.Id == y.Id;
-      }
-
-      public override int GetHashCode(SPContentType obj) {
-        return obj.Id.GetHashCode();
       }
     }
 
