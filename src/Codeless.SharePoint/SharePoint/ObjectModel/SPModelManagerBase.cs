@@ -172,8 +172,8 @@ namespace Codeless.SharePoint.ObjectModel {
   /// </summary>
   /// <typeparam name="T"></typeparam>
   public abstract class SPModelManagerBase<T> : ISPModelManager, ISPModelManagerInternal {
+    private static SPModelDescriptor descriptor;
     private readonly SPWeb currentWeb;
-    private readonly SPModelDescriptor descriptor;
     private readonly ICollection<SPModelUsage> currentLists = new HashSet<SPModelUsage>(SPModelUsageEqualityComparer.Default);
     private readonly HashSet<SPModel> itemsToSave = new HashSet<SPModel>();
     private readonly uint throttlingLimit;
@@ -223,20 +223,18 @@ namespace Codeless.SharePoint.ObjectModel {
 
     private SPModelManagerBase(SPWeb currentWeb, IList<SPList> contextLists, bool currentWebOnly) {
       CommonHelper.ConfirmNotNull(currentWeb, "currentWeb");
+      this.currentWeb = currentWeb;
+      this.currentWebOnly = currentWebOnly;
+      this.throttlingLimit = currentWeb.Site.WebApplication.MaxItemsPerThrottledOperation;
+      if (descriptor == null) {
+        descriptor = SPModelDescriptor.Resolve(typeof(T));
+      }
+      descriptor.Provision(currentWeb, SPModelProvisionOptions.Asynchronous | SPModelProvisionOptions.SuppressListCreation | SPModelProvisionOptions.MismatchChecksumCTOnly, SPModelListProvisionOptions.Default);
 
-      using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
-        this.currentWeb = currentWeb;
-        this.currentWebOnly = currentWebOnly;
-        this.throttlingLimit = currentWeb.Site.WebApplication.MaxItemsPerThrottledOperation;
-
-        this.descriptor = SPModelDescriptor.Resolve(typeof(T));
-        descriptor.Provision(currentWeb, SPModelProvisionOptions.Asynchronous | SPModelProvisionOptions.SuppressListCreation | SPModelProvisionOptions.MismatchChecksumCTOnly, SPModelListProvisionOptions.Default);
-
-        if (contextLists != null) {
-          contextLists.SelectMany(descriptor.GetUsages).ForEach(currentLists.Add);
-          explicitListScope = true;
-          contextInitialized = true;
-        }
+      if (contextLists != null) {
+        contextLists.SelectMany(descriptor.GetUsages).ForEach(currentLists.Add);
+        explicitListScope = true;
+        contextInitialized = true;
       }
     }
 
@@ -271,6 +269,7 @@ namespace Codeless.SharePoint.ObjectModel {
       get {
         if (objectCache == null) {
           objectCache = new SPObjectCache(this.Site);
+          InitializeObjectCache();
         }
         return objectCache;
       }
@@ -282,14 +281,14 @@ namespace Codeless.SharePoint.ObjectModel {
     protected SPModelImplicitQueryMode ImplicitQueryMode {
       get {
         EnsureContextInitialized();
-        if (currentLists.Count > 1 && descriptor.BaseType == SPBaseType.UnspecifiedBaseType) {
-          return SPModelImplicitQueryMode.KeywordSearch;
-        } else if (currentLists.Count > 1) {
-          return SPModelImplicitQueryMode.SiteQuery;
-        } else if (currentLists.Count == 1) {
-          return SPModelImplicitQueryMode.ListQuery;
-        } else {
+        if (currentLists.Count == 0) {
           return SPModelImplicitQueryMode.None;
+        } else if (currentLists.Count == 1 && explicitListScope) {
+          return SPModelImplicitQueryMode.ListQuery;
+        } else if (descriptor.BaseType == SPBaseType.UnspecifiedBaseType) {
+          return SPModelImplicitQueryMode.KeywordSearch;
+        } else {
+          return SPModelImplicitQueryMode.SiteQuery;
         }
       }
     }
@@ -770,6 +769,9 @@ namespace Codeless.SharePoint.ObjectModel {
 
     private IEnumerable<SPListItem> ExecuteListQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, uint startRow, bool selectProperties) {
       SPList list = currentLists.First().EnsureList(this.ObjectCache).List;
+      if (list == null) {
+        currentLists.Clear();
+      }
       if (list == null || list.ItemCount == 0) {
         return new SPListItem[0];
       }
@@ -814,9 +816,14 @@ namespace Codeless.SharePoint.ObjectModel {
       siteQuery.RowLimit = limit;
       OnExecutingSiteQuery(new SPModelSiteQueryEventArgs { Query = siteQuery });
 
-      using (SPWeb targetWeb = currentWeb.Site.OpenWeb(currentWeb.ID)) {
+      using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
         try {
-          return targetWeb.GetSiteData(siteQuery);
+          using (SPWeb targetWeb = currentWeb.Site.OpenWeb(currentWeb.ID)) {
+            return targetWeb.GetSiteData(siteQuery);
+          }
+        } catch (UnauthorizedAccessException) {
+          currentLists.Clear();
+          return new DataTable();
         } catch (Exception ex) {
           if (ex.InnerException is COMException && (ex.InnerException.Message.IndexOf("0x80131904") >= 0 || ex.InnerException.Message.IndexOf("0x80020009") >= 0)) {
             try {
@@ -863,12 +870,18 @@ namespace Codeless.SharePoint.ObjectModel {
 
     private void EnsureContextInitialized() {
       if (!contextInitialized) {
-        if (currentWeb.DoesUserHavePermissions(SPBasePermissions.Open)) { 
-          descriptor.GetUsages(currentWeb, currentWebOnly).ForEach(currentLists.Add);
-        }
+        descriptor.GetUsages(currentWeb, currentWebOnly).ForEach(currentLists.Add);
         contextInitialized = true;
-        if (this.ImplicitQueryMode == SPModelImplicitQueryMode.ListQuery && currentLists.First().EnsureList(this.ObjectCache).List == null) {
-          currentLists.Clear();
+      }
+    }
+
+    private void InitializeObjectCache() {
+      objectCache.AddWeb(currentWeb);
+      if (contextInitialized) {
+        foreach (SPModelUsage usage in currentLists) {
+          if (usage.List != null) {
+            objectCache.AddList(usage.List);
+          }
         }
       }
     }
@@ -945,6 +958,7 @@ namespace Codeless.SharePoint.ObjectModel {
           throw new InvalidOperationException();
         }
         objectCache = value;
+        InitializeObjectCache();
       }
     }
 

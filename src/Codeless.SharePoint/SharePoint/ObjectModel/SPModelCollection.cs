@@ -2,12 +2,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 
 namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Provides a base class for a collection of <see cref="SPModel"/> queried from a site collection.
   /// </summary>
+  [DebuggerDisplay("Count = {Count}")]
   public abstract class SPModelCollection : ICollection, IEnumerable {
     /// <summary>
     /// Provides a key for fetched model class instance lookup.
