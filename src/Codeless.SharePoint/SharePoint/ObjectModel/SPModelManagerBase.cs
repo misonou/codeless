@@ -846,7 +846,7 @@ namespace Codeless.SharePoint.ObjectModel {
 
     private ResultTable ExecuteKeywordSearch(SPModelDescriptor typeInfo, CamlExpression query, int limit, int startRow, string[] keywords, SearchRefiner[] refiners, KeywordInclusion inclusion, bool selectProperties, out int totalCount) {
       CamlExpression listScopedQuery = Caml.Empty;
-      if (explicitListScope) {
+      if (explicitListScope || currentWebOnly) {
         foreach (SPModelUsage list in currentLists) {
           listScopedQuery |= Caml.BeginsWith(BuiltInManagedPropertyName.Path, SPUtility.GetFullUrl(currentWeb.Site, list.ServerRelativeUrl));
         }
