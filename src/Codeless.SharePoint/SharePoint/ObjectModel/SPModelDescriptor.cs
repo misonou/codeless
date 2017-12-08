@@ -582,33 +582,31 @@ namespace Codeless.SharePoint.ObjectModel {
             using (SPModelProvisionHelper helper = new SPModelProvisionHelper(siteId, eventReceiver)) {
               SPContentType contentType = helper.EnsureContentType(contentTypeAttribute);
               if (!matchChecksum || helper.GetContentTypeChecksum(contentType) != checksum) {
-                helper.UpdateContentType(contentType, contentTypeAttribute, fieldAttributes);
-                helper.SaveContentTypeChecksum(contentType, checksum);
+                helper.UpdateContentType(contentType, contentTypeAttribute, fieldAttributes, checksum);
               }
               SaveAssemblyName(helper.TargetSite, contentTypeAttribute.ContentTypeId, this.ModelType.Assembly);
 
-              foreach (SPContentTypeUsage usage in SPContentTypeUsage.GetUsages(contentType)) {
-                if (usage.Id.Parent == contentType.Id && usage.IsUrlToList) {
-                  using (SPSite listParentSite = new SPSite(helper.TargetSite.MakeFullUrl(usage.Url), SPUserToken.SystemAccount)) {
-                    using (SPWeb listParentWeb = listParentSite.OpenWeb()) {
-                      SPList list;
-                      try {
-                        list = listParentWeb.GetListSafe(usage.Url);
-                      } catch (FileNotFoundException) {
-                        continue;
-                      }
-                      SPContentType listContentType = list.ContentTypes[usage.Id];
-                      if (listContentType != null && (!matchChecksum || helper.GetContentTypeChecksum(listContentType) != checksum)) {
-                        using (SPModelProvisionHelper helper2 = new SPModelProvisionHelper(siteId, eventReceiver)) {
-                          helper2.UpdateContentType(listContentType, contentTypeAttribute, fieldAttributes);
-                          helper2.UpdateList(list, listAttribute.Clone(list.RootFolder.Url), contentTypeAttribute, fieldAttributes, hiddenFields.ToArray(), new SPContentTypeId[0]);
-                          helper2.SaveContentTypeChecksum(list.ContentTypes[usage.Id], checksum);
-                          if (deferredListUrls != null) {
-                            deferredListUrls.Add(SPModelUsage.Create(list, usage.Id).GetWithoutList());
-                          }
-                        }
-                      }
+              foreach (SPModelUsage usage in GetUsages(helper.TargetSite.RootWeb)) {
+                if (usage.ContentTypeId.Parent == contentTypeAttribute.ContentTypeId) {
+                  using (SPModelProvisionHelper helper2 = new SPModelProvisionHelper(siteId, eventReceiver)) {
+                    SPList list = helper2.ObjectCache.GetList(usage.WebId, usage.ListId);
+                    if (list == null) {
+                      continue;
                     }
+                    SPContentType listContentType = list.ContentTypes[usage.ContentTypeId];
+                    if (listContentType == null) {
+                      continue;
+                    }
+                    if (!matchChecksum || helper2.GetContentTypeChecksum(listContentType) != checksum) {
+                      helper2.UpdateContentType(listContentType, contentTypeAttribute, fieldAttributes, checksum);
+                    }
+                    if (!matchChecksum || helper2.GetContentTypeChecksum(list, contentTypeAttribute.ContentTypeId) != checksum) {
+                      SPListAttribute listAttributeClone = listAttribute.Clone(list);
+                      helper2.UpdateList(list, listAttributeClone, contentTypeAttribute, fieldAttributes, hiddenFields.ToArray(), new SPContentTypeId[0], checksum);
+                    }
+                  }
+                  if (deferredListUrls != null) {
+                    deferredListUrls.Add(usage.GetWithoutList());
                   }
                 }
               }
@@ -636,16 +634,19 @@ namespace Codeless.SharePoint.ObjectModel {
     }
 
     private void ProvisionList(string siteUrl, Guid siteId, Guid webId, SPModelListProvisionOptions listOptions, HashSet<SPModelUsage> deferredListUrls) {
+      if (checksum == null) {
+        checksum = ComputeCheckSum();
+      }
       using (SPModelProvisionHelper helper = new SPModelProvisionHelper(siteId, GetProvisionEventReceiver(true))) {
         SPList targetList = null;
         if (listOptions.TargetListId != Guid.Empty) {
-          targetList = helper.TargetSite.AllWebs[listOptions.TargetWebId].Lists[listOptions.TargetListId];
-        }
-        SPListAttribute implListAttribute = listOptions.ListAttributeOverrides ?? listAttribute;
-        if (targetList != null) {
-          implListAttribute = listAttribute.Clone(targetList.RootFolder.Url);
-          helper.UpdateList(targetList, implListAttribute, contentTypeAttribute, fieldAttributes, hiddenFields.ToArray(), new SPContentTypeId[0]);
+          targetList = helper.ObjectCache.GetList(listOptions.TargetWebId, listOptions.TargetListId);
+          if (targetList == null) {
+            return;
+          }
+          helper.UpdateList(targetList, listAttribute.Clone(targetList), contentTypeAttribute, fieldAttributes, hiddenFields.ToArray(), new SPContentTypeId[0], checksum);
         } else {
+          SPListAttribute implListAttribute = listOptions.ListAttributeOverrides ?? listAttribute;
           if (listOptions.TargetListUrl != null) {
             implListAttribute = implListAttribute.Clone(listOptions.TargetListUrl);
           } else {
@@ -654,11 +655,9 @@ namespace Codeless.SharePoint.ObjectModel {
           if (listOptions.TargetListTitle != null) {
             implListAttribute.Title = listOptions.TargetListTitle;
           }
-          using (SPWeb targetWeb = helper.TargetSite.OpenWeb(webId)) {
-            List<SPContentTypeId> contentTypes;
-            targetList = helper.EnsureList(targetWeb, implListAttribute, out contentTypes);
-            helper.UpdateList(targetList, implListAttribute, contentTypeAttribute, fieldAttributes, hiddenFields.ToArray(), contentTypes);
-          }
+          List<SPContentTypeId> contentTypes;
+          targetList = helper.EnsureList(helper.ObjectCache.GetWeb(webId), implListAttribute, out contentTypes);
+          helper.UpdateList(targetList, implListAttribute, contentTypeAttribute, fieldAttributes, hiddenFields.ToArray(), contentTypes, checksum);
         }
         foreach (SPContentType ct in targetList.ContentTypes) {
           if (ct.Id.Parent == contentTypeAttribute.ContentTypeId) {
