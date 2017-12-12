@@ -419,21 +419,12 @@ namespace Codeless.SharePoint {
       if (value.ID == webId) {
         return value;
       }
-      Stack<Guid> parentWebIds = new Stack<Guid>();
-      using (SPSite elevatedSite = new SPSite(site.ID, SPUserToken.SystemAccount)) {
-        using (SPWeb targetWeb = elevatedSite.OpenWeb(webId)) {
-          for (SPWeb web = targetWeb; web.ID != value.ID; web = web.ParentWeb) {
-            parentWebIds.Push(web.ID);
-          }
-        }
+      SPContext current = SPContext.Current;
+      if (current != null && site == current.Site) {
+        SPObjectCache objectCache = SPObjectCache.GetInstanceForCurrentContext();
+        return objectCache.GetWeb(webId);
       }
-      while (parentWebIds.Count > 0) {
-        value = value.GetSubWebByIDSafe(parentWebIds.Pop());
-        if (value == null) {
-          return null;
-        }
-      }
-      return value;
+      return SPExtensionHelper.OpenWebSafe(site, webId);
     }
 
     /// <summary>
@@ -641,22 +632,19 @@ namespace Codeless.SharePoint {
     /// <returns>An <see cref="SPFile"/> or <see cref="SPFolder"/> object, or *null* if the specified URL does not exist.</returns>
     public static object GetFileOrFolder(this SPSite site, string strUrl) {
       CommonHelper.ConfirmNotNull(strUrl, "strUrl");
-      SPWeb currentWeb = site.RootWeb;
-      if (strUrl.StartsWith(currentWeb.ServerRelativeUrl, StringComparison.OrdinalIgnoreCase)) {
-        strUrl = strUrl.Substring(currentWeb.ServerRelativeUrl.Length).TrimStart('/');
-      } else if (strUrl.StartsWith(currentWeb.Url, StringComparison.OrdinalIgnoreCase)) {
-        strUrl = strUrl.Substring(currentWeb.Url.Length).TrimStart('/');
+      SPWeb currentWeb;
+      if (!strUrl.StartsWith("/")) {
+        strUrl = SPUrlUtility.CombineUrl(site.ServerRelativeUrl, strUrl);
       }
-      foreach (string segment in strUrl.Split('/')) {
-        SPWeb childWeb = currentWeb.GetSubWebByNameSafe(segment);
-        if (childWeb != null) {
-          currentWeb = childWeb;
-        } else {
-          break;
-        }
+      SPContext current = SPContext.Current;
+      if (current != null && site == current.Site) {
+        SPObjectCache objectCache = SPObjectCache.GetInstanceForCurrentContext();
+        currentWeb = objectCache.TryGetWeb(strUrl);
+      } else {
+        currentWeb = SPExtensionHelper.OpenWebSafe(site, strUrl, false);
       }
       try {
-        return currentWeb.GetFileOrFolderObject(SPUrlUtility.CombineUrl(site.ServerRelativeUrl, strUrl));
+        return currentWeb.GetFileOrFolderObject(strUrl);
       } catch (FileNotFoundException) {
         return null;
       }

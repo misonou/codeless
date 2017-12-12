@@ -1,23 +1,22 @@
-﻿using Microsoft.SharePoint;
+﻿using Codeless.SharePoint.Internal;
+using Microsoft.SharePoint;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Web;
 
 namespace Codeless.SharePoint {
   /// <summary>
   /// Provides caching and uniqueness to database persisted SharePoint objects.
   /// </summary>
-  public sealed class SPObjectCache {
+  public sealed class SPObjectCache : IDisposable {
     #region Helper Class
-    private interface ILookupKey<T> { }
-
-    private struct SPReusableAclLookupKey : IEquatable<SPReusableAclLookupKey>, ILookupKey<SPReusableAcl> {
+    private class SPReusableAclLookupKey : IEquatable<SPReusableAclLookupKey> {
       public Guid ScopeId { get; private set; }
 
-      public SPReusableAclLookupKey(Guid scopeId)
-        : this() {
+      public SPReusableAclLookupKey(Guid scopeId) {
         this.ScopeId = scopeId;
       }
 
@@ -26,10 +25,8 @@ namespace Codeless.SharePoint {
       }
 
       public override bool Equals(object obj) {
-        if (obj is SPReusableAclLookupKey) {
-          return Equals((SPReusableAclLookupKey)obj);
-        }
-        return base.Equals(obj);
+        SPReusableAclLookupKey other = obj as SPReusableAclLookupKey;
+        return other != null && Equals(other);
       }
 
       public override int GetHashCode() {
@@ -37,14 +34,13 @@ namespace Codeless.SharePoint {
       }
     }
 
-    private struct SPWebLookupKey : IEquatable<SPWebLookupKey>, ILookupKey<SPWeb> {
+    private class SPWebLookupKey : IEquatable<SPWebLookupKey> {
       public Guid WebId { get; private set; }
 
       public SPWebLookupKey(SPWeb web)
         : this(web.ID) { }
 
-      public SPWebLookupKey(Guid webId)
-        : this() {
+      public SPWebLookupKey(Guid webId) {
         this.WebId = webId;
       }
 
@@ -53,10 +49,8 @@ namespace Codeless.SharePoint {
       }
 
       public override bool Equals(object obj) {
-        if (obj is SPWebLookupKey) {
-          return Equals((SPWebLookupKey)obj);
-        }
-        return base.Equals(obj);
+        SPWebLookupKey other = obj as SPWebLookupKey;
+        return other != null && Equals(other);
       }
 
       public override int GetHashCode() {
@@ -64,15 +58,14 @@ namespace Codeless.SharePoint {
       }
     }
 
-    private struct SPListLookupKey : IEquatable<SPListLookupKey>, ILookupKey<SPList> {
+    private class SPListLookupKey : IEquatable<SPListLookupKey> {
       public Guid WebId { get; private set; }
       public Guid ListId { get; private set; }
 
       public SPListLookupKey(SPList list)
         : this(list.ParentWeb.ID, list.ID) { }
 
-      public SPListLookupKey(Guid webId, Guid listId)
-        : this() {
+      public SPListLookupKey(Guid webId, Guid listId) {
         this.WebId = webId;
         this.ListId = listId;
       }
@@ -82,10 +75,8 @@ namespace Codeless.SharePoint {
       }
 
       public override bool Equals(object obj) {
-        if (obj is SPListLookupKey) {
-          return Equals((SPListLookupKey)obj);
-        }
-        return base.Equals(obj);
+        SPListLookupKey other = obj as SPListLookupKey;
+        return other != null && Equals(other);
       }
 
       public override int GetHashCode() {
@@ -93,15 +84,14 @@ namespace Codeless.SharePoint {
       }
     }
 
-    private struct SPFieldLookupKey : IEquatable<SPFieldLookupKey>, ILookupKey<SPField> {
+    private class SPFieldLookupKey : IEquatable<SPFieldLookupKey> {
       public Guid ListId { get; private set; }
       public Guid FieldId { get; private set; }
 
       public SPFieldLookupKey(SPField field)
         : this(field.ParentList == null ? Guid.Empty : field.ParentList.ID, field.Id) { }
 
-      public SPFieldLookupKey(Guid listId, Guid fieldId)
-        : this() {
+      public SPFieldLookupKey(Guid listId, Guid fieldId) {
         this.ListId = listId;
         this.FieldId = fieldId;
       }
@@ -111,10 +101,8 @@ namespace Codeless.SharePoint {
       }
 
       public override bool Equals(object obj) {
-        if (obj is SPFieldLookupKey) {
-          return Equals((SPFieldLookupKey)obj);
-        }
-        return base.Equals(obj);
+        SPFieldLookupKey other = obj as SPFieldLookupKey;
+        return other != null && Equals(other);
       }
 
       public override int GetHashCode() {
@@ -122,14 +110,14 @@ namespace Codeless.SharePoint {
       }
     }
 
-    private struct SPContentTypeLookupKey : IEquatable<SPContentTypeLookupKey>, ILookupKey<SPContentType> {
+    private class SPContentTypeLookupKey : IEquatable<SPContentTypeLookupKey> {
       public Guid ListId { get; private set; }
       public SPContentTypeId ContentTypeId { get; private set; }
 
       public SPContentTypeLookupKey(SPContentType contentType)
         : this(contentType.ParentList == null ? Guid.Empty : contentType.ParentList.ID, contentType.Id) { }
 
-      public SPContentTypeLookupKey(Guid listId, SPContentTypeId contentTypeId) : this() {
+      public SPContentTypeLookupKey(Guid listId, SPContentTypeId contentTypeId) {
         this.ListId = listId;
         this.ContentTypeId = contentTypeId;
       }
@@ -139,10 +127,8 @@ namespace Codeless.SharePoint {
       }
 
       public override bool Equals(object obj) {
-        if (obj is SPContentTypeLookupKey) {
-          return Equals((SPContentTypeLookupKey)obj);
-        }
-        return base.Equals(obj);
+        SPContentTypeLookupKey other = obj as SPContentTypeLookupKey;
+        return other != null && Equals(other);
       }
 
       public override int GetHashCode() {
@@ -150,15 +136,14 @@ namespace Codeless.SharePoint {
       }
     }
 
-    private struct SPListItemLookupKey : IEquatable<SPListItemLookupKey>, ILookupKey<SPListItem> {
+    private class SPListItemLookupKey : IEquatable<SPListItemLookupKey> {
       public Guid ListId { get; private set; }
       public int ListItemId { get; private set; }
 
       public SPListItemLookupKey(SPListItem listItem)
         : this(listItem.ParentList.ID, listItem.ID) { }
 
-      public SPListItemLookupKey(Guid listId, int listItemId)
-        : this() {
+      public SPListItemLookupKey(Guid listId, int listItemId) {
         this.ListId = listId;
         this.ListItemId = listItemId;
       }
@@ -168,10 +153,8 @@ namespace Codeless.SharePoint {
       }
 
       public override bool Equals(object obj) {
-        if (obj is SPListItemLookupKey) {
-          return Equals((SPListItemLookupKey)obj);
-        }
-        return base.Equals(obj);
+        SPListItemLookupKey other = obj as SPListItemLookupKey;
+        return other != null && Equals(other);
       }
 
       public override int GetHashCode() {
@@ -179,15 +162,14 @@ namespace Codeless.SharePoint {
       }
     }
 
-    private struct SPViewLookupKey : IEquatable<SPViewLookupKey>, ILookupKey<SPView> {
+    private class SPViewLookupKey : IEquatable<SPViewLookupKey> {
       public Guid WebId { get; private set; }
       public string ServerRelativeUrl { get; private set; }
 
       public SPViewLookupKey(SPView view)
         : this(view.ParentList.ParentWeb.ID, view.ServerRelativeUrl) { }
 
-      public SPViewLookupKey(Guid webId, string serverRelativeUrl)
-        : this() {
+      public SPViewLookupKey(Guid webId, string serverRelativeUrl) {
         this.WebId = webId;
         this.ServerRelativeUrl = serverRelativeUrl;
       }
@@ -197,10 +179,8 @@ namespace Codeless.SharePoint {
       }
 
       public override bool Equals(object obj) {
-        if (obj is SPViewLookupKey) {
-          return Equals((SPViewLookupKey)obj);
-        }
-        return base.Equals(obj);
+        SPViewLookupKey other = obj as SPViewLookupKey;
+        return other != null && Equals(other);
       }
 
       public override int GetHashCode() {
@@ -213,9 +193,9 @@ namespace Codeless.SharePoint {
 
     private readonly SPSite contextSite;
     private readonly Hashtable hashtable = new Hashtable();
-    private readonly Dictionary<string, SPListLookupKey> listUrls = new Dictionary<string, SPListLookupKey>();
-    private readonly Dictionary<string, SPFieldLookupKey> fieldInternalNames = new Dictionary<string, SPFieldLookupKey>();
     private readonly HashSet<Guid> scopeIds = new HashSet<Guid>();
+    private readonly List<IDisposable> disposables = new List<IDisposable>();
+    private bool disposed;
 
     /// <summary>
     /// Creates an <see cref="SPObjectCache"/> instance with the specific site collection.
@@ -227,6 +207,28 @@ namespace Codeless.SharePoint {
       this.contextSite = contextSite;
     }
 
+    private SPObjectCache(SPContext context) {
+      CommonHelper.ConfirmNotNull(context, "context");
+      this.contextSite = context.Site;
+      using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
+        AddWeb(context.Web);
+        if (context.List != null) {
+          AddList(context.List);
+        }
+        if (context.ListItem != null) {
+          AddListItem(context.ListItem);
+        }
+      }
+      HttpContext.Current.DisposeOnPipelineCompleted(this);
+    }
+
+    internal static SPObjectCache GetInstanceForCurrentContext() {
+      if (SPContext.Current == null) {
+        throw new InvalidOperationException();
+      }
+      return CommonHelper.HttpContextSingleton(() => new SPObjectCache(SPContext.Current));
+    }
+
     /// <summary>
     /// Gets or sets object associated with a specified key in the cache.
     /// </summary>
@@ -235,6 +237,20 @@ namespace Codeless.SharePoint {
     public object this[string key] {
       get { return hashtable[key]; }
       set { hashtable[key] = value; }
+    }
+
+    /// <summary>
+    /// Releases resources held by this object cache.
+    /// </summary>
+    public void Dispose() {
+      if (!disposed) {
+        List<IDisposable> list = new List<IDisposable>(disposables);
+        foreach (IDisposable item in list) {
+          item.Dispose();
+          disposables.Remove(item);
+        }
+        disposed = true;
+      }
     }
 
     /// <summary>
@@ -256,6 +272,7 @@ namespace Codeless.SharePoint {
     public SPWeb AddWeb(SPWeb web) {
       CommonHelper.ConfirmNotNull(web, "web");
       SPWebLookupKey lookupKey = new SPWebLookupKey(web);
+      hashtable.EnsureKeyValue(web.ServerRelativeUrl, () => new SPListLookupKey(web.ID, Guid.Empty));
       return GetOrAdd(lookupKey, web);
     }
 
@@ -266,7 +283,33 @@ namespace Codeless.SharePoint {
     /// <returns>An <see cref="Microsoft.SharePoint.SPWeb"/> object in cache. NULL if site of given GUID does not exist.</returns>
     public SPWeb GetWeb(Guid webId) {
       SPWebLookupKey lookupKey = new SPWebLookupKey(webId);
-      return GetOrAdd(lookupKey, () => contextSite.TryGetWebForCurrentUser(webId));
+      SPWeb web = GetOrAdd(lookupKey, () => OpenWeb(webId));
+      if (web != null) {
+        hashtable.EnsureKeyValue(web.ServerRelativeUrl, () => new SPListLookupKey(web.ID, Guid.Empty));
+      }
+      return web;
+    }
+
+    /// <summary>
+    /// Gets an <see cref="Microsoft.SharePoint.SPWeb"/> object with the given URL.
+    /// </summary>
+    /// <param name="webUrl">Site URL.</param>
+    /// <returns>An <see cref="Microsoft.SharePoint.SPWeb"/> object in cache. NULL if site of given URL does not exist.</returns>
+    public SPWeb TryGetWeb(string webUrl) {
+      CommonHelper.ConfirmNotNull(webUrl, "webUrl");
+      SPListLookupKey lookupKey = hashtable[webUrl] as SPListLookupKey;
+      if (lookupKey != null) {
+        return GetWeb(lookupKey.WebId);
+      }
+      SPWeb web = SPExtensionHelper.OpenWebSafe(contextSite, webUrl, false);
+      if (web != null) {
+        SPWeb returnValue = AddWeb(web);
+        if (returnValue != web) {
+          web.Dispose();
+        }
+        return returnValue;
+      }
+      return null;
     }
 
     /// <summary>
@@ -279,7 +322,7 @@ namespace Codeless.SharePoint {
     public SPList AddList(SPList list) {
       CommonHelper.ConfirmNotNull(list, "list");
       SPListLookupKey lookupKey = new SPListLookupKey(list);
-      listUrls.EnsureKeyValue(list.RootFolder.ServerRelativeUrl, () => lookupKey);
+      hashtable.EnsureKeyValue(list.RootFolder.ServerRelativeUrl, () => lookupKey);
       return GetOrAdd(lookupKey, list);
     }
 
@@ -293,7 +336,7 @@ namespace Codeless.SharePoint {
       SPListLookupKey lookupKey = new SPListLookupKey(webId, listId);
       SPList list = GetOrAdd(lookupKey, () => GetWeb(webId).Lists[listId]);
       if (list != null) {
-        listUrls.EnsureKeyValue(list.RootFolder.ServerRelativeUrl, () => lookupKey);
+        hashtable.EnsureKeyValue(list.RootFolder.ServerRelativeUrl, () => lookupKey);
       }
       return list;
     }
@@ -306,12 +349,8 @@ namespace Codeless.SharePoint {
     /// <exception cref="System.ArgumentNullException">Throws when input parameter <paramref name="listUrl"/> is null.</exception>
     public SPList TryGetList(string listUrl) {
       CommonHelper.ConfirmNotNull(listUrl, "listUrl");
-      try {
-        SPListLookupKey listInfo = listUrls.EnsureKeyValue(listUrl, GetListInfoFromUrl);
-        return GetList(listInfo.WebId, listInfo.ListId);
-      } catch (ArgumentException) {
-        return null;
-      }
+      SPListLookupKey listInfo = hashtable.EnsureKeyValue(listUrl, () => GetListInfoFromUrl(listUrl));
+      return GetList(listInfo.WebId, listInfo.ListId);
     }
 
     /// <summary>
@@ -323,6 +362,7 @@ namespace Codeless.SharePoint {
     public SPListItem AddListItem(SPListItem listItem) {
       CommonHelper.ConfirmNotNull(listItem, "listItem");
       SPListItemLookupKey lookupKey = new SPListItemLookupKey(listItem);
+      AddList(listItem.ParentList);
       return GetOrAdd(lookupKey, listItem);
     }
 
@@ -348,7 +388,9 @@ namespace Codeless.SharePoint {
       CommonHelper.ConfirmNotNull(field, "field");
       SPFieldLookupKey lookupKey = new SPFieldLookupKey(field);
       if (field.ParentList == null) {
-        fieldInternalNames.EnsureKeyValue(field.InternalName, () => new SPFieldLookupKey(Guid.Empty, field.Id));
+        hashtable.EnsureKeyValue(field.InternalName, () => new SPFieldLookupKey(Guid.Empty, field.Id));
+      } else {
+        AddList(field.ParentList);
       }
       EnsureLocalXmlNode(field);
       return GetOrAdd(lookupKey, field);
@@ -362,8 +404,8 @@ namespace Codeless.SharePoint {
     public SPField GetField(Guid fieldId) {
       SPFieldLookupKey lookupKey = new SPFieldLookupKey(Guid.Empty, fieldId);
       SPField field = GetOrAdd(lookupKey, () => EnsureLocalXmlNode(contextSite.RootWeb.Fields[fieldId]));
-      if (field != null && field.ParentList == null) {
-        fieldInternalNames.EnsureKeyValue(field.InternalName, () => new SPFieldLookupKey(Guid.Empty, field.Id));
+      if (field != null) {
+        hashtable.EnsureKeyValue(field.InternalName, () => new SPFieldLookupKey(Guid.Empty, field.Id));
       }
       return field;
     }
@@ -378,9 +420,6 @@ namespace Codeless.SharePoint {
     public SPField GetField(Guid webId, Guid listId, Guid fieldId) {
       SPFieldLookupKey lookupKey = new SPFieldLookupKey(listId, fieldId);
       SPField field = GetOrAdd(lookupKey, () => EnsureLocalXmlNode(GetList(webId, listId).Fields[fieldId]));
-      if (field != null && field.ParentList == null) {
-        fieldInternalNames.EnsureKeyValue(field.InternalName, () => new SPFieldLookupKey(Guid.Empty, field.Id));
-      }
       return field;
     }
 
@@ -392,7 +431,11 @@ namespace Codeless.SharePoint {
     /// <param name="internalName">Internal name of the list column</param>
     /// <returns>An <see cref="Microsoft.SharePoint.SPField"/> object in cache. NULL if list column of given internal name does not exist, or specified list does not exist.</returns>
     public SPField GetField(Guid webId, Guid listId, string internalName) {
-      return GetField(webId, listId, TryGetField(internalName).Id);
+      SPField field = TryGetField(internalName);
+      if (field != null) {
+        return GetField(webId, listId, field.Id);
+      }
+      return null;
     }
 
     /// <summary>
@@ -403,9 +446,9 @@ namespace Codeless.SharePoint {
     /// <exception cref="System.ArgumentNullException">Throws when input parameter <paramref name="internalName"/> is null.</exception>
     public SPField TryGetField(string internalName) {
       CommonHelper.ConfirmNotNull(internalName, "internalName");
-      SPFieldLookupKey lookupKey;
-      if (fieldInternalNames.TryGetValue(internalName, out lookupKey)) {
-        return (SPField)hashtable[lookupKey];
+      SPFieldLookupKey lookupKey = hashtable[internalName] as SPFieldLookupKey;
+      if (lookupKey != null) {
+        return GetField(lookupKey.FieldId);
       }
       try {
         SPField field = contextSite.RootWeb.Fields.GetFieldByInternalName(internalName);
@@ -445,7 +488,7 @@ namespace Codeless.SharePoint {
     /// <exception cref="System.ArgumentNullException">Throws when input parameter <paramref name="listUrl"/> is null.</exception>
     public SPContentType GetContentType(string listUrl, SPContentTypeId contentTypeId) {
       CommonHelper.ConfirmNotNull(listUrl, "listUrl");
-      SPListLookupKey listInfo = listUrls.EnsureKeyValue(listUrl, GetListInfoFromUrl);
+      SPListLookupKey listInfo = hashtable.EnsureKeyValue(listUrl, () => GetListInfoFromUrl(listUrl));
       SPContentTypeLookupKey lookupKey = new SPContentTypeLookupKey(listInfo.ListId, contentTypeId);
       return GetOrAdd(lookupKey, () => GetList(listInfo.WebId, listInfo.ListId).ContentTypes[contentTypeId]);
     }
@@ -496,7 +539,7 @@ namespace Codeless.SharePoint {
       });
     }
 
-    private T GetOrAdd<T>(ILookupKey<T> lookupKey, Func<T> factory) {
+    private T GetOrAdd<T>(object lookupKey, Func<T> factory) {
       if (hashtable.ContainsKey(lookupKey)) {
         return (T)hashtable[lookupKey];
       }
@@ -510,12 +553,18 @@ namespace Codeless.SharePoint {
       return value;
     }
 
-    private T GetOrAdd<T>(ILookupKey<T> lookupKey, T value) {
+    private T GetOrAdd<T>(object lookupKey, T value) {
       if (hashtable.ContainsKey(lookupKey)) {
         return (T)hashtable[lookupKey];
       }
       hashtable[lookupKey] = value;
       return value;
+    }
+
+    private SPWeb OpenWeb(Guid webId) {
+      SPWeb web = SPExtensionHelper.OpenWebSafe(contextSite, webId);
+      disposables.Add(web);
+      return web;
     }
 
     private SPField EnsureLocalXmlNode(SPField field) {
@@ -527,11 +576,15 @@ namespace Codeless.SharePoint {
     }
 
     private SPListLookupKey GetListInfoFromUrl(string listUrl) {
-      SPFolder folder = (SPFolder)contextSite.GetFileOrFolder(listUrl);
-      if (folder == null) {
-        throw new ArgumentException("listUrl");
+      SPWeb web = TryGetWeb(listUrl);
+      if (web == null) {
+        return new SPListLookupKey(Guid.Empty, Guid.Empty);
       }
-      return new SPListLookupKey(folder.ParentWeb.ID, folder.ParentListId);
+      SPFolder folder = web.GetFileOrFolderObject(listUrl) as SPFolder;
+      if (folder == null) {
+        return new SPListLookupKey(web.ID, Guid.Empty);
+      }
+      return new SPListLookupKey(web.ID, folder.ParentListId);
     }
   }
 }

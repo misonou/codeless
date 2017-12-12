@@ -268,7 +268,11 @@ namespace Codeless.SharePoint.ObjectModel {
     protected SPObjectCache ObjectCache {
       get {
         if (objectCache == null) {
-          objectCache = new SPObjectCache(this.Site);
+          if (SPContext.Current != null && currentWeb.Site == SPContext.Current.Site) {
+            objectCache = SPObjectCache.GetInstanceForCurrentContext();
+          } else {
+            objectCache = new SPObjectCache(this.Site);
+          }
           InitializeObjectCache();
         }
         return objectCache;
