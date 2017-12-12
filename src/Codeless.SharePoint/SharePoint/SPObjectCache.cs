@@ -580,11 +580,16 @@ namespace Codeless.SharePoint {
       if (web == null) {
         return new SPListLookupKey(Guid.Empty, Guid.Empty);
       }
-      SPFolder folder = web.GetFileOrFolderObject(listUrl) as SPFolder;
-      if (folder == null) {
-        return new SPListLookupKey(web.ID, Guid.Empty);
+      object fileOrFolder = web.GetFileOrFolderObjectSafe(listUrl);
+      SPFolder folder = fileOrFolder as SPFolder;
+      if (folder != null) {
+        return new SPListLookupKey(web.ID, folder.ParentListId);
       }
-      return new SPListLookupKey(web.ID, folder.ParentListId);
+      SPFile file = fileOrFolder as SPFile;
+      if (file != null) {
+        return new SPListLookupKey(web.ID, file.ParentFolder.ParentListId);
+      }
+      return new SPListLookupKey(web.ID, Guid.Empty);
     }
   }
 }
