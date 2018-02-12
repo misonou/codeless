@@ -1079,6 +1079,7 @@ namespace Codeless.SharePoint {
         foreach (SPRoleDefinition role in assignment.RoleDefinitionBindings.OfType<SPRoleDefinition>().ToArray()) {
           if (role.Name != "Limited Access") {
             assignment.RoleDefinitionBindings.Remove(role);
+            assignment.Update();
           }
         }
       }
