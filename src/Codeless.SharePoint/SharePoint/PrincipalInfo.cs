@@ -183,7 +183,7 @@ namespace Codeless.SharePoint {
         }
         try {
           PrincipalResolver resolver = new PrincipalResolver(true);
-          foreach (PrincipalInfo info in resolver.Resolve(member, implicitScope)) {
+          foreach (PrincipalInfo info in resolver.Resolve(member, null)) {
             if (info.IsResolved && !CommonHelper.IsNullOrWhiteSpace(info.EmailAddress)) {
               yield return info.EmailAddress;
             }
@@ -215,7 +215,7 @@ namespace Codeless.SharePoint {
         try {
           PrincipalResolver resolver = new PrincipalResolver(true);
           foreach (SPPrincipal member in members) {
-            foreach (PrincipalInfo info in resolver.Resolve(member, implicitScope)) {
+            foreach (PrincipalInfo info in resolver.Resolve(member, null)) {
               if (info.IsResolved && !CommonHelper.IsNullOrWhiteSpace(info.EmailAddress)) {
                 yield return info.EmailAddress;
               }
