@@ -3,6 +3,7 @@ using Microsoft.SharePoint.Taxonomy;
 using Microsoft.SharePoint.Workflow;
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Codeless.SharePoint.Internal {
   internal static class SPExtensionHelper {
@@ -16,7 +17,8 @@ namespace Codeless.SharePoint.Internal {
             return web;
           }
         }
-      } catch (UnauthorizedAccessException) { }
+      } catch (UnauthorizedAccessException) {
+      } catch (FileNotFoundException) { }
       return null;
     }
 
@@ -28,7 +30,10 @@ namespace Codeless.SharePoint.Internal {
             return web;
           }
         }
-      } catch (UnauthorizedAccessException) { }
+      } catch (UnauthorizedAccessException) {
+      } catch (ArgumentException) {
+        // strUrl is not equal to or is a decesendant path of that of the specified site collection
+      }
       return null;
     }
 

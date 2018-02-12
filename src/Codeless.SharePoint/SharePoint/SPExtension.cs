@@ -684,8 +684,14 @@ namespace Codeless.SharePoint {
     public static object GetFileOrFolder(this SPSite site, string strUrl) {
       CommonHelper.ConfirmNotNull(strUrl, "strUrl");
       SPWeb currentWeb;
-      if (!strUrl.StartsWith("/")) {
-        strUrl = SPUrlUtility.CombineUrl(site.ServerRelativeUrl, strUrl);
+      if (strUrl.Length > 0 && !strUrl.StartsWith("/")) {
+        if (!strUrl.Contains("://")) {
+          strUrl = SPUrlUtility.CombineUrl(site.ServerRelativeUrl, strUrl);
+        } else if (strUrl.StartsWith(site.Url, StringComparison.OrdinalIgnoreCase)) {
+          strUrl = new Uri(strUrl).AbsolutePath;
+        } else {
+          return null;
+        }
       }
       SPContext current = SPContext.Current;
       if (current != null && site == current.Site) {
@@ -694,7 +700,10 @@ namespace Codeless.SharePoint {
       } else {
         currentWeb = SPExtensionHelper.OpenWebSafe(site, strUrl, false);
       }
-      return currentWeb.GetFileOrFolderObjectSafe(strUrl);
+      if (currentWeb != null) {
+        return currentWeb.GetFileOrFolderObjectSafe(strUrl);
+      }
+      return null;
     }
 
     /// <summary>
