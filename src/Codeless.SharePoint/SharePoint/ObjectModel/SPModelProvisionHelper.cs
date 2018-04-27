@@ -14,6 +14,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Xml;
@@ -38,6 +39,8 @@ namespace Codeless.SharePoint.ObjectModel {
   }
 
   internal sealed class SPModelProvisionHelper : IDisposable {
+    private const string CTDocNamespaceUri = "http://sharepoint.codeless.org/ct";
+
     private static readonly Map<string, string> FieldLinkPropertyMapping = new Map<string, string> {
       { "Title", "DisplayName" },
       { "ReadOnlyField", "ReadOnly" }
@@ -55,7 +58,6 @@ namespace Codeless.SharePoint.ObjectModel {
     private static readonly Guid CTypesFeatureID = new Guid("695b6570-a48b-4a8e-8ea5-26ea7fc1d162");
 
     private readonly SPModelProvisionEventReceiver eventReceiver;
-    private readonly SPObjectCache objectCache;
     private TermStore termStore;
     private AssertionCollection assertions;
 
@@ -69,17 +71,18 @@ namespace Codeless.SharePoint.ObjectModel {
       TaxonomySession session = new TaxonomySession(this.TargetSite);
       this.termStore = session.DefaultKeywordsTermStore;
       this.eventReceiver = eventReceiver;
-      this.objectCache = new SPObjectCache(this.TargetSite);
-      objectCache.AddWeb(this.TargetSite.RootWeb);
+      this.ObjectCache = new SPObjectCache(this.TargetSite);
+      this.ObjectCache.AddWeb(this.TargetSite.RootWeb);
     }
 
     public SPSite TargetSite { get; private set; }
     public Guid TargetSiteId { get; private set; }
     public string TargetSiteUrl { get; private set; }
+    public SPObjectCache ObjectCache { get; private set; }
 
     public SPContentType EnsureContentType(SPContentTypeAttribute definition) {
       CommonHelper.ConfirmNotNull(definition, "definition");
-      SPContentType contentType = objectCache.GetContentType(definition.ContentTypeId);
+      SPContentType contentType = this.ObjectCache.GetContentType(definition.ContentTypeId);
       if (contentType == null) {
         SPContentTypeCollection contentTypes = this.TargetSite.RootWeb.ContentTypes;
         contentType = contentTypes[definition.ContentTypeId];
@@ -89,7 +92,7 @@ namespace Codeless.SharePoint.ObjectModel {
         } else if (contentType.FeatureId == CTypesFeatureID) {
           throw new SPModelProvisionException(String.Format("System content type cannot be provisioned. Consider derive child content type or set ExternalContentType to true. {0}.", definition.ContentTypeIdString));
         }
-        objectCache.AddContentType(contentType);
+        this.ObjectCache.AddContentType(contentType);
       }
       return contentType;
     }
@@ -103,7 +106,7 @@ namespace Codeless.SharePoint.ObjectModel {
       contentTypesToRemove = new List<SPContentTypeId>();
 
       string serverRelativeUrl = SPUrlUtility.CombineUrl(targetWeb.ServerRelativeUrl, definition.Url);
-      SPList list = objectCache.TryGetList(serverRelativeUrl);
+      SPList list = this.ObjectCache.TryGetList(serverRelativeUrl);
       if (list == null) {
         using (targetWeb.GetAllowUnsafeUpdatesScope()) {
           string listTitle = definition.Title ?? definition.Url.TrimStart('/').Replace('/', ' ');
@@ -122,7 +125,7 @@ namespace Codeless.SharePoint.ObjectModel {
           contentTypesToRemove.AddRange(list.ContentTypes.OfType<SPContentType>().Select(v => v.Id));
           contentTypesToRemove.Remove(contentTypesToRemove.FirstOrDefault(v => v.IsChildOf(SPBuiltInContentTypeId.Folder)));
         }
-        objectCache.AddList(list);
+        this.ObjectCache.AddList(list);
       }
       return list;
     }
@@ -196,7 +199,7 @@ namespace Codeless.SharePoint.ObjectModel {
       }
     }
 
-    public bool UpdateContentType(SPContentType contentType, SPContentTypeAttribute definition, SPFieldAttribute[] fieldDefinitions) {
+    public bool UpdateContentType(SPContentType contentType, SPContentTypeAttribute definition, SPFieldAttribute[] fieldDefinitions, string checksum) {
       CommonHelper.ConfirmNotNull(contentType, "contentType");
       CommonHelper.ConfirmNotNull(definition, "definition");
       CommonHelper.ConfirmNotNull(fieldDefinitions, "fieldDefinitions");
@@ -281,31 +284,14 @@ namespace Codeless.SharePoint.ObjectModel {
           if (eventArgs.TargetModified) {
             contentType.Update();
           }
-          // TODO: feature temporarily off because of possible save conflicts
-          // if (contentType.ParentList != null) {
-          //   SPFolder rootFolder = contentType.ParentList.RootFolder;
-          //   List<SPContentType> visibleContentTypes = new List<SPContentType>(rootFolder.ContentTypeOrder);
-          //   if (definition.HiddenInList) {
-          //     if (visibleContentTypes.Contains(contentType, SPContentTypeEqualityComparer.Default)) {
-          //       visibleContentTypes.Remove(contentType);
-          //       rootFolder.UniqueContentTypeOrder = visibleContentTypes;
-          //       rootFolder.Update();
-          //     }
-          //   } else {
-          //     if (!visibleContentTypes.Contains(contentType, SPContentTypeEqualityComparer.Default)) {
-          //       visibleContentTypes.Add(contentType);
-          //       rootFolder.UniqueContentTypeOrder = visibleContentTypes;
-          //       rootFolder.Update();
-          //     }
-          //   }
-          // }
+          SetContentTypeChecksum(contentType, checksum);
         }
         eventReceiver.OnContentTypeProvisioned(eventArgs);
       }
       return eventArgs.TargetModified;
     }
 
-    public bool UpdateList(SPList list, SPListAttribute definition, SPContentTypeAttribute contentTypeDefinition, SPFieldAttribute[] contentTypeFields, SPFieldAttribute[] hiddenFields, IList<SPContentTypeId> contentTypesToRemove) {
+    public bool UpdateList(SPList list, SPListAttribute definition, SPContentTypeAttribute contentTypeDefinition, SPFieldAttribute[] contentTypeFields, SPFieldAttribute[] hiddenFields, IList<SPContentTypeId> contentTypesToRemove, string checksum) {
       CommonHelper.ConfirmNotNull(list, "list");
       CommonHelper.ConfirmNotNull(definition, "definition");
       CommonHelper.ConfirmNotNull(contentTypeDefinition, "contentTypeDefinition");
@@ -314,7 +300,7 @@ namespace Codeless.SharePoint.ObjectModel {
       CommonHelper.ConfirmNotNull(contentTypesToRemove, "contentTypesToRemove");
       definition = definition.Clone();
 
-      SPList cachedList = objectCache.AddList(list);
+      SPList cachedList = this.ObjectCache.AddList(list);
       SPListProvisionEventArgs eventArgs = new SPListProvisionEventArgs();
       eventArgs.Web = cachedList.ParentWeb;
       eventArgs.List = cachedList;
@@ -346,17 +332,19 @@ namespace Codeless.SharePoint.ObjectModel {
               }
             }
 
-            if (!cachedList.ContainsContentType(contentTypeDefinition.ContentTypeId)) {
-              SPContentType siteContentType = objectCache.GetContentType(contentTypeDefinition.ContentTypeId);
+            SPContentType listContentType = cachedList.ContentTypes.OfType<SPContentType>().FirstOrDefault(v => v.Id.Parent == contentTypeDefinition.ContentTypeId);
+            if (listContentType == null) {
+              SPContentType siteContentType = this.ObjectCache.GetContentType(contentTypeDefinition.ContentTypeId);
               try {
                 using (cachedList.ParentWeb.GetAllowUnsafeUpdatesScope()) {
-                  SPContentType listContentType = cachedList.ContentTypes.Add(siteContentType);
-                  UpdateContentType(listContentType, contentTypeDefinition, contentTypeFields);
+                  listContentType = cachedList.ContentTypes.Add(siteContentType);
+                  UpdateContentType(listContentType, contentTypeDefinition, contentTypeFields, checksum);
                 }
               } catch (SPException ex) {
                 throw new SPModelProvisionException(String.Format("Unable to add content type '{0}' to list '{1}' because there is another content type with the same display name", contentTypeDefinition.Name, list.RootFolder.Url), ex);
               }
             }
+            this.ObjectCache.AddContentType(listContentType);
 
             try {
               SPFieldIndex index = cachedList.FieldIndexes[SPBuiltInFieldId.ContentTypeId];
@@ -373,16 +361,31 @@ namespace Codeless.SharePoint.ObjectModel {
               cachedList.ContentTypes.Delete(id);
             }
             eventArgs.TargetModified |= CopyProperties(definition, cachedList);
-          }
-          using (cachedList.ParentWeb.GetAllowUnsafeUpdatesScope()) {
-            foreach (SPField field in listFieldsToUpdate) {
-              field.Update();
+
+            using (cachedList.ParentWeb.GetAllowUnsafeUpdatesScope()) {
+              foreach (SPField field in listFieldsToUpdate) {
+                field.Update();
+              }
+              if (eventArgs.TargetModified) {
+                cachedList.Update();
+              }
+
+              SPFolder rootFolder = cachedList.RootFolder;
+              List<SPContentType> visibleContentTypes = new List<SPContentType>(rootFolder.ContentTypeOrder);
+              int index = visibleContentTypes.FindIndex(v => v.Id == listContentType.Id);
+              if (contentTypeDefinition.HiddenInList ^ (index < 0)) {
+                if (contentTypeDefinition.HiddenInList) {
+                  visibleContentTypes.RemoveAt(index);
+                } else {
+                  visibleContentTypes.Add(listContentType);
+                }
+                rootFolder.UniqueContentTypeOrder = visibleContentTypes;
+                rootFolder.Update();
+              }
+              SetContentTypeChecksum(list, contentTypeDefinition.ContentTypeId, checksum);
             }
-            if (eventArgs.TargetModified) {
-              cachedList.Update();
-            }
+            eventReceiver.OnListProvisioned(eventArgs);
           }
-          eventReceiver.OnListProvisioned(eventArgs);
 
           string[] includedFields = contentTypeFields.Where(v => v.ShowInListView == SPOption.True).OrderBy(v => v.ColumnOrder).Select(v => v.ListFieldInternalName).ToArray();
           string[] excludedFields = contentTypeFields.Where(v => v.ShowInListView == SPOption.False).Concat(hiddenFields).Select(v => v.ListFieldInternalName).ToArray();
@@ -408,7 +411,7 @@ namespace Codeless.SharePoint.ObjectModel {
           // only provision to views lying under root rolder of the parent list
           // views located in other URL (i.e. views associated with list view web part) are ignored
           if (view.Type == "HTML" && !view.Hidden && view.Url.StartsWith(listUrl)) {
-            SPView cachedView = objectCache.AddView(view);
+            SPView cachedView = this.ObjectCache.AddView(view);
             SPListViewProvisionEventArgs eventArgs = new SPListViewProvisionEventArgs();
             eventArgs.Web = list.ParentWeb;
             eventArgs.View = cachedView;
@@ -436,12 +439,33 @@ namespace Codeless.SharePoint.ObjectModel {
       return viewUpdated;
     }
 
+    public string GetContentTypeChecksum(SPContentType contentType) {
+      string xml = contentType.XmlDocuments[CTDocNamespaceUri];
+      if (xml == null) {
+        return null;
+      }
+      XmlDocument doc = new XmlDocument();
+      doc.LoadXml(xml);
+      XmlNodeList elm = doc.GetElementsByTagName("CheckSum");
+      return elm[0].FirstChild.Value;
+    }
+
+    public string GetContentTypeChecksum(SPList list, SPContentTypeId ctId) {
+      string serializedData = (string)list.RootFolder.Properties["ContentTypeChecksum"];
+      if (serializedData == null) {
+        return null;
+      }
+      string[] parts = serializedData.Split(';');
+      int index = Array.IndexOf(parts, ctId.ToString());
+      return index >= 0 ? parts[index + 1] : null;
+    }
+
     public void Dispose() {
       this.TargetSite.Dispose();
     }
 
     private SPField EnsureField(SPFieldAttribute definition) {
-      SPField field = objectCache.TryGetField(definition.InternalName);
+      SPField field = this.ObjectCache.TryGetField(definition.InternalName);
       if (field == null) {
         if (definition is SPBuiltInFieldAttribute) {
           throw new SPModelProvisionException(String.Format("Field '{0}' does not exist", definition.InternalName));
@@ -469,7 +493,7 @@ namespace Codeless.SharePoint.ObjectModel {
         string fieldXml = String.Format("<Field ID=\"{0}\" Name=\"{1}\" DisplayName=\"{1}\" Type=\"{2}\" CanToggleHidden=\"TRUE\" Overwrite=\"TRUE\" />", fieldId, definition.InternalName, fieldType);
         fieldCollection.AddFieldAsXml(fieldXml);
         field = fieldCollection.GetFieldByInternalName(definition.InternalName);
-        objectCache.AddField(field);
+        this.ObjectCache.AddField(field);
       }
       return field;
     }
@@ -482,7 +506,7 @@ namespace Codeless.SharePoint.ObjectModel {
       if (siteField.Type == SPFieldType.Lookup) {
         listField = EnsureListLookupField(parentList, (SPFieldLookup)siteField, attachLookupList);
       } else {
-        listField = objectCache.GetField(parentList.ParentWeb.ID, parentList.ID, siteField.Id);
+        listField = this.ObjectCache.GetField(parentList.ParentWeb.ID, parentList.ID, siteField.Id);
         if (listField == null) {
           using (parentList.ParentWeb.GetAllowUnsafeUpdatesScope()) {
             parentList.Fields.Add(siteField);
@@ -511,7 +535,7 @@ namespace Codeless.SharePoint.ObjectModel {
           }
         }
       }
-      objectCache.AddField(listField);
+      this.ObjectCache.AddField(listField);
       return listField;
     }
 
@@ -538,7 +562,7 @@ namespace Codeless.SharePoint.ObjectModel {
         }
       }
 
-      SPField listLookupField = objectCache.GetField(parentList.ParentWeb.ID, parentList.ID, siteLookupField.Id);
+      SPField listLookupField = this.ObjectCache.GetField(parentList.ParentWeb.ID, parentList.ID, siteLookupField.Id);
       if (listLookupField == null) {
         using (parentList.ParentWeb.GetAllowUnsafeUpdatesScope()) {
           XmlDocument fieldSchemaXml = new XmlDocument();
@@ -552,7 +576,7 @@ namespace Codeless.SharePoint.ObjectModel {
           listLookupField.Title = siteLookupField.Title;
           listLookupField.Update();
 
-          objectCache.AddField(listLookupField);
+          this.ObjectCache.AddField(listLookupField);
           return listLookupField;
         }
       }
@@ -572,10 +596,50 @@ namespace Codeless.SharePoint.ObjectModel {
       return listLookupField;
     }
 
-    private static string[] MergeFieldOrder(SPContentType contentType, ICollection<SPFieldAttribute> fieldDefinitions, bool listContentType) {
+    private string[] MergeFieldOrder(SPContentType contentType, ICollection<SPFieldAttribute> fieldDefinitions, bool listContentType) {
       string[] thisOrder = fieldDefinitions.OrderBy(v => v.ColumnOrder).Select(v => listContentType ? v.ListFieldInternalName : v.InternalName).ToArray();
-      string[] parentOrder = contentType.Parent.FieldLinks.OfType<SPFieldLink>().Select(v => listContentType ? v.Name : contentType.ParentWeb.AvailableFields[v.Id].InternalName).Except(thisOrder).ToArray();
-      return parentOrder.Concat(thisOrder).ToArray();
+      List<string> parentOrder = new List<string>();
+      foreach (SPFieldLink field in contentType.Parent.FieldLinks) {
+        string fieldName = listContentType ? field.Name : this.ObjectCache.GetField(field.Id).InternalName;
+        if (!thisOrder.Contains(fieldName)) {
+          parentOrder.Add(fieldName);
+        }
+      }
+      parentOrder.AddRange(thisOrder);
+      return parentOrder.ToArray();
+    }
+
+    private void SetContentTypeChecksum(SPContentType contentType, string checksum) {
+      if (contentType.XmlDocuments[CTDocNamespaceUri] != null) {
+        contentType.XmlDocuments.Delete(CTDocNamespaceUri);
+      }
+      XmlDocument doc = new XmlDocument();
+      doc.LoadXml("<Root xmlns=\"" + CTDocNamespaceUri + "\"><CheckSum>" + checksum + "</CheckSum></Root>");
+      contentType.XmlDocuments.Add(doc);
+      contentType.Update();
+    }
+
+    private void SetContentTypeChecksum(SPList list, SPContentTypeId ctId, string checksum) {
+      Hashtable ht = new Hashtable();
+      string serializedData = (string)list.RootFolder.Properties["ContentTypeChecksum"];
+      if (serializedData != null) {
+        string[] parts = serializedData.Split(';');
+        for (int i = 0; i < parts.Length; i = i + 2) {
+          ht[parts[i]] = parts[i + 1];
+        }
+      }
+      ht[ctId.ToString()] = checksum;
+
+      StringBuilder sb = new StringBuilder();
+      foreach (string key in ht.Keys) {
+        sb.Append(';');
+        sb.Append(key);
+        sb.Append(';');
+        sb.Append(ht[key]);
+      }
+      sb.Remove(0, 1);
+      list.RootFolder.Properties["ContentTypeChecksum"] = sb.ToString();
+      list.RootFolder.Update();
     }
 
     private static void AddToQuickLaunch(SPList list) {
@@ -604,18 +668,6 @@ namespace Codeless.SharePoint.ObjectModel {
           collection.EnsureEventReceiver(t, typeof(SPModelEventReceiver), SPEventReceiverSynchronization.Synchronous);
           collection.EnsureEventReceiver(t, typeof(SPModelAsyncEventReceiver), SPEventReceiverSynchronization.Asynchronous);
         }
-      }
-    }
-
-    private class SPContentTypeEqualityComparer : EqualityComparer<SPContentType> {
-      public static readonly SPContentTypeEqualityComparer Default = new SPContentTypeEqualityComparer();
-
-      public override bool Equals(SPContentType x, SPContentType y) {
-        return x.Id == y.Id;
-      }
-
-      public override int GetHashCode(SPContentType obj) {
-        return obj.Id.GetHashCode();
       }
     }
 

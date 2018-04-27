@@ -11,6 +11,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -171,12 +172,12 @@ namespace Codeless.SharePoint.ObjectModel {
   /// Provides a base class that handles querying, creating, deleting and persisting list items in a SharePoint site collection using model classes.
   /// </summary>
   /// <typeparam name="T"></typeparam>
-  public abstract class SPModelManagerBase<T> : ISPModelManager, ISPModelManagerInternal {
+  public abstract class SPModelManagerBase<T> : ISPModelManager, ISPModelManagerInternal, ISPObjectContext {
+    private static readonly IEnumerable<ISPListItemAdapter> emptyResult = Enumerable.Empty<ISPListItemAdapter>();
+    private static SPModelDescriptor descriptor;
     private readonly SPWeb currentWeb;
-    private readonly SPModelDescriptor descriptor;
     private readonly ICollection<SPModelUsage> currentLists = new HashSet<SPModelUsage>(SPModelUsageEqualityComparer.Default);
     private readonly HashSet<SPModel> itemsToSave = new HashSet<SPModel>();
-    private readonly uint throttlingLimit;
     private readonly bool explicitListScope;
     private readonly bool currentWebOnly;
     private bool contextInitialized;
@@ -223,20 +224,17 @@ namespace Codeless.SharePoint.ObjectModel {
 
     private SPModelManagerBase(SPWeb currentWeb, IList<SPList> contextLists, bool currentWebOnly) {
       CommonHelper.ConfirmNotNull(currentWeb, "currentWeb");
+      this.currentWeb = currentWeb;
+      this.currentWebOnly = currentWebOnly;
+      if (descriptor == null) {
+        descriptor = SPModelDescriptor.Resolve(typeof(T));
+      }
+      descriptor.Provision(currentWeb, SPModelProvisionOptions.Asynchronous | SPModelProvisionOptions.SuppressListCreation | SPModelProvisionOptions.MismatchChecksumCTOnly, SPModelListProvisionOptions.Default);
 
-      using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
-        this.currentWeb = currentWeb;
-        this.currentWebOnly = currentWebOnly;
-        this.throttlingLimit = currentWeb.Site.WebApplication.MaxItemsPerThrottledOperation;
-
-        this.descriptor = SPModelDescriptor.Resolve(typeof(T));
-        descriptor.Provision(currentWeb, SPModelProvisionOptions.Asynchronous | SPModelProvisionOptions.SuppressListCreation, SPModelListProvisionOptions.Default);
-
-        if (contextLists != null) {
-          contextLists.SelectMany(descriptor.GetUsages).ForEach(currentLists.Add);
-          explicitListScope = true;
-          contextInitialized = true;
-        }
+      if (contextLists != null) {
+        contextLists.SelectMany(descriptor.GetUsages).ForEach(currentLists.Add);
+        explicitListScope = true;
+        contextInitialized = true;
       }
     }
 
@@ -270,7 +268,12 @@ namespace Codeless.SharePoint.ObjectModel {
     protected SPObjectCache ObjectCache {
       get {
         if (objectCache == null) {
-          objectCache = new SPObjectCache(this.Site);
+          if (SPContext.Current != null && currentWeb.Site == SPContext.Current.Site) {
+            objectCache = SPObjectCache.GetInstanceForCurrentContext();
+          } else {
+            objectCache = new SPObjectCache(this.Site);
+          }
+          InitializeObjectCache();
         }
         return objectCache;
       }
@@ -282,14 +285,14 @@ namespace Codeless.SharePoint.ObjectModel {
     protected SPModelImplicitQueryMode ImplicitQueryMode {
       get {
         EnsureContextInitialized();
-        if (currentLists.Count > 1 && descriptor.BaseType == SPBaseType.UnspecifiedBaseType) {
-          return SPModelImplicitQueryMode.KeywordSearch;
-        } else if (currentLists.Count > 1) {
-          return SPModelImplicitQueryMode.SiteQuery;
-        } else if (currentLists.Count == 1) {
-          return SPModelImplicitQueryMode.ListQuery;
-        } else {
+        if (currentLists.Count == 0) {
           return SPModelImplicitQueryMode.None;
+        } else if (currentLists.Count == 1 && explicitListScope) {
+          return SPModelImplicitQueryMode.ListQuery;
+        } else if (descriptor.BaseType == SPBaseType.UnspecifiedBaseType) {
+          return SPModelImplicitQueryMode.KeywordSearch;
+        } else {
+          return SPModelImplicitQueryMode.SiteQuery;
         }
       }
     }
@@ -312,7 +315,8 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     /// <typeparam name="TItem">Item type.</typeparam>
     /// <returns>A collection containing the returned items.</returns>
-    protected internal SPModelCollection<TItem> GetItems<TItem>() {
+    [DebuggerStepThrough]
+    protected SPModelCollection<TItem> GetItems<TItem>() {
       return GetItems<TItem>(null);
     }
 
@@ -322,8 +326,9 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <typeparam name="TItem">Item type.</typeparam>
     /// <param name="query">CAML query expression.</param>
     /// <returns>A collection containing the returned items.</returns>
-    protected internal SPModelCollection<TItem> GetItems<TItem>(CamlExpression query) {
-      return GetItems<TItem>(query, throttlingLimit);
+    [DebuggerStepThrough]
+    protected SPModelCollection<TItem> GetItems<TItem>(CamlExpression query) {
+      return GetItems<TItem>(query, 0);
     }
 
     /// <summary>
@@ -333,7 +338,8 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="query">CAML query expression.</param>
     /// <param name="limit">Maximum number of items to be returned.</param>
     /// <returns>A collection containing the returned items.</returns>
-    protected internal SPModelCollection<TItem> GetItems<TItem>(CamlExpression query, uint limit) {
+    [DebuggerStepThrough]
+    protected SPModelCollection<TItem> GetItems<TItem>(CamlExpression query, uint limit) {
       return GetItems<TItem>(query, limit, 0);
     }
 
@@ -345,28 +351,10 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="limit">Maximum number of items to be returned.</param>
     /// <param name="startRow">Number of items to skip from start.</param>
     /// <returns>A collection containing the returned items.</returns>
-    protected internal SPModelCollection<TItem> GetItems<TItem>(CamlExpression query, uint limit, uint startRow) {
+    [DebuggerStepThrough]
+    protected SPModelCollection<TItem> GetItems<TItem>(CamlExpression query, uint limit, uint startRow) {
       int dummy;
-      if (query != Caml.False && this.ImplicitQueryMode != SPModelImplicitQueryMode.None) {
-        SPModelDescriptor typeInfo = SPModelDescriptor.Resolve(typeof(TItem));
-        if (descriptor.Contains(typeInfo)) {
-          CamlExpression contentTypedQuery = query + typeInfo.GetContentTypeExpression(descriptor);
-          IEnumerable<ISPListItemAdapter> queryResultSet = null;
-          switch (this.ImplicitQueryMode) {
-            case SPModelImplicitQueryMode.KeywordSearch:
-              queryResultSet = ExecuteKeywordSearchAsAdapter(typeInfo, contentTypedQuery, (int)limit, (int)startRow, null, null, KeywordInclusion.AllKeywords, out dummy);
-              break;
-            case SPModelImplicitQueryMode.SiteQuery:
-              queryResultSet = ExecuteSiteQueryAsAdapter(typeInfo, contentTypedQuery, limit, startRow);
-              break;
-            case SPModelImplicitQueryMode.ListQuery:
-              queryResultSet = ExecuteListQueryAsAdapter(typeInfo, contentTypedQuery, limit, startRow);
-              break;
-          }
-          return SPModelCollection<TItem>.Create(this, queryResultSet, false);
-        }
-      }
-      return SPModelCollection<TItem>.Create(this, new ISPListItemAdapter[0], false);
+      return GetItems<TItem>(CreateQuery<TItem>(query, limit, startRow), out dummy);
     }
 
     /// <summary>
@@ -378,7 +366,8 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="keywords">A list of keywords to be searched against.</param>
     /// <param name="keywordInclusion">See <see cref="KeywordInclusion"/>.</param>
     /// <returns>A collection containing the returned items.</returns>
-    protected internal SPModelCollection<TItem> GetItems<TItem>(CamlExpression query, uint limit, string[] keywords, KeywordInclusion keywordInclusion) {
+    [DebuggerStepThrough]
+    protected SPModelCollection<TItem> GetItems<TItem>(CamlExpression query, uint limit, string[] keywords, KeywordInclusion keywordInclusion) {
       int dummy;
       return GetItems<TItem>(query, limit, 0, keywords, null, keywordInclusion, out dummy);
     }
@@ -395,17 +384,9 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="keywordInclusion">See <see cref="KeywordInclusion"/>.</param>
     /// <param name="totalCount">Total number of items.</param>
     /// <returns>A collection containing the returned items.</returns>
-    protected internal SPModelCollection<TItem> GetItems<TItem>(CamlExpression query, uint limit, uint startRow, string[] keywords, SearchRefiner[] refiners, KeywordInclusion keywordInclusion, out int totalCount) {
-      if (query != Caml.False) {
-        SPModelDescriptor typeInfo = SPModelDescriptor.Resolve(typeof(TItem));
-        if (descriptor.Contains(typeInfo)) {
-          CamlExpression contentTypedQuery = query + typeInfo.GetContentTypeExpression(descriptor);
-          IEnumerable<ISPListItemAdapter> queryResultSet = ExecuteKeywordSearchAsAdapter(typeInfo, contentTypedQuery, (int)limit, (int)startRow, keywords, refiners, keywordInclusion, out totalCount);
-          return SPModelCollection<TItem>.Create(this, queryResultSet, false);
-        }
-      }
-      totalCount = 0;
-      return SPModelCollection<TItem>.Create(this, new ISPListItemAdapter[0], false);
+    [DebuggerStepThrough]
+    protected SPModelCollection<TItem> GetItems<TItem>(CamlExpression query, uint limit, uint startRow, string[] keywords, SearchRefiner[] refiners, KeywordInclusion keywordInclusion, out int totalCount) {
+      return GetItems<TItem>(CreateQuery<TItem>(query, limit, startRow, keywords, refiners, keywordInclusion), out totalCount);
     }
 
     /// <summary>
@@ -413,7 +394,8 @@ namespace Codeless.SharePoint.ObjectModel {
     /// </summary>
     /// <typeparam name="TItem">Item type.</typeparam>
     /// <returns>Number of items.</returns>
-    protected internal int GetCount<TItem>() {
+    [DebuggerStepThrough]
+    protected int GetCount<TItem>() {
       return GetCount<TItem>(null);
     }
 
@@ -423,24 +405,9 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <typeparam name="TItem">Item type.</typeparam>
     /// <param name="query">CAML query expression.</param>with the associated content type(s)
     /// <returns>Number of items.</returns>
-    protected internal int GetCount<TItem>(CamlExpression query) {
-      if (query != Caml.False && this.ImplicitQueryMode != SPModelImplicitQueryMode.None) {
-        SPModelDescriptor typeInfo = SPModelDescriptor.Resolve(typeof(TItem));
-        if (descriptor.Contains(typeInfo)) {
-          CamlExpression contentTypedQuery = query + typeInfo.GetContentTypeExpression(descriptor);
-          switch (this.ImplicitQueryMode) {
-            case SPModelImplicitQueryMode.KeywordSearch:
-              return GetCount<TItem>(query, null, KeywordInclusion.AllKeywords);
-            case SPModelImplicitQueryMode.SiteQuery:
-              DataTable dt = ExecuteSiteQuery(typeInfo, contentTypedQuery, throttlingLimit, false);
-              return dt.Rows.Count;
-            case SPModelImplicitQueryMode.ListQuery:
-              IEnumerable<SPListItem> collection = ExecuteListQuery(typeInfo, contentTypedQuery, throttlingLimit, 0, false);
-              return collection.Count();
-          }
-        }
-      }
-      return 0;
+    [DebuggerStepThrough]
+    protected int GetCount<TItem>(CamlExpression query) {
+      return GetCount(CreateQuery<TItem>(query, 0, 0));
     }
 
     /// <summary>
@@ -451,7 +418,8 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="keywords">A list of keywords to be searched against.</param>
     /// <param name="keywordInclusion">See <see cref="KeywordInclusion"/>.</param>
     /// <returns>Number of items.</returns>
-    protected internal int GetCount<TItem>(CamlExpression query, string[] keywords, KeywordInclusion keywordInclusion) {
+    [DebuggerStepThrough]
+    protected int GetCount<TItem>(CamlExpression query, string[] keywords, KeywordInclusion keywordInclusion) {
       return GetCount<TItem>(query, keywords, null, keywordInclusion);
     }
 
@@ -464,17 +432,9 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="refiners">A list of <see cref="SearchRefiner"/> instances. Refinement results are populated to the supplied instances.</param>
     /// <param name="keywordInclusion">See <see cref="KeywordInclusion"/>.</param>
     /// <returns>Number of items.</returns>
-    protected internal int GetCount<TItem>(CamlExpression query, string[] keywords, SearchRefiner[] refiners, KeywordInclusion keywordInclusion) {
-      int dummy;
-      if (query != Caml.False) {
-        SPModelDescriptor typeInfo = SPModelDescriptor.Resolve(typeof(TItem));
-        if (descriptor.Contains(typeInfo)) {
-          CamlExpression contentTypedQuery = query + typeInfo.GetContentTypeExpression(descriptor);
-          ResultTable resultTable = ExecuteKeywordSearch(typeInfo, contentTypedQuery, (int)throttlingLimit, 0, keywords, refiners, keywordInclusion, false, out dummy);
-          return resultTable.RowCount;
-        }
-      }
-      return 0;
+    [DebuggerStepThrough]
+    protected int GetCount<TItem>(CamlExpression query, string[] keywords, SearchRefiner[] refiners, KeywordInclusion keywordInclusion) {
+      return GetCount(CreateQuery<TItem>(query, 0, 0, keywords, refiners, keywordInclusion));
     }
 
     /// <summary>
@@ -741,56 +701,116 @@ namespace Codeless.SharePoint.ObjectModel {
       return session.DefaultKeywordsTermStore;
     }
 
-    private IEnumerable<ISPListItemAdapter> ExecuteListQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit, uint startRow) {
-      IEnumerable<SPListItem> collection = ExecuteListQuery(typeInfo, query, limit, startRow, true);
+    private SPModelCollection<TItem> GetItems<TItem>(SPModelQuery query, out int totalCount) {
+      IEnumerable<ISPListItemAdapter> items = emptyResult;
+      totalCount = 0;
+
+      EnsureContextInitialized();
+      if (query.Expression != Caml.False) {
+        if (query.ForceKeywordSearch) {
+          items = ExecuteKeywordSearchAsAdapter(query, out totalCount);
+        } else {
+          switch (this.ImplicitQueryMode) {
+            case SPModelImplicitQueryMode.KeywordSearch:
+              items = ExecuteKeywordSearchAsAdapter(query, out totalCount);
+              break;
+            case SPModelImplicitQueryMode.SiteQuery:
+              items = ExecuteSiteQueryAsAdapter(query);
+              break;
+            case SPModelImplicitQueryMode.ListQuery:
+              items = ExecuteListQueryAsAdapter(query);
+              break;
+          }
+        }
+      }
+      return SPModelCollection<TItem>.Create(this, items, false);
+    }
+
+    private int GetCount(SPModelQuery query) {
+      EnsureContextInitialized();
+      if (query.Expression != Caml.False) {
+        int count;
+        if (query.ForceKeywordSearch) {
+          ResultTable table = ExecuteKeywordSearch(query, out count);
+          return table.RowCount;
+        }
+        switch (this.ImplicitQueryMode) {
+          case SPModelImplicitQueryMode.KeywordSearch:
+            ResultTable table = ExecuteKeywordSearch(query, out count);
+            return table.RowCount;
+          case SPModelImplicitQueryMode.SiteQuery:
+            ExecuteSiteQuery(query, out count);
+            return count;
+          case SPModelImplicitQueryMode.ListQuery:
+            IEnumerable<SPListItem> collection = ExecuteListQuery(query);
+            return collection.Count();
+        }
+      }
+      return 0;
+    }
+
+    private IEnumerable<ISPListItemAdapter> ExecuteListQueryAsAdapter(SPModelQuery query) {
+      IEnumerable<SPListItem> collection = ExecuteListQuery(query);
       foreach (SPListItem item in collection) {
         yield return new SPListItemAdapter(item, this.ObjectCache);
       }
     }
 
-    private IEnumerable<ISPListItemAdapter> ExecuteSiteQueryAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, uint limit, uint startRow) {
-      DataTable dt = ExecuteSiteQuery(typeInfo, query, limit + startRow, true);
-      for (int i = (int)startRow, count = dt.Rows.Count; i < count; i++) {
+    private IEnumerable<ISPListItemAdapter> ExecuteSiteQueryAsAdapter(SPModelQuery query) {
+      bool hasScopeId = query.SelectProperties.Contains(SPBuiltInFieldName.ScopeId);
+      int dummy;
+      DataTable dt = ExecuteSiteQuery(query, out dummy);
+      for (int i = query.Offset, count = dt.Rows.Count; i < count; i++) {
         DataRowAdapter adapter = new DataRowAdapter(currentWeb.Site, dt.Rows[i], this.ObjectCache);
-        this.ObjectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
+        if (hasScopeId) {
+          this.ObjectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
+        }
         yield return adapter;
       }
     }
 
-    private IEnumerable<ISPListItemAdapter> ExecuteKeywordSearchAsAdapter(SPModelDescriptor typeInfo, CamlExpression query, int limit, int startRow, string[] keywords, SearchRefiner[] refiners, KeywordInclusion keywordInclusion, out int totalCount) {
-      ResultTable queryResultsTable = ExecuteKeywordSearch(typeInfo, query, limit, startRow, keywords, refiners, keywordInclusion, true, out totalCount);
+    private IEnumerable<ISPListItemAdapter> ExecuteKeywordSearchAsAdapter(SPModelQuery query, out int totalCount) {
+      bool hasScopeId = query.SelectProperties.Contains(SPBuiltInFieldName.ScopeId);
+      ResultTable queryResultsTable = ExecuteKeywordSearch(query, out totalCount);
       DataTable queryDataTable = new DataTable();
       queryDataTable.Load(queryResultsTable, LoadOption.OverwriteChanges);
       return queryDataTable.Rows.OfType<DataRow>().Select(v => {
         ISPListItemAdapter adapter = new KeywordQueryResultAdapter(currentWeb.Site, v, this.ObjectCache);
-        this.ObjectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
+        if (hasScopeId) {
+          this.ObjectCache.RequestReusableAcl(new Guid(adapter.GetLookupFieldValue(SPBuiltInFieldName.ScopeId)));
+        }
         return adapter;
       });
     }
 
-    private IEnumerable<SPListItem> ExecuteListQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, uint startRow, bool selectProperties) {
+    private IEnumerable<SPListItem> ExecuteListQuery(SPModelQuery query) {
       SPList list = currentLists.First().EnsureList(this.ObjectCache).List;
+      if (list == null) {
+        currentLists.Clear();
+      }
       if (list == null || list.ItemCount == 0) {
         return new SPListItem[0];
       }
 
       SPQuery listQuery = new SPQuery();
-      listQuery.ViewFields = selectProperties ? (Caml.ViewFields(typeInfo.RequiredViewFields) + Caml.ViewFields(SPModel.RequiredViewFields)).ToString() : String.Empty;
-      listQuery.Query = query.ToString();
-      listQuery.RowLimit = limit;
       listQuery.ViewAttributes = "Scope=\"RecursiveAll\"";
+      listQuery.ViewFields = Caml.ViewFields(query.SelectProperties).ToString();
+      listQuery.Query = query.Expression.ToString();
+      if (query.Limit > 0) {
+        listQuery.RowLimit = (uint)query.Limit;
+      }
       OnExecutingListQuery(new SPModelListQueryEventArgs { Query = listQuery });
 
       try {
-        if (startRow > 0) {
+        if (query.Offset > 0) {
           SPQuery skipQuery = new SPQuery();
           skipQuery.ExpandRecurrence = listQuery.ExpandRecurrence;
           skipQuery.Query = listQuery.Query;
           skipQuery.ViewFields = String.Empty;
           skipQuery.ViewAttributes = listQuery.ViewAttributes;
-          skipQuery.RowLimit = startRow;
+          skipQuery.RowLimit = (uint)query.Offset;
           SPListItemCollection skipResult = list.GetItems(skipQuery);
-          if (skipResult.Count < startRow) {
+          if (skipResult.Count < query.Offset) {
             return Enumerable.Empty<SPListItem>();
           }
           listQuery.ListItemCollectionPosition = skipResult.ListItemCollectionPosition;
@@ -805,25 +825,35 @@ namespace Codeless.SharePoint.ObjectModel {
       }
     }
 
-    private DataTable ExecuteSiteQuery(SPModelDescriptor typeInfo, CamlExpression query, uint limit, bool selectProperties) {
+    private DataTable ExecuteSiteQuery(SPModelQuery query, out int count) {
       SPSiteDataQuery siteQuery = new SPSiteDataQuery();
       siteQuery.Webs = Caml.WebsScope.Recursive;
       siteQuery.Lists = Caml.ListsScope(currentLists.Select(v => v.ListId).ToArray()).ToString();
-      siteQuery.ViewFields = (query.GetViewFieldsExpression() + (selectProperties ? (Caml.ViewFields(typeInfo.RequiredViewFields) + Caml.ViewFields(SPModel.RequiredViewFields)) : Caml.Empty)).ToString();
-      siteQuery.Query = query.ToString();
-      siteQuery.RowLimit = limit;
+      siteQuery.ViewFields = Caml.ViewFields(query.SelectPropertiesForSiteQuery).ToString();
+      siteQuery.Query = query.Expression.ToString();
+      if (query.Limit > 0) {
+        siteQuery.RowLimit = (uint)(query.Limit + query.Offset);
+      }
       OnExecutingSiteQuery(new SPModelSiteQueryEventArgs { Query = siteQuery });
 
-      using (SPWeb targetWeb = currentWeb.Site.OpenWeb(currentWeb.ID)) {
+      using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
         try {
-          return targetWeb.GetSiteData(siteQuery);
+          using (SPWeb targetWeb = currentWeb.Site.OpenWeb(currentWeb.ID)) {
+            DataTable dt = targetWeb.GetSiteData(siteQuery);
+            count = dt.Rows.Count - query.Offset;
+            return dt;
+          }
+        } catch (UnauthorizedAccessException) {
+          currentLists.Clear();
+          count = 0;
+          return new DataTable();
         } catch (Exception ex) {
           if (ex.InnerException is COMException && (ex.InnerException.Message.IndexOf("0x80131904") >= 0 || ex.InnerException.Message.IndexOf("0x80020009") >= 0)) {
             try {
               foreach (SPModelUsage v in currentLists) {
                 SPList list = v.EnsureList(this.ObjectCache).List;
                 if (list != null) {
-                  typeInfo.CheckMissingFields(list);
+                  query.Descriptor.CheckMissingFields(list);
                 }
               }
             } catch (Exception ex2) {
@@ -837,9 +867,9 @@ namespace Codeless.SharePoint.ObjectModel {
       }
     }
 
-    private ResultTable ExecuteKeywordSearch(SPModelDescriptor typeInfo, CamlExpression query, int limit, int startRow, string[] keywords, SearchRefiner[] refiners, KeywordInclusion inclusion, bool selectProperties, out int totalCount) {
+    private ResultTable ExecuteKeywordSearch(SPModelQuery query, out int totalCount) {
       CamlExpression listScopedQuery = Caml.Empty;
-      if (explicitListScope) {
+      if (explicitListScope || currentWebOnly) {
         foreach (SPModelUsage list in currentLists) {
           listScopedQuery |= Caml.BeginsWith(BuiltInManagedPropertyName.Path, SPUtility.GetFullUrl(currentWeb.Site, list.ServerRelativeUrl));
         }
@@ -847,12 +877,17 @@ namespace Codeless.SharePoint.ObjectModel {
         listScopedQuery = Caml.BeginsWith(BuiltInManagedPropertyName.Path, currentWeb.Url);
       }
 
-      KeywordQuery keywordQuery = SearchServiceHelper.CreateQuery(currentWeb.Site, query & listScopedQuery, limit, startRow, keywords, inclusion, SearchServiceHelper.GetManagedPropertyNames(currentWeb.Site, typeInfo.RequiredViewFields));
+      KeywordQuery keywordQuery = SearchServiceHelper.CreateQuery(currentWeb.Site, query.Expression & listScopedQuery, query.Limit, query.Offset, query.Keywords.ToArray(), query.KeywordInclusion, SearchServiceHelper.GetManagedPropertyNames(currentWeb.Site, query.SelectProperties.ToArray()));
       keywordQuery.Culture = this.Culture;
+      if (query.Limit == 0) {
+        int maxItemsCount = (int)this.Site.WebApplication.MaxItemsPerThrottledOperation;
+        keywordQuery.RowLimit = maxItemsCount;
+        keywordQuery.RowsPerPage = maxItemsCount;
+      }
       OnExecutingKeywordSearch(new SPModelKeywordSearchEventArgs { Query = keywordQuery });
 
       try {
-        ResultTable relevantResults = SearchServiceHelper.ExecuteQuery(keywordQuery, refiners);
+        ResultTable relevantResults = SearchServiceHelper.ExecuteQuery(keywordQuery, query.Refiners.ToArray());
         totalCount = relevantResults.TotalRows;
         return relevantResults;
       } catch (Exception ex) {
@@ -863,14 +898,33 @@ namespace Codeless.SharePoint.ObjectModel {
 
     private void EnsureContextInitialized() {
       if (!contextInitialized) {
-        if (currentWeb.DoesUserHavePermissions(SPBasePermissions.Open)) { 
-          descriptor.GetUsages(currentWeb, currentWebOnly).ForEach(currentLists.Add);
-        }
+        descriptor.GetUsages(currentWeb, currentWebOnly).ForEach(currentLists.Add);
         contextInitialized = true;
-        if (this.ImplicitQueryMode == SPModelImplicitQueryMode.ListQuery && currentLists.First().EnsureList(this.ObjectCache).List == null) {
-          currentLists.Clear();
+      }
+    }
+
+    private void InitializeObjectCache() {
+      objectCache.AddWeb(currentWeb);
+      if (contextInitialized) {
+        foreach (SPModelUsage usage in currentLists) {
+          if (usage.List != null) {
+            objectCache.AddList(usage.List);
+          }
         }
       }
+    }
+
+    private SPModelQuery CreateQuery<TItem>(CamlExpression expression, uint limit, uint startRow) {
+      return new SPModelQuery(this, typeof(TItem), expression, (int)limit, (int)startRow);
+    }
+
+    private SPModelQuery CreateQuery<TItem>(CamlExpression expression, uint limit, uint startRow, string[] keywords, SearchRefiner[] refiners, KeywordInclusion keywordInclusion) {
+      SPModelQuery query = CreateQuery<TItem>(expression, limit, startRow);
+      query.ForceKeywordSearch = true;
+      query.Keywords = keywords;
+      query.Refiners = refiners;
+      query.KeywordInclusion = keywordInclusion;
+      return query;
     }
 
     private SPModel ValidateModel(T item, bool requireFile) {
@@ -945,6 +999,7 @@ namespace Codeless.SharePoint.ObjectModel {
           throw new InvalidOperationException();
         }
         objectCache = value;
+        InitializeObjectCache();
       }
     }
 
@@ -966,6 +1021,17 @@ namespace Codeless.SharePoint.ObjectModel {
     void ISPModelManagerInternal.SaveOnCommit(SPModel item) {
       CommonHelper.ConfirmNotNull(item, "item");
       itemsToSave.Add(item);
+    }
+
+    SPModelCollection ISPModelManagerInternal.GetItems(SPModelQuery query) {
+      CommonHelper.ConfirmNotNull(query, "query");
+      int dummy;
+      return GetItems<T>(query, out dummy);
+    }
+
+    int ISPModelManagerInternal.GetCount(SPModelQuery query) {
+      CommonHelper.ConfirmNotNull(query, "query");
+      return GetCount(query);
     }
     #endregion
 

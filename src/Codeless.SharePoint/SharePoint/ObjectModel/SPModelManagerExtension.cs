@@ -1,6 +1,7 @@
 ﻿using Codeless.SharePoint.ObjectModel.Linq;
 using Microsoft.Office.Server.Search.Query;
 using System;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Codeless.SharePoint.ObjectModel {
@@ -36,8 +37,9 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <typeparam name="T">Model type.</typeparam>
     /// <param name="manager">A model manager instance.</param>
     /// <returns>A LINQ queryable interface.</returns>
+    [DebuggerStepThrough]
     public static IQueryable<T> Query<T>(this SPModelManagerBase<T> manager) {
-      return new SPModelQuery<T>(new SPModelQueryProvider<T>(manager));
+      return new SPModelQuery<T>(new SPModelQueryProvider(manager));
     }
 
     /// <summary>
@@ -48,8 +50,9 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="keywords">A list of keywords.</param>
     /// <param name="keywordInclusion">Whether to match all or any keywords.</param>
     /// <returns>A LINQ queryable interface.</returns>
+    [DebuggerStepThrough]
     public static IQueryable<T> Query<T>(this SPModelManagerBase<T> manager, string[] keywords, KeywordInclusion keywordInclusion) {
-      return new SPModelQuery<T>(new SPModelQueryProvider<T>(manager, keywords, keywordInclusion));
+      return new SPModelQuery<T>(new SPModelQueryProvider(manager, keywords, keywordInclusion));
     }
 
     /// <summary>
@@ -58,12 +61,11 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <typeparam name="T">Model type.</typeparam>
     /// <param name="manager">A model manager instance.</param>
     /// <returns>A LINQ queryable interface.</returns>
+    [DebuggerStepThrough]
     public static IQueryable<T> Query<T>(this ISPModelManager manager) {
       Type modelType = ((ISPModelManagerInternal)manager).Descriptor.ModelType;
-      Type queryProviderType = typeof(SPModelQueryProvider<>).MakeGenericType(modelType);
-      Type queryType = typeof(SPModelQuery<>).MakeGenericType(modelType);
-      object queryProvider = Activator.CreateInstance(queryProviderType, manager);
-      return ((IQueryable)Activator.CreateInstance(queryType, queryProvider)).OfType<T>();
+      Type queryType = typeof(SPModelQuery<>).MakeGenericType(modelType);     
+      return ((IQueryable)queryType.CreateInstance(new SPModelQueryProvider((ISPModelManagerInternal)manager))).OfType<T>();
     }
 
     /// <summary>
@@ -74,12 +76,11 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="keywords">A list of keywords.</param>
     /// <param name="keywordInclusion">Whether to match all or any keywords.</param>
     /// <returns>A LINQ queryable interface.</returns>
+    [DebuggerStepThrough]
     public static IQueryable<T> Query<T>(this ISPModelManager manager, string[] keywords, KeywordInclusion keywordInclusion) {
       Type modelType = ((ISPModelManagerInternal)manager).Descriptor.ModelType;
-      Type queryProviderType = typeof(SPModelQueryProvider<>).MakeGenericType(modelType);
       Type queryType = typeof(SPModelQuery<>).MakeGenericType(modelType);
-      object queryProvider = Activator.CreateInstance(queryProviderType, manager, keywords, keywordInclusion);
-      return ((IQueryable)Activator.CreateInstance(queryType, queryProvider)).OfType<T>();
+      return ((IQueryable)queryType.CreateInstance(new SPModelQueryProvider((ISPModelManagerInternal)manager, keywords, keywordInclusion))).OfType<T>();
     }
   }
 }
