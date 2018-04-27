@@ -13,6 +13,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Web;
 using System.Xml;
 using Group = Microsoft.SharePoint.Taxonomy.Group;
 
@@ -152,6 +153,9 @@ namespace Codeless.SharePoint {
     /// <param name="codeToRun">Action to run.</param>
     public static void WithElevatedPrivileges(this SPSite site, Action<SPSite> codeToRun) {
       CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      if (HttpContext.Current != null && HttpContext.Current.Request.Form["__REQUESTDIGEST"] != null) {
+        SPUtility.ValidateFormDigest();
+      }
       using (SPSite elevatedSite = new SPSite(site.ID, SPUserToken.SystemAccount)) {
         using (elevatedSite.GetAllowUnsafeUpdatesScope()) {
           using (elevatedSite.RootWeb.GetAllowUnsafeUpdatesScope()) {
@@ -168,6 +172,9 @@ namespace Codeless.SharePoint {
     /// <param name="codeToRun">Action to run.</param>
     public static void WithElevatedPrivileges(this SPWeb web, Action<SPWeb> codeToRun) {
       CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      if (HttpContext.Current != null && HttpContext.Current.Request.Form["__REQUESTDIGEST"] != null) {
+        SPUtility.ValidateFormDigest();
+      }
       using (SPSite elevatedSite = new SPSite(web.Site.ID, SPUserToken.SystemAccount)) {
         using (SPWeb elevatedWeb = elevatedSite.OpenWeb(web.ID)) {
           using (elevatedWeb.GetAllowUnsafeUpdatesScope()) {
@@ -184,6 +191,9 @@ namespace Codeless.SharePoint {
     /// <param name="codeToRun">Action to run.</param>
     public static void WithElevatedPrivileges(this SPList list, Action<SPList> codeToRun) {
       CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      if (HttpContext.Current != null && HttpContext.Current.Request.Form["__REQUESTDIGEST"] != null) {
+        SPUtility.ValidateFormDigest();
+      }
       using (SPSite elevatedSite = new SPSite(list.ParentWeb.Site.ID, SPUserToken.SystemAccount)) {
         using (SPWeb elevatedWeb = elevatedSite.OpenWeb(list.ParentWeb.ID)) {
           using (elevatedWeb.GetAllowUnsafeUpdatesScope()) {
@@ -201,6 +211,9 @@ namespace Codeless.SharePoint {
     /// <param name="codeToRun">Action to run.</param>
     public static void WithElevatedPrivileges(this SPListItem listItem, Action<SPListItem> codeToRun) {
       CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      if (HttpContext.Current != null && HttpContext.Current.Request.Form["__REQUESTDIGEST"] != null) {
+        SPUtility.ValidateFormDigest();
+      }
       using (SPSite elevatedSite = new SPSite(listItem.Web.Site.ID, SPUserToken.SystemAccount)) {
         using (SPWeb elevatedWeb = elevatedSite.OpenWeb(listItem.Web.ID)) {
           using (elevatedWeb.GetAllowUnsafeUpdatesScope()) {
@@ -219,6 +232,9 @@ namespace Codeless.SharePoint {
     /// <param name="codeToRun">Action to run.</param>
     public static void WithElevatedPrivileges(this SPFolder folder, Action<SPFolder> codeToRun) {
       CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      if (HttpContext.Current != null && HttpContext.Current.Request.Form["__REQUESTDIGEST"] != null) {
+        SPUtility.ValidateFormDigest();
+      }
       using (SPSite elevatedSite = new SPSite(folder.ParentWeb.Site.ID, SPUserToken.SystemAccount)) {
         using (SPWeb elevatedWeb = elevatedSite.OpenWeb(folder.ParentWeb.ID)) {
           using (elevatedWeb.GetAllowUnsafeUpdatesScope()) {
@@ -236,6 +252,9 @@ namespace Codeless.SharePoint {
     /// <param name="codeToRun">Action to run.</param>
     public static void WithElevatedPrivileges(this SPFile file, Action<SPFile> codeToRun) {
       CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      if (HttpContext.Current != null && HttpContext.Current.Request.Form["__REQUESTDIGEST"] != null) {
+        SPUtility.ValidateFormDigest();
+      }
       using (SPSite elevatedSite = new SPSite(file.Web.Site.ID, SPUserToken.SystemAccount)) {
         using (SPWeb elevatedWeb = elevatedSite.OpenWeb(file.Web.ID)) {
           using (elevatedWeb.GetAllowUnsafeUpdatesScope()) {
@@ -273,6 +292,9 @@ namespace Codeless.SharePoint {
     public static void WithUser(this SPSite site, SPUser user, Action<SPSite> codeToRun) {
       CommonHelper.ConfirmNotNull(user, "user");
       CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      if (HttpContext.Current != null && HttpContext.Current.Request.Form["__REQUESTDIGEST"] != null) {
+        SPUtility.ValidateFormDigest();
+      }
       using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
         using (SPSite elevatedSite = new SPSite(site.ID, user.UserToken)) {
           using (elevatedSite.GetAllowUnsafeUpdatesScope()) {
@@ -293,6 +315,9 @@ namespace Codeless.SharePoint {
     public static void WithUser(this SPWeb web, SPUser user, Action<SPWeb> codeToRun) {
       CommonHelper.ConfirmNotNull(user, "user");
       CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      if (HttpContext.Current != null && HttpContext.Current.Request.Form["__REQUESTDIGEST"] != null) {
+        SPUtility.ValidateFormDigest();
+      }
       using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
         using (SPSite elevatedSite = new SPSite(web.Site.ID, user.UserToken)) {
           using (SPWeb elevatedWeb = elevatedSite.OpenWeb(web.ID)) {
@@ -313,6 +338,9 @@ namespace Codeless.SharePoint {
     public static void WithUser(this SPList list, SPUser user, Action<SPList> codeToRun) {
       CommonHelper.ConfirmNotNull(user, "user");
       CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      if (HttpContext.Current != null && HttpContext.Current.Request.Form["__REQUESTDIGEST"] != null) {
+        SPUtility.ValidateFormDigest();
+      }
       using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
         using (SPSite elevatedSite = new SPSite(list.ParentWeb.Site.ID, user.UserToken)) {
           using (SPWeb elevatedWeb = elevatedSite.OpenWeb(list.ParentWeb.ID)) {
@@ -334,6 +362,9 @@ namespace Codeless.SharePoint {
     public static void WithUser(this SPListItem listItem, SPUser user, Action<SPListItem> codeToRun) {
       CommonHelper.ConfirmNotNull(user, "user");
       CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      if (HttpContext.Current != null && HttpContext.Current.Request.Form["__REQUESTDIGEST"] != null) {
+        SPUtility.ValidateFormDigest();
+      }
       using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
         using (SPSite elevatedSite = new SPSite(listItem.Web.Site.ID, user.UserToken)) {
           using (SPWeb elevatedWeb = elevatedSite.OpenWeb(listItem.Web.ID)) {
@@ -356,6 +387,9 @@ namespace Codeless.SharePoint {
     public static void WithUser(this SPFolder folder, SPUser user, Action<SPFolder> codeToRun) {
       CommonHelper.ConfirmNotNull(user, "user");
       CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      if (HttpContext.Current != null && HttpContext.Current.Request.Form["__REQUESTDIGEST"] != null) {
+        SPUtility.ValidateFormDigest();
+      }
       using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
         using (SPSite elevatedSite = new SPSite(folder.ParentWeb.Site.ID, user.UserToken)) {
           using (SPWeb elevatedWeb = elevatedSite.OpenWeb(folder.ParentWeb.ID)) {
@@ -377,6 +411,9 @@ namespace Codeless.SharePoint {
     public static void WithUser(this SPFile file, SPUser user, Action<SPFile> codeToRun) {
       CommonHelper.ConfirmNotNull(user, "user");
       CommonHelper.ConfirmNotNull(codeToRun, "codeToRun");
+      if (HttpContext.Current != null && HttpContext.Current.Request.Form["__REQUESTDIGEST"] != null) {
+        SPUtility.ValidateFormDigest();
+      }
       using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
         using (SPSite elevatedSite = new SPSite(file.Web.Site.ID, user.UserToken)) {
           using (SPWeb elevatedWeb = elevatedSite.OpenWeb(file.Web.ID)) {
