@@ -4298,6 +4298,11 @@
             <param name="key">A string representing the key associated with a cached object.</param>
             <returns>The cached object associated with the specified key; -or- *null* if the specified key does not exist in the cache.</returns>
         </member>
+        <member name="M:Codeless.SharePoint.SPObjectCache.Dispose">
+            <summary>
+            Releases resources held by this object cache.
+            </summary>
+        </member>
         <member name="M:Codeless.SharePoint.SPObjectCache.GetObjects``1">
             <summary>
             Gets a enumerable collection of cached objects of type <typeparamref name="T"/>.
@@ -4320,6 +4325,13 @@
             </summary>
             <param name="webId">Site GUID.</param>
             <returns>An <see cref="T:Microsoft.SharePoint.SPWeb"/> object in cache. NULL if site of given GUID does not exist.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.SPObjectCache.TryGetWeb(System.String)">
+            <summary>
+            Gets an <see cref="T:Microsoft.SharePoint.SPWeb"/> object with the given URL.
+            </summary>
+            <param name="webUrl">Site URL.</param>
+            <returns>An <see cref="T:Microsoft.SharePoint.SPWeb"/> object in cache. NULL if site of given URL does not exist.</returns>
         </member>
         <member name="M:Codeless.SharePoint.SPObjectCache.AddList(Microsoft.SharePoint.SPList)">
             <summary>
@@ -6318,6 +6330,30 @@
             <param name="folder">Parent folder.</param>
             <param name="name">Name of sub-folder to create.</param>
             <returns>Existing or newly created folder object.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.SPExtension.GetFileSafe(Microsoft.SharePoint.SPWeb,System.String)">
+            <summary>
+            Returns the file object located at the specified URL.
+            </summary>
+            <param name="web">A site.</param>
+            <param name="strUrl">A string that contains the URL for the file.</param>
+            <returns>An <see cref="T:Microsoft.SharePoint.SPFile"/> object that represents the file; -or- *null* if the file does not exists.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.SPExtension.GetFolderSafe(Microsoft.SharePoint.SPWeb,System.String)">
+            <summary>
+            Returns the folder object located at the specified URL.
+            </summary>
+            <param name="web">A site.</param>
+            <param name="strUrl">A string that contains the URL for the folder.</param>
+            <returns>An <see cref="T:Microsoft.SharePoint.SPFolder"/> object that represents the folder; -or- *null* if the folder does not exists.</returns>
+        </member>
+        <member name="M:Codeless.SharePoint.SPExtension.GetFileOrFolderObjectSafe(Microsoft.SharePoint.SPWeb,System.String)">
+            <summary>
+            Returns a file or folder on the Web site with the specified URL.
+            </summary>
+            <param name="web">A site.</param>
+            <param name="strUrl">A string that contains the URL of the file or folder.</param>
+            <returns>An <see cref="T:Microsoft.SharePoint.SPFile"/> or <see cref="T:Microsoft.SharePoint.SPFolder"/> object that represents the file or folder; -or- *null* if the file or folder does not exists.</returns>
         </member>
         <member name="M:Codeless.SharePoint.SPExtension.GetFileOrFolder(Microsoft.SharePoint.SPSite,System.String)">
             <summary>
