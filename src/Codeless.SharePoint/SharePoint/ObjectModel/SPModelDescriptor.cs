@@ -13,6 +13,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 
 namespace Codeless.SharePoint.ObjectModel {
@@ -40,7 +43,8 @@ namespace Codeless.SharePoint.ObjectModel {
     None = 0,
     ForceProvisionContentType = 1,
     SuppressListCreation = 2,
-    Asynchronous = 4
+    Asynchronous = 4,
+    MismatchChecksumCTOnly = 8
   }
 
   internal sealed class SPModelListProvisionOptions {
@@ -153,6 +157,7 @@ namespace Codeless.SharePoint.ObjectModel {
     public readonly List<SPModelDescriptor> Children = new List<SPModelDescriptor>();
     public readonly List<SPModelDescriptor> Interfaces = new List<SPModelDescriptor>();
 
+    private string checksum;
     protected SPBaseType? baseType;
     protected Lazy<Type> instanceType;
 
@@ -333,9 +338,10 @@ namespace Codeless.SharePoint.ObjectModel {
           string siteUrl = targetWeb.Site.Url;
           Guid siteId = targetWeb.Site.ID;
           Guid webId = targetWeb.ID;
+          bool matchChecksum = options.HasFlag(SPModelProvisionOptions.MismatchChecksumCTOnly);
           ProvisionResult result = new ProvisionResult();
 
-          Thread thread = new Thread(() => Provision(siteUrl, siteId, webId, provisionContentType, provisionList, listOptions, result));
+          Thread thread = new Thread(() => Provision(siteUrl, siteId, webId, provisionContentType, provisionList, matchChecksum, listOptions, result));
           thread.Start();
           if (!options.HasFlag(SPModelProvisionOptions.Asynchronous)) {
             thread.Join();
@@ -520,11 +526,36 @@ namespace Codeless.SharePoint.ObjectModel {
       }
     }
 
-    private void Provision(string siteUrl, Guid siteId, Guid webId, bool provisionContentType, bool provisionList, SPModelListProvisionOptions listOptions, ProvisionResult result) {
+    private string ComputeCheckSum() {
+      using (MemoryStream ms = new MemoryStream()) {
+        BinaryFormatter bf = new BinaryFormatter();
+        bf.Serialize(ms, contentTypeAttribute);
+        if (hasExplicitListAttribute) {
+          bf.Serialize(ms, listAttribute);
+        }
+        foreach (SPFieldAttribute f in fieldAttributes) {
+          bf.Serialize(ms, f);
+        }
+        foreach (SPFieldAttribute f in hiddenFields) {
+          bf.Serialize(ms, f);
+        }
+        ms.Seek(0, SeekOrigin.Begin);
+        using (SHA1Managed sha1 = new SHA1Managed()) {
+          byte[] hash = sha1.ComputeHash(ms);
+          StringBuilder formatted = new StringBuilder(2 * hash.Length);
+          foreach (byte b in hash) {
+            formatted.AppendFormat("{0:X2}", b);
+          }
+          return formatted.ToString();
+        }
+      }
+    }
+
+    private void Provision(string siteUrl, Guid siteId, Guid webId, bool provisionContentType, bool provisionList, bool matchChecksum, SPModelListProvisionOptions listOptions, ProvisionResult result) {
       try {
         if (provisionContentType) {
           CheckFieldConsistency();
-          ProvisionContentType(siteUrl, siteId, true, true, listOptions != SPModelListProvisionOptions.Default ? null : result.ProvisionedLists);
+          ProvisionContentType(siteUrl, siteId, true, true, matchChecksum, listOptions != SPModelListProvisionOptions.Default ? null : result.ProvisionedLists);
         }
         if (provisionList && (listOptions != SPModelListProvisionOptions.Default || !String.IsNullOrEmpty(listAttribute.Url))) {
           ProvisionList(siteUrl, siteId, webId, listOptions, result.ProvisionedLists);
@@ -536,41 +567,46 @@ namespace Codeless.SharePoint.ObjectModel {
       }
     }
 
-    private void ProvisionContentType(string siteUrl, Guid siteId, bool provisionParent, bool provisionChildren, HashSet<SPModelUsage> deferredListUrls) {
+    private void ProvisionContentType(string siteUrl, Guid siteId, bool provisionParent, bool provisionChildren, bool matchChecksum, HashSet<SPModelUsage> deferredListUrls) {
       if (provisionParent && this.Parent != null) {
-        this.Parent.ProvisionContentType(siteUrl, siteId, true, false, null);
+        this.Parent.ProvisionContentType(siteUrl, siteId, true, false, matchChecksum, null);
       }
       if (contentTypeAttribute != null) {
         if (TryLockSite(siteId)) {
           provisionedSites.TryAdd(siteId, true);
           try {
+            if (checksum == null) {
+              checksum = ComputeCheckSum();
+            }
             SPModelProvisionEventReceiver eventReceiver = GetProvisionEventReceiver(true);
             using (SPModelProvisionHelper helper = new SPModelProvisionHelper(siteId, eventReceiver)) {
               SPContentType contentType = helper.EnsureContentType(contentTypeAttribute);
-              helper.UpdateContentType(contentType, contentTypeAttribute, fieldAttributes);
+              if (!matchChecksum || helper.GetContentTypeChecksum(contentType) != checksum) {
+                helper.UpdateContentType(contentType, contentTypeAttribute, fieldAttributes, checksum);
+              }
               SaveAssemblyName(helper.TargetSite, contentTypeAttribute.ContentTypeId, this.ModelType.Assembly);
 
-              foreach (SPContentTypeUsage usage in SPContentTypeUsage.GetUsages(contentType)) {
-                if (usage.Id.Parent == contentType.Id && usage.IsUrlToList) {
-                  using (SPSite listParentSite = new SPSite(helper.TargetSite.MakeFullUrl(usage.Url), SPUserToken.SystemAccount)) {
-                    using (SPWeb listParentWeb = listParentSite.OpenWeb()) {
-                      SPList list;
-                      try {
-                        list = listParentWeb.GetListSafe(usage.Url);
-                      } catch (FileNotFoundException) {
-                        continue;
-                      }
-                      SPContentType listContentType = list.ContentTypes[usage.Id];
-                      if (listContentType != null) {
-                        using (SPModelProvisionHelper helper2 = new SPModelProvisionHelper(siteId, eventReceiver)) {
-                          helper2.UpdateContentType(listContentType, contentTypeAttribute, fieldAttributes);
-                          helper2.UpdateList(list, listAttribute.Clone(list.RootFolder.Url), contentTypeAttribute, fieldAttributes, hiddenFields.ToArray(), new SPContentTypeId[0]);
-                          if (deferredListUrls != null) {
-                            deferredListUrls.Add(SPModelUsage.Create(list, usage.Id).GetWithoutList());
-                          }
-                        }
-                      }
+              foreach (SPModelUsage usage in GetUsages(helper.TargetSite.RootWeb)) {
+                if (usage.ContentTypeId.Parent == contentTypeAttribute.ContentTypeId) {
+                  using (SPModelProvisionHelper helper2 = new SPModelProvisionHelper(siteId, eventReceiver)) {
+                    SPList list = helper2.ObjectCache.GetList(usage.WebId, usage.ListId);
+                    if (list == null) {
+                      continue;
                     }
+                    SPContentType listContentType = list.ContentTypes[usage.ContentTypeId];
+                    if (listContentType == null) {
+                      continue;
+                    }
+                    if (!matchChecksum || helper2.GetContentTypeChecksum(listContentType) != checksum) {
+                      helper2.UpdateContentType(listContentType, contentTypeAttribute, fieldAttributes, checksum);
+                    }
+                    if (!matchChecksum || helper2.GetContentTypeChecksum(list, contentTypeAttribute.ContentTypeId) != checksum) {
+                      SPListAttribute listAttributeClone = listAttribute.Clone(list);
+                      helper2.UpdateList(list, listAttributeClone, contentTypeAttribute, fieldAttributes, hiddenFields.ToArray(), new SPContentTypeId[0], checksum);
+                    }
+                  }
+                  if (deferredListUrls != null) {
+                    deferredListUrls.Add(usage.GetWithoutList());
                   }
                 }
               }
@@ -591,23 +627,26 @@ namespace Codeless.SharePoint.ObjectModel {
       if (provisionChildren) {
         foreach (SPModelDescriptor child in this.Children) {
           if (!child.hasExplicitListAttribute) {
-            child.ProvisionContentType(siteUrl, siteId, false, true, deferredListUrls);
+            child.ProvisionContentType(siteUrl, siteId, false, true, matchChecksum, deferredListUrls);
           }
         }
       }
     }
 
     private void ProvisionList(string siteUrl, Guid siteId, Guid webId, SPModelListProvisionOptions listOptions, HashSet<SPModelUsage> deferredListUrls) {
+      if (checksum == null) {
+        checksum = ComputeCheckSum();
+      }
       using (SPModelProvisionHelper helper = new SPModelProvisionHelper(siteId, GetProvisionEventReceiver(true))) {
         SPList targetList = null;
         if (listOptions.TargetListId != Guid.Empty) {
-          targetList = helper.TargetSite.AllWebs[listOptions.TargetWebId].Lists[listOptions.TargetListId];
-        }
-        SPListAttribute implListAttribute = listOptions.ListAttributeOverrides ?? listAttribute;
-        if (targetList != null) {
-          implListAttribute = listAttribute.Clone(targetList.RootFolder.Url);
-          helper.UpdateList(targetList, implListAttribute, contentTypeAttribute, fieldAttributes, hiddenFields.ToArray(), new SPContentTypeId[0]);
+          targetList = helper.ObjectCache.GetList(listOptions.TargetWebId, listOptions.TargetListId);
+          if (targetList == null) {
+            return;
+          }
+          helper.UpdateList(targetList, listAttribute.Clone(targetList), contentTypeAttribute, fieldAttributes, hiddenFields.ToArray(), new SPContentTypeId[0], checksum);
         } else {
+          SPListAttribute implListAttribute = listOptions.ListAttributeOverrides ?? listAttribute;
           if (listOptions.TargetListUrl != null) {
             implListAttribute = implListAttribute.Clone(listOptions.TargetListUrl);
           } else {
@@ -616,11 +655,9 @@ namespace Codeless.SharePoint.ObjectModel {
           if (listOptions.TargetListTitle != null) {
             implListAttribute.Title = listOptions.TargetListTitle;
           }
-          using (SPWeb targetWeb = helper.TargetSite.OpenWeb(webId)) {
-            List<SPContentTypeId> contentTypes;
-            targetList = helper.EnsureList(targetWeb, implListAttribute, out contentTypes);
-            helper.UpdateList(targetList, implListAttribute, contentTypeAttribute, fieldAttributes, hiddenFields.ToArray(), contentTypes);
-          }
+          List<SPContentTypeId> contentTypes;
+          targetList = helper.EnsureList(helper.ObjectCache.GetWeb(webId), implListAttribute, out contentTypes);
+          helper.UpdateList(targetList, implListAttribute, contentTypeAttribute, fieldAttributes, hiddenFields.ToArray(), contentTypes, checksum);
         }
         foreach (SPContentType ct in targetList.ContentTypes) {
           if (ct.Id.Parent == contentTypeAttribute.ContentTypeId) {

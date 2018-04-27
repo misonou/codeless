@@ -1541,5 +1541,72 @@ namespace Codeless.SharePoint {
       return "<" + emptyType + " />";
     }
   }
+
+  internal abstract class CamlLateBoundExpression : CamlWhereUnaryComparisonExpression {
+    public CamlLateBoundExpression() :
+      base((CamlUnaryOperator)(-1), "") { }
+
+    public CamlLateBoundExpression(CamlParameterBindingFieldRef fieldRef) :
+      base((CamlUnaryOperator)(-1), fieldRef) { }
+
+    public new abstract CamlExpression Bind(Hashtable bindings);
+
+    protected override void WriteXml(XmlWriter writer, Hashtable bindings) {
+      try {
+        WriteXmlStatic(Bind(bindings), writer, bindings);
+      } catch {
+        WriteUnbound(writer, bindings);
+      }
+    }
+
+    protected abstract void WriteUnbound(XmlWriter writer, Hashtable bindings);
+  }
+
+  internal sealed class CamlLateBoundEmptyExpression : CamlLateBoundExpression {
+    private readonly CamlParameterBindingBooleanString value;
+
+    public CamlLateBoundEmptyExpression(CamlParameterBindingBooleanString value) {
+      this.value = value;
+    }
+
+    public override CamlExpression Bind(Hashtable bindings) {
+      return value.Bind(bindings) == BooleanString.True ? Caml.True : Caml.False;
+    }
+
+    protected override void WriteUnbound(XmlWriter writer, Hashtable bindings) {
+      writer.WriteStartElement("True");
+      writer.WriteAttributeString("Condition", BindValue(value, bindings));
+      writer.WriteEndElement();
+    }
+  }
+
+  internal sealed class CamlLateBoundDefaultValueAsNullExpression : CamlLateBoundExpression {
+    private readonly string defaultValue;
+    private readonly CamlExpression replacer;
+    private readonly ICamlParameterBinding value;
+
+    public CamlLateBoundDefaultValueAsNullExpression(CamlParameterBindingFieldRef fieldRef, ICamlParameterBinding value, string defaultValue)
+      : base(fieldRef) {
+      this.value = value;
+      this.defaultValue = defaultValue;
+      this.replacer = Caml.IsNull(FieldName);
+    }
+
+    public override CamlExpression Bind(Hashtable bindings) {
+      try {
+        if (value.Bind(bindings) == defaultValue) {
+          return replacer;
+        }
+      } catch (CamlParameterBindingNullException) { }
+      return Caml.False;
+    }
+
+    protected override void WriteUnbound(XmlWriter writer, Hashtable bindings) {
+      writer.WriteStartElement("IsNull");
+      writer.WriteAttributeString("Condition", String.Concat(BindValue(value, bindings), " == ", defaultValue));
+      WriteOperationBody(writer, bindings);
+      writer.WriteEndElement();
+    }
+  }
   #endregion
 }

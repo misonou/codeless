@@ -57,6 +57,7 @@ namespace Codeless.SharePoint.ObjectModel {
   /// <summary>
   /// Represents the definition of a list to be created during provisioning.
   /// </summary>
+  [Serializable]
   [AttributeUsage(AttributeTargets.Class)]
   [DebuggerDisplay("{Url}")]
   public class SPListAttribute : Attribute {
@@ -173,6 +174,15 @@ namespace Codeless.SharePoint.ObjectModel {
     internal SPListAttribute Clone(string url) {
       SPListAttribute other = this.Clone();
       other.Url = url;
+      return other;
+    }
+
+    internal SPListAttribute Clone(SPList list) {
+      SPListAttribute other = this.Clone();
+      other.Url = list.RootFolder.Url;
+      if (this.Url == null || !this.Url.Equals(other.Url, StringComparison.OrdinalIgnoreCase)) {
+        other.Title = list.Title;
+      }
       return other;
     }
   }

@@ -7,9 +7,9 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
 
     private SPModelQueryExpressionVisitor visitor;
     private CamlExpression expression;
-    private object definedValue;
 
     public SPModelQueryExpressionScope(SPModelQueryExpressionVisitor visitor) {
+      CommonHelper.ConfirmNotNull(visitor, "visitor");
       this.visitor = visitor;
     }
 
@@ -17,31 +17,15 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
     public Type MemberType { get; set; }
     public SPModelFieldAssociationCollection FieldAssociations { get; set; }
     public SPModelQueryFieldInfo Field { get; set; }
-    public bool IsValueDefined { get; private set; }
-
-    public object Value {
-      get {
-        if (!this.IsValueDefined) {
-          throw new NotSupportedException("Only comparison to constant value is allowed");
-        }
-        return definedValue;
-      }
-      set {
-        definedValue = value;
-        this.IsValueDefined = true;
-      }
-    }
+    public string ParameterName { get; set; }
 
     public CamlExpression Expression {
       get {
         if (expression != null) {
           return expression;
         }
-        if (this.MemberType == typeof(bool) && !this.IsValueDefined) {
+        if (this.MemberType == typeof(bool) && this.ParameterName == null) {
           return GetExpression(s => Caml.Equals(s.FieldRef, true));
-        }
-        if (this.Member == null && this.IsValueDefined && this.Value != null && this.Value.GetType() == typeof(bool)) {
-          return (bool)this.Value ? Caml.True : Caml.False;
         }
         return null;
       }
@@ -56,8 +40,7 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
       this.FieldAssociations = null;
       this.Member = null;
       this.MemberType = null;
-      this.IsValueDefined = false;
-      definedValue = null;
+      this.ParameterName = null;
     }
 
     public void CopyTo(SPModelQueryExpressionScope other) {
@@ -67,8 +50,7 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
       other.Field = this.Field;
       other.Member = this.Member;
       other.MemberType = this.MemberType;
-      other.IsValueDefined = this.IsValueDefined;
-      other.definedValue = definedValue;
+      other.ParameterName = this.ParameterName;
     }
 
     public CamlExpression GetExpression(ExpressionGenerator expressionFactory) {
@@ -96,29 +78,19 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
       if (this.FieldAssociations.Fields.Count > 1 && checkOrderable) {
         throw new Exception(String.Format("Member '{0}' cannot be used in ordering", this.Member.Name));
       }
-      if (definedValue != null) {
-        foreach (SPModelFieldAssociation association in this.FieldAssociations) {
-          if (association.QueryProperty != null && definedValue.GetType().IsOf(association.QueryProperty.DeclaringType)) {
-            definedValue = association.QueryProperty.GetValue<object>(definedValue);
-            break;
-          }
-        }
-      }
       CamlExpression expression = Caml.False;
       foreach (SPModelFieldAssociation association in this.FieldAssociations) {
         SPModelQueryFieldInfo fieldInfo = new SPModelQueryFieldInfo(visitor.Manager.Site, association);
-        if (visitor.IsFieldAllowed(fieldInfo.FieldRef)) {
-          if (this.FieldAssociations.Fields.Count == 1) {
-            return expressionFactory(fieldInfo);
-          }
-          expression |= (association.Descriptor.GetContentTypeExpression(visitor.Manager.Descriptor) + expressionFactory(fieldInfo));
+        if (this.FieldAssociations.Fields.Count == 1) {
+          return expressionFactory(fieldInfo);
         }
+        expression |= (association.Descriptor.GetContentTypeExpression(visitor.Manager.Descriptor) + expressionFactory(fieldInfo));
       }
       return expression;
     }
 
     public ICamlParameterBinding GetValueBinding(SPModelQueryFieldInfo s) {
-      return CamlParameterBinding.GetValueBinding(visitor.Manager.Site, s.FieldType, s.FieldTypeAsString, s.IncludeTimeValue, this.MemberType, this.Value);
+      return CamlParameterBinding.GetValueBinding(visitor.Manager.Site, s.FieldType, s.FieldTypeAsString, s.IncludeTimeValue, this.MemberType, new CamlParameterName(this.ParameterName), s.QueryProperty);
     }
   }
 }

@@ -3,10 +3,39 @@ using Microsoft.SharePoint.Taxonomy;
 using Microsoft.SharePoint.Workflow;
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Codeless.SharePoint.Internal {
   internal static class SPExtensionHelper {
     public delegate SPWorkflowAssociation SPWorkflowAssociationCreator(SPWorkflowTemplate template, string name, SPList taskList, SPList historyList);
+
+    public static SPWeb OpenWebSafe(SPSite site, Guid webId) {
+      try {
+        using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
+          SPWeb web = site.OpenWeb(webId);
+          if (web.Exists) {
+            return web;
+          }
+        }
+      } catch (UnauthorizedAccessException) {
+      } catch (FileNotFoundException) { }
+      return null;
+    }
+
+    public static SPWeb OpenWebSafe(SPSite site, string strUrl, bool requireExactUrl) {
+      try {
+        using (new SPSecurity.SuppressAccessDeniedRedirectInScope()) {
+          SPWeb web = site.OpenWeb(strUrl, requireExactUrl);
+          if (web.Exists) {
+            return web;
+          }
+        }
+      } catch (UnauthorizedAccessException) {
+      } catch (ArgumentException) {
+        // strUrl is not equal to or is a decesendant path of that of the specified site collection
+      }
+      return null;
+    }
 
     public static SPWorkflowAssociation EnsureWorkflowAssociation(SPWorkflowAssociationCollection collection, Guid workflowBaseId, SPWorkflowAssociationCreator createDelegate, out bool associationUpdated) {
       CommonHelper.ConfirmNotNull(collection, "collection");
