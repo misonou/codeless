@@ -207,6 +207,9 @@ namespace Codeless.SharePoint {
       CamlExpression x = VisitChecked(expression.Where, CamlExpressionType.Where);
       CamlExpression y = VisitChecked(expression.OrderBy, CamlExpressionType.OrderBy);
       CamlExpression z = VisitChecked(expression.GroupBy, CamlExpressionType.GroupBy);
+      if (x == Caml.False) {
+        return x;
+      }
       if (x != expression.Where || y != expression.OrderBy || z != expression.GroupBy) {
         return new CamlQueryExpression(x as ICamlQueryComponent<CamlWhereExpression>, y as ICamlQueryComponent<CamlOrderByExpression>, z as ICamlQueryComponent<CamlGroupByExpression>);
       }
