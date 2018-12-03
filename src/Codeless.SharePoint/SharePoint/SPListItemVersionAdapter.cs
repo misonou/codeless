@@ -1,6 +1,7 @@
 ﻿using Microsoft.SharePoint;
 using System;
 using System.Reflection;
+using System.Web;
 
 namespace Codeless.SharePoint {
   /// <summary>
@@ -85,6 +86,13 @@ namespace Codeless.SharePoint {
     /// </summary>
     public override SPListItem ListItem {
       get { return instance.ListItem; }
+    }
+
+    /// <summary>
+    /// Gets the server-relative URL to the specific version of the list item.
+    /// </summary>
+    public override string ServerRelativeUrl {
+      get { return String.Concat(this.ObjectCache.GetWeb(this.WebId).ServerRelativeUrl.TrimEnd('/'), "/", instance.Url); }
     }
 
     /// <summary>
