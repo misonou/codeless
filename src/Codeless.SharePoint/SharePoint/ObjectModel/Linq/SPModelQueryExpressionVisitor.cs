@@ -402,7 +402,9 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
             } catch (ArgumentException) {
               throw new NotSupportedException("'OfType' constraint must be used with valid model type or interface type");
             }
-            builder.ContentTypeIds.RemoveAll(v => !descriptor.ContentTypeIds.Contains(v));
+            SPContentTypeId[] result = SPModelDescriptor.IntersectContentTypeIds(builder.ContentTypeIds, descriptor.ContentTypeIds.ToArray());
+            builder.ContentTypeIds.Clear();
+            builder.ContentTypeIds.AddRange(result);
           }
           return Caml.Empty;
       }

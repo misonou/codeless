@@ -361,13 +361,8 @@ namespace Codeless.SharePoint.ObjectModel {
 
     public CamlExpression GetContentTypeExpression(SPModelDescriptor other) {
       CommonHelper.ConfirmNotNull(other, "other");
-      CamlExpression expression = Caml.False;
-      foreach (SPContentTypeId contentTypeId in this.ContentTypeIds) {
-        if (other == this || other.ContentTypeIds.Any(v => v.IsParentOf(contentTypeId))) {
-          expression |= Caml.OfContentType(contentTypeId);
-        }
-      }
-      return expression;
+      IEnumerable<SPContentTypeId> contentTypeIds = this == other ? this.ContentTypeIds : IntersectContentTypeIds(this.ContentTypeIds.ToArray(), other.ContentTypeIds.ToArray());
+      return contentTypeIds.Aggregate(Caml.False, (v, a) => v | Caml.OfContentType(a));
     }
 
     public bool Contains(SPContentTypeId contentTypeId) {
@@ -490,6 +485,21 @@ namespace Codeless.SharePoint.ObjectModel {
         Assembly.Load(assemblyName);
       }
       return TargetTypeDictionary.Count != beforeCount;
+    }
+
+    public static SPContentTypeId[] IntersectContentTypeIds(IList<SPContentTypeId> a, IList<SPContentTypeId> b) {
+      HashSet<SPContentTypeId> result = new HashSet<SPContentTypeId>();
+      foreach (SPContentTypeId id in a) {
+        if (b.Any(v => v.IsParentOf(id))) {
+          result.Add(id);
+        }
+      }
+      foreach (SPContentTypeId id in b) {
+        if (a.Any(v => v.IsParentOf(id))) {
+          result.Add(id);
+        }
+      }
+      return result.ToArray();
     }
 
     protected virtual void CheckFieldConsistency() {
