@@ -79,15 +79,13 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
       }
       if (parameters.Contains(expression)) {
         currentScope.ParameterName = expression.Name;
-        if (invariantExpression) {
-          return Expression.Convert(Expression.ArrayIndex(pArr, Expression.Constant(parameters.IndexOf(expression))), expression.Type);
-        }
+        return Expression.Convert(Expression.ArrayIndex(pArr, Expression.Constant(parameters.IndexOf(expression))), expression.Type);
       }
       return expression;
     }
 
     protected override Expression VisitLambda(LambdaExpression expression) {
-      return invariantExpression ? expression : base.VisitLambda(expression);
+      return base.VisitLambda(expression);
     }
 
     protected override Expression VisitBinary(BinaryExpression expression) {
@@ -207,59 +205,51 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
       if (invariantExpression) {
         return base.VisitMemberAccess(expression);
       }
+      if (expression.Expression != lambdaParam) {
+        if (expression.Member.DeclaringType == typeof(ISPModelMetaData) &&
+           ((expression.Expression.NodeType == ExpressionType.Call && ((MethodCallExpression)expression.Expression).Method == typeof(SPModelExtension).GetMethod("GetMetaData") && ((MethodCallExpression)expression.Expression).Arguments[0] == lambdaParam) ||
+            (expression.Expression.NodeType == ExpressionType.Convert && ((UnaryExpression)expression.Expression).Operand == lambdaParam))) {
+          // allow non-direct field access on the ISPModelMetaData interface
+        } else {
+          return base.VisitMemberAccess(expression);
+        }
+      }
+
       currentScope.MemberType = expression.Type;
       currentScope.Member = expression.Member;
       currentScope.Field = default(SPModelQueryFieldInfo);
       currentScope.FieldAssociations = null;
 
-      switch (expression.Expression.NodeType) {
-        case ExpressionType.Parameter:
-        case ExpressionType.MemberAccess:
-        case ExpressionType.Convert:
-        case ExpressionType.Call:
-          if (expression.Member.DeclaringType == typeof(ISPModelMetaData)) {
-            switch (expression.Member.Name) {
-              case "ID":
-                currentScope.Field = SPModelQueryFieldInfo.ID;
-                break;
-              case "UniqueId":
-                currentScope.Field = SPModelQueryFieldInfo.UniqueId;
-                break;
-              case "FileRef":
-                currentScope.Field = SPModelQueryFieldInfo.FileRef;
-                break;
-              case "FileLeafRef":
-                currentScope.Field = SPModelQueryFieldInfo.FileLeafRef;
-                break;
-              case "LastModified":
-                currentScope.Field = SPModelQueryFieldInfo.LastModified;
-                break;
-              case "CheckOutUserID":
-                currentScope.Field = SPModelQueryFieldInfo.CheckOutUserID;
-                break;
-              default:
-                throw new NotSupportedException(String.Format("Member '{0}' is not supported", GetMemberFullName(expression.Member)));
-            }
-          } else if (expression.Member.DeclaringType == typeof(TaxonomyItem) || expression.Member.DeclaringType == typeof(SPPrincipal)) {
-            switch (expression.Member.Name) {
-              case "Id":
-              case "ID":
-                Visit(expression.Expression);
-                break;
-              default:
-                throw new NotSupportedException(String.Format("Member '{0}' is not supported", GetMemberFullName(expression.Member)));
-            }
-          } else {
-            currentScope.FieldAssociations = SPModelFieldAssociationCollection.GetByMember(expression.Member);
-            foreach (SPFieldAttribute field in currentScope.FieldAssociations.Fields) {
-              if (field.TypeAsString == "TaxonomyFieldType" || field.TypeAsString == "TaxonomyFieldTypeMulti") {
-                builder.TaxonomyFields.Add(field.ListFieldInternalName);
-              }
-            }
+      if (expression.Member.DeclaringType == typeof(ISPModelMetaData)) {
+        switch (expression.Member.Name) {
+          case "ID":
+            currentScope.Field = SPModelQueryFieldInfo.ID;
+            break;
+          case "UniqueId":
+            currentScope.Field = SPModelQueryFieldInfo.UniqueId;
+            break;
+          case "FileRef":
+            currentScope.Field = SPModelQueryFieldInfo.FileRef;
+            break;
+          case "FileLeafRef":
+            currentScope.Field = SPModelQueryFieldInfo.FileLeafRef;
+            break;
+          case "LastModified":
+            currentScope.Field = SPModelQueryFieldInfo.LastModified;
+            break;
+          case "CheckOutUserID":
+            currentScope.Field = SPModelQueryFieldInfo.CheckOutUserID;
+            break;
+          default:
+            throw new NotSupportedException(String.Format("Member '{0}' is not supported", GetMemberFullName(expression.Member)));
+        }
+      } else {
+        currentScope.FieldAssociations = SPModelFieldAssociationCollection.GetByMember(expression.Member);
+        foreach (SPFieldAttribute field in currentScope.FieldAssociations.Fields) {
+          if (field.TypeAsString == "TaxonomyFieldType" || field.TypeAsString == "TaxonomyFieldTypeMulti") {
+            builder.TaxonomyFields.Add(field.ListFieldInternalName);
           }
-          break;
-        default:
-          throw new NotSupportedException(String.Format("Member '{0}' is not supported", GetMemberFullName(expression.Member)));
+        }
       }
       if (builder.SelectExpression != null) {
         if (currentScope.Field.FieldRef != null) {
