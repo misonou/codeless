@@ -529,7 +529,7 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
 
     private Expression VisitConditionalBranch(Expression expression) {
       Expression result = Visit(expression);
-      if (currentScope.Expression == null && expression.NodeType == ExpressionType.Parameter && expression.Type == typeof(bool)) {
+      if (currentScope.Expression == null && currentScope.ParameterName != null && expression.Type == typeof(bool)) {
         currentScope.Expression = new CamlLateBoundEmptyExpression(Caml.Parameter.BooleanString(currentScope.ParameterName));
       }
       return result;
