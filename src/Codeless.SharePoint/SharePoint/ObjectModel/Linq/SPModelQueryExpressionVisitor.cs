@@ -43,7 +43,7 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
     }
 
     protected void Visit(ParameterizedExpression expression) {
-      base.VisitLambda(Expression.Lambda(expression.Expression, expression.Parameters.ToArray()));
+      Visit(expression.Expression);
       builder.Expression = this.currentScope.Expression;
       if (builder.SelectExpression != null) {
         builder.SelectExpression = Expression.Lambda<SPModelParameterizedQuery.ResultEvaluator>(EnsureReturnObject(builder.SelectExpression), pRes, pArr);
