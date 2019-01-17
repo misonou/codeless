@@ -210,8 +210,14 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
            ((expression.Expression.NodeType == ExpressionType.Call && ((MethodCallExpression)expression.Expression).Method == typeof(SPModelExtension).GetMethod("GetMetaData") && ((MethodCallExpression)expression.Expression).Arguments[0] == lambdaParam) ||
             (expression.Expression.NodeType == ExpressionType.Convert && ((UnaryExpression)expression.Expression).Operand == lambdaParam))) {
           // allow non-direct field access on the ISPModelMetaData interface
-        } else {
-          return base.VisitMemberAccess(expression);
+        } else { 
+          Expression result = base.VisitMemberAccess(expression);
+          if (expression.Member.DeclaringType.IsGenericType && expression.Member.DeclaringType.GetGenericTypeDefinition() == typeof(Nullable<>) && expression.Member.Name == "HasValue") {
+            CamlExpression expr = currentScope.GetExpression(v => Caml.IsNotNull(v.FieldRef));
+            currentScope.Reset();
+            currentScope.Expression = expr;
+          }
+          return result;
         }
       }
 
@@ -563,8 +569,12 @@ namespace Codeless.SharePoint.ObjectModel.Linq {
     private CamlExpression HandleEqualityComparison(SPModelQueryFieldInfo s, CamlBinaryOperator op) {
       ICamlParameterBinding value = currentScope.GetValueBinding(s);
       CamlExpression expression = new CamlWhereBinaryComparisonExpression(op, s.FieldRef, value);
-      if (currentScope.MemberType.IsValueType || currentScope.MemberType == typeof(string)) {
-        string defaultValue = value.Bind(new Hashtable { { currentScope.ParameterName, currentScope.MemberType.IsValueType ? currentScope.MemberType.GetDefaultValue() : "" } });
+      Type memberType = currentScope.MemberType;
+      if (memberType.IsGenericType && memberType.GetGenericTypeDefinition() == typeof(Nullable<>)) {
+        memberType = memberType.GetGenericArguments()[0];
+      }
+      if (memberType.IsValueType || memberType == typeof(string)) {
+        string defaultValue = value.Bind(new Hashtable { { currentScope.ParameterName, memberType.IsValueType ? memberType.GetDefaultValue() : "" } });
         CamlExpression lateBoundCond = new CamlLateBoundDefaultValueAsNullExpression(s.FieldRef, value, defaultValue);
         return op == CamlBinaryOperator.Eq ? expression | lateBoundCond : expression & ~lateBoundCond;
       }
