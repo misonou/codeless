@@ -4272,6 +4272,11 @@
             Gets the list item represented by the adapter.
             </summary>
         </member>
+        <member name="P:Codeless.SharePoint.SPListItemVersionAdapter.ServerRelativeUrl">
+            <summary>
+            Gets the server-relative URL to the specific version of the list item.
+            </summary>
+        </member>
         <member name="M:Codeless.SharePoint.SPListItemVersionAdapter.HasField(System.String)">
             <summary>
             Determines whether the specified field is included in the data set.
