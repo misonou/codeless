@@ -12,7 +12,6 @@ namespace Codeless.SharePoint {
   /// </summary>
   public class SPItemEventDataCollectionAdapter : SPListItemAdapterBase {
     private static readonly Dictionary<string, string> SpecialFields = new Dictionary<string, string> {
-      { SPBuiltInFieldName.Title, "vti_title" },
       { SPBuiltInFieldName.ProgId, "vti_progid" },
       { SPBuiltInFieldName.Modified_x0020_By, "vti_modifiedby" },
       { SPBuiltInFieldName._Level, "vti_level" },
@@ -61,7 +60,7 @@ namespace Codeless.SharePoint {
           return field.DefaultValue;
         }
         Array propertiesParam = (Array)PropertiesParamField.GetValue(instance.AfterProperties);
-        for (int i = propertiesParam.GetUpperBound(1); --i >= 0; ) {
+        for (int i = propertiesParam.GetUpperBound(1); --i >= 0;) {
           object obj = propertiesParam.GetValue(0, i);
           if (name.Equals(obj)) {
             return propertiesParam.GetValue(1, i);
@@ -74,7 +73,9 @@ namespace Codeless.SharePoint {
       }
       set {
         string propertiesKey;
-        if (!SpecialFields.TryGetValue(name, out propertiesKey)) {
+        if (name == SPBuiltInFieldName.Title && instance.List.BaseType == SPBaseType.DocumentLibrary) {
+          propertiesKey = "vti_title";
+        } else if (!SpecialFields.TryGetValue(name, out propertiesKey)) {
           propertiesKey = name;
         }
         instance.AfterProperties[propertiesKey] = value;
