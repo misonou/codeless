@@ -28,7 +28,7 @@ namespace Codeless.SharePoint.ObjectModel {
     /// <param name="contentTypeId">Full or partial content type ID.</param>
     /// <param name="name">Name of the content type.</param>
     public SPContentTypeAttribute(string contentTypeId, string name)
-      : this(String.Concat("00", contentTypeId), name, true) { }
+      : this(CommonHelper.ConfirmNotNull(contentTypeId, "contentTypeId").StartsWith("0x") ? contentTypeId : String.Concat("00", contentTypeId), name, true) { }
 
     /// <summary>
     /// Constructs an instance of <see cref="SPContentTypeAttribute"/> with a two-digit partial content type ID.
