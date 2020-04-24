@@ -105,7 +105,7 @@ namespace Codeless.SharePoint.Internal {
           }
           if (user.IsDomainGroup) {
             return EnumerateActiveDirectoryGroup(IdentityType.SamAccountName, user.LoginName);
-          } 
+          }
           return EnumerateBySamAccountName(user.LoginName);
         }
         return new PrincipalInfo[0];
@@ -172,6 +172,9 @@ namespace Codeless.SharePoint.Internal {
           foreach (string dn in groupEntry.Properties["member"]) {
             try {
               DirectoryEntry memberEntry = new DirectoryEntry("LDAP://" + dn);
+              if ((group.Context.Options & ContextOptions.SecureSocketLayer) != 0) {
+                memberEntry.AuthenticationType = AuthenticationTypes.Secure | AuthenticationTypes.SecureSocketsLayer;
+              }
               PropertyCollection userProps = memberEntry.Properties;
               object[] objectClass = (object[])userProps["objectClass"].Value;
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.DirectoryServices;
 using System.DirectoryServices.AccountManagement;
 using System.Security.Principal;
 using System.Threading;
@@ -11,17 +12,18 @@ namespace Codeless.SharePoint.Internal {
     private readonly Stack<PrincipalContext> contextStack = new Stack<PrincipalContext>();
     private readonly Dictionary<string, PrincipalContext> contexts = new Dictionary<string, PrincipalContext>();
 
-    public PrincipalContextScope() {
+    public PrincipalContextScope(bool preferSSL) {
       if (Interlocked.CompareExchange(ref currentScope, this, null) != null) {
         throw new InvalidOperationException();
       }
       PrincipalContext pc;
       try {
         string domainName = WindowsIdentity.GetCurrent().Name.Split('\\')[0];
-        pc = new PrincipalContext(ContextType.Domain, domainName);
+        pc = GetContextByDomainName(domainName, preferSSL);
       } catch {
         pc = new PrincipalContext(ContextType.Machine);
       }
+      this.preferSSL = preferSSL;
       this.LocalContext = pc;
       contextStack.Push(pc);
       contexts.Add(pc.ConnectedServer.ToLowerInvariant(), pc);
@@ -30,6 +32,8 @@ namespace Codeless.SharePoint.Internal {
     public static PrincipalContextScope Current {
       get { return CommonHelper.AccessNotNull(currentScope, "CurrentScope"); }
     }
+
+    private readonly bool preferSSL;
 
     public PrincipalContext LocalContext { get; private set; }
 
@@ -60,7 +64,7 @@ namespace Codeless.SharePoint.Internal {
       PrincipalContext cachedContext;
       if (!contexts.TryGetValue(domainName.ToLowerInvariant(), out cachedContext)) {
         try {
-          PrincipalContext context = new PrincipalContext(ContextType.Domain, domainName);
+          PrincipalContext context = GetContextByDomainName(domainName, preferSSL);
           if (context.ConnectedServer != null) {
             cachedContext = context;
           }
@@ -72,6 +76,31 @@ namespace Codeless.SharePoint.Internal {
         throw new InvalidOperationException(String.Format("Unable to connect domain server for domain \"{0}\"", domainName));
       }
       return cachedContext;
+    }
+
+    private static PrincipalContext GetContextByDomainName(string domainName, bool preferSSL) {
+      if (preferSSL) {
+        return GetContextByDomainNameWithSSL(domainName) ?? new PrincipalContext(ContextType.Domain, domainName);
+      }
+      try {
+        return new PrincipalContext(ContextType.Domain, domainName);
+      } catch (PrincipalServerDownException) {
+        PrincipalContext sslContext = GetContextByDomainNameWithSSL(domainName);
+        if (sslContext != null) {
+          return sslContext;
+        }
+        throw;
+      }
+    }
+
+    private static PrincipalContext GetContextByDomainNameWithSSL(string domainName) {
+      try {
+        DirectoryEntry de = new DirectoryEntry("LDAP://" + domainName);
+        de.AuthenticationType = AuthenticationTypes.Secure | AuthenticationTypes.SecureSocketsLayer;
+        string dn = (string)de.Properties["distinguishName"].Value;
+        return new PrincipalContext(ContextType.Domain, domainName + ":636", dn, ContextOptions.SecureSocketLayer | ContextOptions.Negotiate);
+      } catch { }
+      return null;
     }
   }
 }

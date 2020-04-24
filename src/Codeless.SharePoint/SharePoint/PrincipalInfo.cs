@@ -140,7 +140,18 @@ namespace Codeless.SharePoint {
     /// </summary>
     /// <returns>A disposable object.</returns>
     public static IDisposable CreatePrincipalContextScope() {
-      return new PrincipalContextScope();
+      return new PrincipalContextScope(true);
+    }
+
+    /// <summary>
+    /// Creates a resolvation scope that resolved identities are cached until the object is disposed. 
+    /// Same identity referenced by different SharePoint users are returned once only, even by subsequent calls to <see cref="Resolve"/> or <see cref="ResolveEmailAddresses(SPPrincipal)"/>.
+    /// If no scope is created before calling <see cref="Resolve"/> or <see cref="ResolveEmailAddresses(SPPrincipal)"/>, an implicit scope is created during the call and is disposed after the call.
+    /// </summary>
+    /// <param name="preferSSL">Use SSL by default when connecting using LDAP.</param>
+    /// <returns>A disposable object.</returns>
+    public static IDisposable CreatePrincipalContextScope(bool preferSSL) {
+      return new PrincipalContextScope(preferSSL);
     }
 
     /// <summary>
